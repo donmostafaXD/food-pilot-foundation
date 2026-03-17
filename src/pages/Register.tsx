@@ -50,9 +50,11 @@ const Register = () => {
   };
 
   // If user is logged in and has no org yet, show org step
-  if (user && step === "credentials") {
-    setStep("organization");
-  }
+  useEffect(() => {
+    if (user && step === "credentials") {
+      setStep("organization");
+    }
+  }, [user, step]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
