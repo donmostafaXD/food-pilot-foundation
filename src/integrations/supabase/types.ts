@@ -241,6 +241,136 @@ export type Database = {
         }
         Relationships: []
       }
+      haccp_plan_hazards: {
+        Row: {
+          control_type: string | null
+          corrective_action: string | null
+          critical_limit: string | null
+          haccp_plan_step_id: string
+          hazard_name: string
+          hazard_type: string | null
+          id: string
+          likelihood: number
+          monitoring: string | null
+          risk_score: number
+          severity: number
+        }
+        Insert: {
+          control_type?: string | null
+          corrective_action?: string | null
+          critical_limit?: string | null
+          haccp_plan_step_id: string
+          hazard_name: string
+          hazard_type?: string | null
+          id?: string
+          likelihood?: number
+          monitoring?: string | null
+          risk_score?: number
+          severity?: number
+        }
+        Update: {
+          control_type?: string | null
+          corrective_action?: string | null
+          critical_limit?: string | null
+          haccp_plan_step_id?: string
+          hazard_name?: string
+          hazard_type?: string | null
+          id?: string
+          likelihood?: number
+          monitoring?: string | null
+          risk_score?: number
+          severity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "haccp_plan_hazards_haccp_plan_step_id_fkey"
+            columns: ["haccp_plan_step_id"]
+            isOneToOne: false
+            referencedRelation: "haccp_plan_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      haccp_plan_steps: {
+        Row: {
+          haccp_plan_id: string
+          id: string
+          process_name: string
+          process_step_id: number | null
+          step_order: number
+        }
+        Insert: {
+          haccp_plan_id: string
+          id?: string
+          process_name: string
+          process_step_id?: number | null
+          step_order: number
+        }
+        Update: {
+          haccp_plan_id?: string
+          id?: string
+          process_name?: string
+          process_step_id?: number | null
+          step_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "haccp_plan_steps_haccp_plan_id_fkey"
+            columns: ["haccp_plan_id"]
+            isOneToOne: false
+            referencedRelation: "haccp_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      haccp_plans: {
+        Row: {
+          activity_name: string
+          branch_id: string
+          business_type: string
+          created_at: string
+          id: string
+          organization_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          activity_name: string
+          branch_id: string
+          business_type: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          activity_name?: string
+          branch_id?: string
+          business_type?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "haccp_plans_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "haccp_plans_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hazard_library: {
         Row: {
           hazard_name: string
