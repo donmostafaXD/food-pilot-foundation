@@ -568,6 +568,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      register_organization: {
+        Args: { _full_name: string; _org_name: string }
+        Returns: Json
+      }
     }
     Enums: {
       app_role: "Owner" | "Manager" | "QA" | "Staff" | "Auditor"
