@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -50,9 +50,11 @@ const Register = () => {
   };
 
   // If user is logged in and has no org yet, show org step
-  if (user && step === "credentials") {
-    setStep("organization");
-  }
+  useEffect(() => {
+    if (user && step === "credentials") {
+      setStep("organization");
+    }
+  }, [user, step]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
