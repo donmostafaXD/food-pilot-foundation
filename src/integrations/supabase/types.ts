@@ -14,16 +14,563 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      activity_process_map: {
+        Row: {
+          activity: string
+          id: number
+          process: string
+          process_order: number
+        }
+        Insert: {
+          activity: string
+          id?: number
+          process: string
+          process_order: number
+        }
+        Update: {
+          activity?: string
+          id?: number
+          process?: string
+          process_order?: number
+        }
+        Relationships: []
+      }
+      activity_types: {
+        Row: {
+          activity_name: string
+          id: number
+          industry_type: string | null
+          template: string
+        }
+        Insert: {
+          activity_name: string
+          id?: number
+          industry_type?: string | null
+          template: string
+        }
+        Update: {
+          activity_name?: string
+          id?: number
+          industry_type?: string | null
+          template?: string
+        }
+        Relationships: []
+      }
+      branches: {
+        Row: {
+          activity_type: string | null
+          created_at: string
+          id: string
+          name: string
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          activity_type?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          activity_type?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_equipment: {
+        Row: {
+          business_id: string | null
+          equipment_name: string | null
+          equipment_type: string | null
+          id: number
+        }
+        Insert: {
+          business_id?: string | null
+          equipment_name?: string | null
+          equipment_type?: string | null
+          id?: number
+        }
+        Update: {
+          business_id?: string | null
+          equipment_name?: string | null
+          equipment_type?: string | null
+          id?: number
+        }
+        Relationships: []
+      }
+      ccp_analysis: {
+        Row: {
+          control_type: string | null
+          corrective_action: string | null
+          critical_limit: string | null
+          hazard_id: number
+          id: number
+          likelihood: number | null
+          monitoring: string | null
+          process_step_id: number
+          risk_score: number | null
+          severity: number | null
+        }
+        Insert: {
+          control_type?: string | null
+          corrective_action?: string | null
+          critical_limit?: string | null
+          hazard_id: number
+          id?: number
+          likelihood?: number | null
+          monitoring?: string | null
+          process_step_id: number
+          risk_score?: number | null
+          severity?: number | null
+        }
+        Update: {
+          control_type?: string | null
+          corrective_action?: string | null
+          critical_limit?: string | null
+          hazard_id?: number
+          id?: number
+          likelihood?: number | null
+          monitoring?: string | null
+          process_step_id?: number
+          risk_score?: number | null
+          severity?: number | null
+        }
+        Relationships: []
+      }
+      ccp_table: {
+        Row: {
+          critical_limit: string | null
+          hazard: string
+          id: number
+          is_ccp: boolean | null
+          monitoring: string | null
+          process: string
+        }
+        Insert: {
+          critical_limit?: string | null
+          hazard: string
+          id?: number
+          is_ccp?: boolean | null
+          monitoring?: string | null
+          process: string
+        }
+        Update: {
+          critical_limit?: string | null
+          hazard?: string
+          id?: number
+          is_ccp?: boolean | null
+          monitoring?: string | null
+          process?: string
+        }
+        Relationships: []
+      }
+      decision_tree_questions: {
+        Row: {
+          activity: string
+          id: number
+          question: string
+          related_process: string | null
+        }
+        Insert: {
+          activity: string
+          id?: number
+          question: string
+          related_process?: string | null
+        }
+        Update: {
+          activity?: string
+          id?: number
+          question?: string
+          related_process?: string | null
+        }
+        Relationships: []
+      }
+      document_library: {
+        Row: {
+          description: string | null
+          document_name: string
+          id: number
+          responsible: string | null
+        }
+        Insert: {
+          description?: string | null
+          document_name: string
+          id?: number
+          responsible?: string | null
+        }
+        Update: {
+          description?: string | null
+          document_name?: string
+          id?: number
+          responsible?: string | null
+        }
+        Relationships: []
+      }
+      equipment_library: {
+        Row: {
+          activity_type: string | null
+          equipment_name: string
+          id: number
+          related_process: string | null
+        }
+        Insert: {
+          activity_type?: string | null
+          equipment_name: string
+          id?: number
+          related_process?: string | null
+        }
+        Update: {
+          activity_type?: string | null
+          equipment_name?: string
+          id?: number
+          related_process?: string | null
+        }
+        Relationships: []
+      }
+      hazard_library: {
+        Row: {
+          hazard_name: string
+          hazard_type: string | null
+          id: number
+          typical_process: string | null
+        }
+        Insert: {
+          hazard_name: string
+          hazard_type?: string | null
+          id?: number
+          typical_process?: string | null
+        }
+        Update: {
+          hazard_name?: string
+          hazard_type?: string | null
+          id?: number
+          typical_process?: string | null
+        }
+        Relationships: []
+      }
+      logs_structure: {
+        Row: {
+          field_name: string
+          id: number
+          log_name: string
+          related_process_step: string | null
+        }
+        Insert: {
+          field_name: string
+          id?: number
+          log_name: string
+          related_process_step?: string | null
+        }
+        Update: {
+          field_name?: string
+          id?: number
+          log_name?: string
+          related_process_step?: string | null
+        }
+        Relationships: []
+      }
+      logs_structure_manufacturing: {
+        Row: {
+          frequency: string | null
+          id: number
+          log_name: string
+          parameter: string | null
+          process_step_id: number
+          record_type: string | null
+          unit: string | null
+        }
+        Insert: {
+          frequency?: string | null
+          id?: number
+          log_name: string
+          parameter?: string | null
+          process_step_id: number
+          record_type?: string | null
+          unit?: string | null
+        }
+        Update: {
+          frequency?: string | null
+          id?: number
+          log_name?: string
+          parameter?: string | null
+          process_step_id?: number
+          record_type?: string | null
+          unit?: string | null
+        }
+        Relationships: []
+      }
+      organizations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          subscription_plan: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          subscription_plan?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          subscription_plan?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      process_hazard_map: {
+        Row: {
+          hazard: string
+          id: number
+          process: string
+        }
+        Insert: {
+          hazard: string
+          id?: number
+          process: string
+        }
+        Update: {
+          hazard?: string
+          id?: number
+          process?: string
+        }
+        Relationships: []
+      }
+      process_step_hazard_map: {
+        Row: {
+          hazard_id: number
+          id: number
+          process_step_id: number
+        }
+        Insert: {
+          hazard_id: number
+          id?: number
+          process_step_id: number
+        }
+        Update: {
+          hazard_id?: number
+          id?: number
+          process_step_id?: number
+        }
+        Relationships: []
+      }
+      process_steps: {
+        Row: {
+          id: number
+          metadata: Json | null
+          process_name: string
+          step_type: string | null
+        }
+        Insert: {
+          id?: number
+          metadata?: Json | null
+          process_name: string
+          step_type?: string | null
+        }
+        Update: {
+          id?: number
+          metadata?: Json | null
+          process_name?: string
+          step_type?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          organization_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          organization_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          organization_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prp_programs: {
+        Row: {
+          activity: string
+          description: string | null
+          frequency: string | null
+          id: number
+          program_name: string
+          responsible: string | null
+        }
+        Insert: {
+          activity: string
+          description?: string | null
+          frequency?: string | null
+          id?: number
+          program_name: string
+          responsible?: string | null
+        }
+        Update: {
+          activity?: string
+          description?: string | null
+          frequency?: string | null
+          id?: number
+          program_name?: string
+          responsible?: string | null
+        }
+        Relationships: []
+      }
+      sop_library: {
+        Row: {
+          id: number
+          procedure_text: string | null
+          process_step: string
+          responsible: string | null
+          sop_title: string
+        }
+        Insert: {
+          id?: number
+          procedure_text?: string | null
+          process_step: string
+          responsible?: string | null
+          sop_title: string
+        }
+        Update: {
+          id?: number
+          procedure_text?: string | null
+          process_step?: string
+          responsible?: string | null
+          sop_title?: string
+        }
+        Relationships: []
+      }
+      sop_library_manufacturing: {
+        Row: {
+          activity_type: string | null
+          description: string | null
+          id: number
+          process_step_id: number
+          sop_name: string
+        }
+        Insert: {
+          activity_type?: string | null
+          description?: string | null
+          id?: number
+          process_step_id: number
+          sop_name: string
+        }
+        Update: {
+          activity_type?: string | null
+          description?: string | null
+          id?: number
+          process_step_id?: number
+          sop_name?: string
+        }
+        Relationships: []
+      }
+      templates: {
+        Row: {
+          description: string | null
+          id: number
+          industry_scope: string | null
+          template_name: string
+        }
+        Insert: {
+          description?: string | null
+          id?: number
+          industry_scope?: string | null
+          template_name: string
+        }
+        Update: {
+          description?: string | null
+          id?: number
+          industry_scope?: string | null
+          template_name?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "Owner" | "Manager" | "QA" | "Staff" | "Auditor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +697,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["Owner", "Manager", "QA", "Staff", "Auditor"],
+    },
   },
 } as const
