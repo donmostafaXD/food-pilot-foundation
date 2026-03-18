@@ -17,6 +17,7 @@ import Pricing from "./pages/Pricing";
 import Logs from "./pages/Logs";
 import PRP from "./pages/PRP";
 import SOP from "./pages/SOP";
+import EquipmentPage from "./pages/Equipment";
 
 const queryClient = new QueryClient();
 
