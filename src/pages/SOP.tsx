@@ -142,7 +142,6 @@ const SOPPage = () => {
             </Button>
           </div>
           <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} onSelect={handlePrint} title={`Print: ${selectedSOP.sop_name}`} />
-          </Button>
 
           <Card>
             <CardHeader className="pb-4">
