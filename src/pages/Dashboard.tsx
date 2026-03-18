@@ -13,26 +13,40 @@ const Dashboard = () => {
 
   useEffect(() => {
     const checkPlan = async () => {
-      if (!profile?.branch_id) {
-        setChecking(false);
-        return;
-      }
+      if (!profile) return; // wait for profile to load
 
-      const { data } = await supabase
-        .from("haccp_plans")
-        .select("id")
-        .eq("branch_id", profile.branch_id)
-        .limit(1);
+      const orgId = profile.organization_id;
+      const branchId = profile.branch_id;
 
-      if (!data || data.length === 0) {
+      console.log("[Dashboard] Checking HACCP plan for:", { orgId, branchId });
+
+      // If user has no org or branch yet, send to setup
+      if (!orgId || !branchId) {
+        console.log("[Dashboard] No org/branch — redirecting to /setup");
         navigate("/setup", { replace: true });
         return;
       }
 
+      const { data, error } = await supabase
+        .from("haccp_plans")
+        .select("id")
+        .eq("organization_id", orgId)
+        .eq("branch_id", branchId)
+        .limit(1);
+
+      console.log("[Dashboard] HACCP plan query result:", { data, error });
+
+      if (!data || data.length === 0) {
+        console.log("[Dashboard] No plan found — redirecting to /setup");
+        navigate("/setup", { replace: true });
+        return;
+      }
+
+      console.log("[Dashboard] Plan exists — staying on dashboard");
       setChecking(false);
     };
     checkPlan();
-  }, [profile?.branch_id, navigate]);
+  }, [profile, navigate]);
 
   const handleLogout = async () => {
     await signOut();
