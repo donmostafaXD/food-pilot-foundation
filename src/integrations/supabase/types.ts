@@ -153,28 +153,40 @@ export type Database = {
       }
       ccp_table: {
         Row: {
+          corrective_action: string | null
           critical_limit: string | null
-          hazard: string
+          default_control_type: string | null
+          hazard_id: number
           id: number
-          is_ccp: boolean | null
+          likelihood: number
           monitoring: string | null
-          process: string
+          process_id: number
+          risk_score: number
+          severity: number
         }
         Insert: {
+          corrective_action?: string | null
           critical_limit?: string | null
-          hazard: string
+          default_control_type?: string | null
+          hazard_id?: number
           id?: number
-          is_ccp?: boolean | null
+          likelihood?: number
           monitoring?: string | null
-          process: string
+          process_id?: number
+          risk_score?: number
+          severity?: number
         }
         Update: {
+          corrective_action?: string | null
           critical_limit?: string | null
-          hazard?: string
+          default_control_type?: string | null
+          hazard_id?: number
           id?: number
-          is_ccp?: boolean | null
+          likelihood?: number
           monitoring?: string | null
-          process?: string
+          process_id?: number
+          risk_score?: number
+          severity?: number
         }
         Relationships: []
       }
@@ -541,19 +553,19 @@ export type Database = {
       }
       process_hazard_map: {
         Row: {
-          hazard: string
+          hazard_id: number
           id: number
-          process: string
+          process_id: number
         }
         Insert: {
-          hazard: string
+          hazard_id?: number
           id?: number
-          process: string
+          process_id?: number
         }
         Update: {
-          hazard?: string
+          hazard_id?: number
           id?: number
-          process?: string
+          process_id?: number
         }
         Relationships: []
       }
@@ -577,22 +589,22 @@ export type Database = {
       }
       process_steps: {
         Row: {
+          default_step_type: string | null
           id: number
           metadata: Json | null
           process_name: string
-          step_type: string | null
         }
         Insert: {
+          default_step_type?: string | null
           id?: number
           metadata?: Json | null
           process_name: string
-          step_type?: string | null
         }
         Update: {
+          default_step_type?: string | null
           id?: number
           metadata?: Json | null
           process_name?: string
-          step_type?: string | null
         }
         Relationships: []
       }
