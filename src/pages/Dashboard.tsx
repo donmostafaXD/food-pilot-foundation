@@ -87,7 +87,7 @@ const Dashboard = () => {
     };
 
     checkPlan();
-  }, [authLoading, user, profile, navigate]);
+  }, [authLoading, user, profile, onboardingError, navigate]);
 
   const handleLogout = async () => {
     await signOut();
