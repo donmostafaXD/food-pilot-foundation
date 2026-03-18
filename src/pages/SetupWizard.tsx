@@ -229,7 +229,6 @@ const SetupWizard = () => {
               setPlanSteps={setPlanSteps}
               showRiskFields={showRiskFields}
             />
-            />
           )}
         </div>
 
