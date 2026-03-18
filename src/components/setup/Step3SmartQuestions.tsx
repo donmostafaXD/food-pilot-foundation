@@ -45,7 +45,8 @@ const Step3SmartQuestions = ({ activityName, excludedProcesses, setExcludedProce
         const excluded: string[] = [];
         qs.forEach((q) => {
           if (!answers[q.id] && q.related_process) {
-            excluded.push(q.related_process);
+            const processes = q.related_process.split("|").map((p) => p.trim());
+            excluded.push(...processes);
           }
         });
         setExcludedProcesses(excluded);
@@ -62,10 +63,12 @@ const Step3SmartQuestions = ({ activityName, excludedProcesses, setExcludedProce
     const excluded: string[] = [];
     questions.forEach((question) => {
       if (!newAnswers[question.id] && question.related_process) {
-        excluded.push(question.related_process);
+        const processes = question.related_process.split("|").map((p) => p.trim());
+        excluded.push(...processes);
       }
     });
     setExcludedProcesses(excluded);
+    console.log("[Step3] Excluded processes:", excluded);
   };
 
   if (loading) {
