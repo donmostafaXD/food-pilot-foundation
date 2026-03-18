@@ -17,8 +17,11 @@ import {
   Pencil,
   Table,
   Loader2,
+  ArrowUpRight,
+  Sparkles,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { usePlan, PLAN_CONFIG } from "@/hooks/usePlan";
 
 interface PlanData {
   id: string;
@@ -35,6 +38,7 @@ interface PlanData {
 const Dashboard = () => {
   const { profile, loading: authLoading, user, onboardingError, signOut } = useAuth();
   const navigate = useNavigate();
+  const { plan: subscriptionPlan, loading: planLoading } = usePlan();
   const [plan, setPlan] = useState<PlanData | null>(null);
   const [orgName, setOrgName] = useState<string>("");
   const [branchName, setBranchName] = useState<string>("");
@@ -198,6 +202,33 @@ const Dashboard = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Subscription Plan */}
+        <Card className="shadow-industrial-sm">
+          <CardContent className="flex items-center justify-between pt-5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Sparkles className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Current Plan</p>
+                {planLoading ? (
+                  <Skeleton className="h-5 w-24 mt-0.5" />
+                ) : (
+                  <p className="text-sm font-semibold text-foreground">
+                    {PLAN_CONFIG[subscriptionPlan].name} — ${PLAN_CONFIG[subscriptionPlan].price}/mo
+                  </p>
+                )}
+              </div>
+            </div>
+            {subscriptionPlan !== "premium" && (
+              <Button size="sm" variant="outline" onClick={() => navigate("/pricing")}>
+                <ArrowUpRight className="w-4 h-4 mr-1" />
+                Upgrade Plan
+              </Button>
+            )}
+          </CardContent>
+        </Card>
 
         {dataLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

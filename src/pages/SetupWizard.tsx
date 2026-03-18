@@ -11,6 +11,7 @@ import HACCPTable from "@/components/haccp/HACCPTable";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react";
+import { usePlan } from "@/hooks/usePlan";
 
 export interface ProcessStep {
   process_name: string;
@@ -43,6 +44,7 @@ const STEPS = ["Business Info", "Activity", "Questions", "Process Flow", "HACCP 
 const SetupWizard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const { canAccessManufacturing } = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -185,6 +187,7 @@ const SetupWizard = () => {
               businessType={businessType}
               setBusinessType={setBusinessType}
               orgName={profile?.full_name || ""}
+              canAccessManufacturing={canAccessManufacturing}
             />
           )}
           {currentStep === 1 && (

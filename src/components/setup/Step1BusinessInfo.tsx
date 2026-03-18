@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { Lock } from "lucide-react";
 
 interface Props {
   businessName: string;
@@ -11,9 +13,10 @@ interface Props {
   businessType: "" | "Food Service" | "Manufacturing";
   setBusinessType: (v: "" | "Food Service" | "Manufacturing") => void;
   orgName: string;
+  canAccessManufacturing?: boolean;
 }
 
-const Step1BusinessInfo = ({ businessName, setBusinessName, businessType, setBusinessType, orgName }: Props) => {
+const Step1BusinessInfo = ({ businessName, setBusinessName, businessType, setBusinessType, orgName, canAccessManufacturing = true }: Props) => {
   const { profile } = useAuth();
 
   // Pre-fill business name from organization
@@ -61,10 +64,21 @@ const Step1BusinessInfo = ({ businessName, setBusinessName, businessType, setBus
               <span className="block text-xs text-muted-foreground">Restaurants, bakeries, cafes, juice bars</span>
             </Label>
           </div>
-          <div className="flex items-center space-x-3 p-3 rounded-lg border border-border hover:bg-secondary/50 cursor-pointer transition-industrial">
-            <RadioGroupItem value="Manufacturing" id="manufacturing" />
-            <Label htmlFor="manufacturing" className="cursor-pointer flex-1">
-              <span className="font-medium">Manufacturing</span>
+          <div className={`flex items-center space-x-3 p-3 rounded-lg border transition-industrial ${
+            canAccessManufacturing
+              ? "border-border hover:bg-secondary/50 cursor-pointer"
+              : "border-border/50 opacity-60 cursor-not-allowed"
+          }`}>
+            <RadioGroupItem value="Manufacturing" id="manufacturing" disabled={!canAccessManufacturing} />
+            <Label htmlFor="manufacturing" className={`flex-1 ${canAccessManufacturing ? "cursor-pointer" : "cursor-not-allowed"}`}>
+              <span className="font-medium flex items-center gap-2">
+                Manufacturing
+                {!canAccessManufacturing && (
+                  <Badge variant="outline" className="text-[10px] py-0 px-1.5 gap-1">
+                    <Lock className="w-2.5 h-2.5" /> Pro+
+                  </Badge>
+                )}
+              </span>
               <span className="block text-xs text-muted-foreground">Food production, dairy, meat, beverages</span>
             </Label>
           </div>
