@@ -142,8 +142,8 @@ export function usePlan(): PlanFeatures {
     loading,
     // Feature gates
     canAccessManufacturing: isProPlus,
-    canAccessMultiBranch: isSuperAdmin || plan === "premium",
-    canAccessAdvancedAnalytics: isSuperAdmin || plan === "premium",
+    canAccessMultiBranch: effectiveAdmin || plan === "premium",
+    canAccessAdvancedAnalytics: effectiveAdmin || plan === "premium",
     canAccessFullHazardLibrary: isProPlus,
     // UI visibility
     showRiskFields: isProPlus,
