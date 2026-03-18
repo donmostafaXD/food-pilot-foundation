@@ -140,7 +140,9 @@ export function usePlan(): PlanFeatures {
     return { error: error as Error | null };
   };
 
-  const isProPlus = isSuperAdmin || plan === "professional" || plan === "premium";
+  // When override is active, DON'T let super_admin bypass — simulate the real plan experience
+  const effectiveAdmin = overridePlan ? false : isSuperAdmin;
+  const isProPlus = effectiveAdmin || plan === "professional" || plan === "premium";
 
   return {
     plan,
