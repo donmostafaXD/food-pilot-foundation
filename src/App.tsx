@@ -84,6 +84,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/prp"
+        element={
+          <ProtectedRoute>
+            <PRP />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/pricing"
         element={
           <ProtectedRoute>
