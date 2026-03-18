@@ -13,6 +13,7 @@ import SetupWizard from "./pages/SetupWizard";
 import HACCPPlan from "./pages/HACCPPlan";
 import Documents from "./pages/Documents";
 import SettingsPage from "./pages/Settings";
+import Pricing from "./pages/Pricing";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pricing"
+        element={
+          <ProtectedRoute>
+            <Pricing />
           </ProtectedRoute>
         }
       />

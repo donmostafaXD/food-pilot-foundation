@@ -5,6 +5,7 @@ import {
   FileText,
   Settings,
   LogOut,
+  CreditCard,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -28,6 +29,7 @@ const mainItems = [
   { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
   { title: "Setup Wizard", url: "/setup", icon: Wand2 },
   { title: "Documents", url: "/documents", icon: FileText },
+  { title: "Pricing", url: "/pricing", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
