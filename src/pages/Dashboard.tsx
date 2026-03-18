@@ -52,7 +52,7 @@ const Dashboard = () => {
       return;
     }
 
-    // Step 5: Check HACCP plan
+    setErrorMsg(null);
     setCheckState("loading_plan");
 
     const checkPlan = async () => {
