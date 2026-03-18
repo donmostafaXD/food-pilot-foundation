@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -209,7 +209,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
           </thead>
           <tbody>
             {planSteps.map((step, si) => (
-              <>
+              <React.Fragment key={`step-${si}`}>
                 {step.hazards.length === 0 ? (
                   <tr key={`step-${si}-empty`} className="border-b border-border">
                     <td className="p-2 font-medium text-foreground">{step.process_name}</td>
@@ -297,7 +297,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                     );
                   })
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
