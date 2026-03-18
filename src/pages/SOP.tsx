@@ -50,7 +50,8 @@ interface SOPItem {
 }
 
 const SOPPage = () => {
-  const { profile } = useAuth();
+  const { profile, roles } = useAuth();
+  const isSuperAdmin = roles.includes("super_admin" as any);
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
   const [sops, setSOPs] = useState<SOPItem[]>([]);
@@ -394,7 +395,7 @@ const SOPPage = () => {
 
         {/* Activity toggle + Filters */}
         <div className="flex flex-col gap-4 mb-6">
-          {activityName && (
+          {activityName && isSuperAdmin && (
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-muted-foreground" />
               <Label htmlFor="show-all-sop" className="text-sm text-muted-foreground cursor-pointer">
