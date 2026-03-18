@@ -206,6 +206,8 @@ const SetupWizard = () => {
               activityName={selectedActivity}
               excludedProcesses={excludedProcesses}
               setExcludedProcesses={setExcludedProcesses}
+              answers={smartAnswers}
+              setAnswers={setSmartAnswers}
             />
           )}
           {currentStep === 3 && (
