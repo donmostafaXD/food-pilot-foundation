@@ -30,6 +30,10 @@ export interface HazardRow {
   critical_limit: string | null;
   monitoring: string | null;
   corrective_action: string | null;
+  /** Original default from CCP_Table — used for safety safeguard logic */
+  default_control_type?: string | null;
+  /** True when safeguard forced CCP override */
+  safeguard_applied?: boolean;
 }
 
 export interface PlanStep {
