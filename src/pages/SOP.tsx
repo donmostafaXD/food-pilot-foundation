@@ -51,7 +51,7 @@ interface SOPItem {
 
 const SOPPage = () => {
   const { profile } = useAuth();
-  const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
+  const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
   const [sops, setSOPs] = useState<SOPItem[]>([]);
   const [searchParams] = useSearchParams();
