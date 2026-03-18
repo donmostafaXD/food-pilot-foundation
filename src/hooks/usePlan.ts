@@ -128,7 +128,7 @@ export function usePlan(): PlanFeatures {
       .update({ subscription_plan: newPlan })
       .eq("id", profile.organization_id);
 
-    if (!error) setPlan(newPlan);
+    if (!error) setDbPlan(newPlan);
     return { error: error as Error | null };
   };
 
