@@ -147,7 +147,7 @@ const HACCPPlanPage = () => {
     });
     const thRisk = showRiskFields ? "<th>S</th><th>L</th><th>Risk</th>" : "";
     const html = `<p class="section-title">${showRiskFields ? "Hazard Analysis Table" : "Food Safety Plan"}</p>
-      <table><thead><tr><th>Process Step</th><th>Hazard</th>${thRisk}<th>Control</th><th>Critical Limit</    th><th>Monitoring</th><th>Corrective Action</th></tr></thead><tbody>${rows}</tbody></table>`;
+      <table><thead><tr><th>Process Step</th><th>Hazard</th>${thRisk}<th>Control</th><th>Critical Limit</th><th>Monitoring</th><th>Corrective Action</th></tr></thead><tbody>${rows}</tbody></table>`;
     openPrintWindow(printHeader, html);
   };
 
