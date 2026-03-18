@@ -187,6 +187,7 @@ const SetupWizard = () => {
               businessType={businessType}
               setBusinessType={setBusinessType}
               orgName={profile?.full_name || ""}
+              canAccessManufacturing={canAccessManufacturing}
             />
           )}
           {currentStep === 1 && (
