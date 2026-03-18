@@ -45,7 +45,8 @@ const Step3SmartQuestions = ({ activityName, excludedProcesses, setExcludedProce
         const excluded: string[] = [];
         qs.forEach((q) => {
           if (!answers[q.id] && q.related_process) {
-            excluded.push(q.related_process);
+            const processes = q.related_process.split("|").map((p) => p.trim());
+            excluded.push(...processes);
           }
         });
         setExcludedProcesses(excluded);
