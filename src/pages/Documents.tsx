@@ -265,7 +265,9 @@ const Documents = () => {
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [categoryFilter, setCategoryFilter] = useState<DocCategory>("all");
   const [selectedDoc, setSelectedDoc] = useState<EnrichedDocument | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
+  const printHeader = usePrintHeader("FSMS Documents");
 
   useEffect(() => {
     (async () => {
