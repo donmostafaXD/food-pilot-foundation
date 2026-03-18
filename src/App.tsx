@@ -101,6 +101,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/equipment"
+        element={
+          <ProtectedRoute>
+            <EquipmentPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/pricing"
         element={
           <ProtectedRoute>

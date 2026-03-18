@@ -35,6 +35,7 @@ const mainItems = [
   { title: "Logs", url: "/logs", icon: ClipboardList },
   { title: "PRP Programs", url: "/prp", icon: Shield },
   { title: "SOP Procedures", url: "/sop", icon: BookOpen },
+  { title: "Equipment", url: "/equipment", icon: Wrench },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Pricing", url: "/pricing", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
