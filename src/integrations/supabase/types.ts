@@ -220,6 +220,39 @@ export type Database = {
         }
         Relationships: []
       }
+      equipment: {
+        Row: {
+          branch_id: string
+          created_at: string
+          equipment_name: string
+          id: string
+          location: string | null
+          organization_id: string
+          status: string
+          type: string | null
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          equipment_name: string
+          id?: string
+          location?: string | null
+          organization_id: string
+          status?: string
+          type?: string | null
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          equipment_name?: string
+          id?: string
+          location?: string | null
+          organization_id?: string
+          status?: string
+          type?: string | null
+        }
+        Relationships: []
+      }
       equipment_library: {
         Row: {
           activity_type: string | null

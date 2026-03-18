@@ -58,6 +58,12 @@ interface LogEntry {
   created_at: string;
 }
 
+interface BranchEquipment {
+  id: string;
+  equipment_name: string;
+  status: string;
+}
+
 type ViewMode = "list" | "form" | "entries";
 
 const Logs = () => {
@@ -77,6 +83,9 @@ const Logs = () => {
   const [filterDate, setFilterDate] = useState("");
   const [filterLogType, setFilterLogType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // Equipment for dropdowns
+  const [branchEquipment, setBranchEquipment] = useState<BranchEquipment[]>([]);
 
   // Detect business type from HACCP plan
   const [businessType, setBusinessType] = useState<string>("");
@@ -128,6 +137,15 @@ const Logs = () => {
           setLogStructures(Object.values(grouped));
         }
       }
+
+      // Load branch equipment for dropdowns
+      const { data: eqData } = await supabase
+        .from("equipment" as any)
+        .select("id, equipment_name, status")
+        .eq("organization_id", profile.organization_id!)
+        .eq("branch_id", profile.branch_id!)
+        .eq("status", "Active");
+      setBranchEquipment((eqData || []) as unknown as BranchEquipment[]);
 
       setLoading(false);
     };
@@ -378,6 +396,24 @@ const Logs = () => {
                           setFormData((prev) => ({ ...prev, [field]: e.target.value }))
                         }
                       />
+                    ) : (field.toLowerCase().includes("equipment") || field.toLowerCase().includes("unit name") || field.toLowerCase().includes("fridge") || field.toLowerCase().includes("freezer")) && branchEquipment.length > 0 ? (
+                      <Select
+                        value={formData[field] || ""}
+                        onValueChange={(val) =>
+                          setFormData((prev) => ({ ...prev, [field]: val }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select equipment..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {branchEquipment.map((eq) => (
+                            <SelectItem key={eq.id} value={eq.equipment_name}>
+                              {eq.equipment_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <Input
                         value={formData[field] || ""}
