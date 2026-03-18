@@ -3,10 +3,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import HACCPTable from "@/components/haccp/HACCPTable";
-import { Loader2 } from "lucide-react";
+import { Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
+import { usePrintHeader } from "@/hooks/usePrintHeader";
+import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
+import { openPrintWindow, blankTable, escapeHtml, controlBadgeClass } from "@/lib/printUtils";
 import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 const HACCPPlanPage = () => {
