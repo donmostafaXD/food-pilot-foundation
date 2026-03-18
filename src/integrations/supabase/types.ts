@@ -392,6 +392,42 @@ export type Database = {
         }
         Relationships: []
       }
+      log_entries: {
+        Row: {
+          branch_id: string
+          created_at: string
+          data: Json
+          id: string
+          log_name: string
+          organization_id: string
+          process_step: string | null
+          recorded_by: string | null
+          status: string | null
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          data?: Json
+          id?: string
+          log_name: string
+          organization_id: string
+          process_step?: string | null
+          recorded_by?: string | null
+          status?: string | null
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          data?: Json
+          id?: string
+          log_name?: string
+          organization_id?: string
+          process_step?: string | null
+          recorded_by?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       logs_structure: {
         Row: {
           field_name: string

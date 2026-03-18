@@ -14,6 +14,7 @@ import HACCPPlan from "./pages/HACCPPlan";
 import Documents from "./pages/Documents";
 import SettingsPage from "./pages/Settings";
 import Pricing from "./pages/Pricing";
+import Logs from "./pages/Logs";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <SettingsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/logs"
+        element={
+          <ProtectedRoute>
+            <Logs />
           </ProtectedRoute>
         }
       />

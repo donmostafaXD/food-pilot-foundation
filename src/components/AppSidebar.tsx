@@ -6,6 +6,7 @@ import {
   Settings,
   LogOut,
   CreditCard,
+  ClipboardList,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -28,6 +29,7 @@ const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
   { title: "Setup Wizard", url: "/setup", icon: Wand2 },
+  { title: "Logs", url: "/logs", icon: ClipboardList },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Pricing", url: "/pricing", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
