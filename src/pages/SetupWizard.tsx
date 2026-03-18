@@ -40,21 +40,8 @@ export interface PlanStep {
 const STEPS = ["Business Info", "Activity", "Questions", "Process Flow", "HACCP Plan"];
 
 const SetupWizard = () => {
-  const { profile, loading: authLoading, user } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
-
-  // Guard: redirect to register if org/branch not set up yet
-  useEffect(() => {
-    if (authLoading) return;
-    if (!user) {
-      navigate("/login", { replace: true });
-      return;
-    }
-    if (profile && (!profile.organization_id || !profile.branch_id)) {
-      console.log("[SetupWizard] No org/branch — redirecting to /register");
-      navigate("/register", { replace: true });
-    }
-  }, [authLoading, user, profile, navigate]);
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
