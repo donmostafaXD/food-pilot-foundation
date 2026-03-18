@@ -5,6 +5,7 @@ import {
   FileText,
   Settings,
   LogOut,
+  CreditCard,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
