@@ -14,14 +14,16 @@ import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 const HACCPPlanPage = () => {
   const { profile } = useAuth();
-  const { showRiskFields, canEditRiskFields } = usePlan();
+  const { showRiskFields, canEditRiskFields, canExportFullHACCP } = usePlan();
   const navigate = useNavigate();
+  const printHeader = usePrintHeader("HACCP Plan");
   const [loading, setLoading] = useState(true);
   const [planExists, setPlanExists] = useState(false);
   const [processSteps, setProcessSteps] = useState<ProcessStep[]>([]);
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
   const [isFoodService, setIsFoodService] = useState(false);
   const [activityName, setActivityName] = useState("");
+  const [printOpen, setPrintOpen] = useState(false);
 
   useEffect(() => {
     if (!profile?.branch_id || !profile?.organization_id) return;
