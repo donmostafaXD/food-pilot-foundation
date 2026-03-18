@@ -21,6 +21,8 @@ interface Props {
   setPlanSteps: (v: PlanStep[]) => void;
   /** When false (Basic plan), hide S, L, Risk Score columns */
   showRiskFields?: boolean;
+  /** When false (Basic plan), disable editing of S & L */
+  canEditRiskFields?: boolean;
 }
 
 let idCounter = 0;
