@@ -8,6 +8,7 @@ import Step2ActivitySelection from "@/components/setup/Step2ActivitySelection";
 import Step3SmartQuestions from "@/components/setup/Step3SmartQuestions";
 import Step4ProcessFlowBuilder from "@/components/setup/Step4ProcessFlowBuilder";
 import HACCPTable from "@/components/haccp/HACCPTable";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react";
 
@@ -147,17 +148,10 @@ const SetupWizard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card">
-        <div className="max-w-5xl mx-auto px-6 py-4">
-          <h1 className="text-xl font-semibold text-foreground">HACCP Setup Wizard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Set up your food safety management system</p>
-        </div>
-      </div>
-
-      {/* Stepper */}
-      <div className="max-w-5xl mx-auto px-6 py-6">
+    <DashboardLayout>
+      <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">HACCP Setup Wizard</h1>
+        <p className="text-sm text-muted-foreground mt-1 mb-6">Set up your food safety management system</p>
         <div className="flex items-center gap-1 mb-8">
           {STEPS.map((label, i) => (
             <div key={label} className="flex items-center flex-1">
@@ -248,7 +242,7 @@ const SetupWizard = () => {
           )}
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 };
 
