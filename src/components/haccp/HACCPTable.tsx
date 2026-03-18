@@ -28,7 +28,7 @@ interface Props {
 let idCounter = 0;
 const tempId = () => `temp-${++idCounter}`;
 
-const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setPlanSteps, showRiskFields = true }: Props) => {
+const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setPlanSteps, showRiskFields = true, canEditRiskFields = true }: Props) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
