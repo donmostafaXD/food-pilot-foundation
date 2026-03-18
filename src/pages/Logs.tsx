@@ -422,7 +422,6 @@ const Logs = () => {
                         }
                         placeholder={`Enter ${field.toLowerCase()}`}
                       />
-                      />
                     )}
                   </div>
                 ))}
