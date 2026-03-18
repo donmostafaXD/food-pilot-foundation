@@ -74,6 +74,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/pricing"
+        element={
+          <ProtectedRoute>
+            <Pricing />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/users"
         element={
           <ProtectedRoute requiredRoles={["Owner", "Manager"]}>
