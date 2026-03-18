@@ -91,16 +91,7 @@ export function usePlan(): PlanFeatures {
   const [dbPlan, setDbPlan] = useState<PlanTier>("basic");
   const [loading, setLoading] = useState(true);
 
-  // Import dynamically to avoid hard dependency when provider isn't mounted
-  let overridePlan: PlanTier | null = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const { useAdminPlanOverride } = require("@/contexts/AdminPlanOverrideContext");
-    const override = useAdminPlanOverride();
-    overridePlan = override.overridePlan;
-  } catch {
-    // Provider not mounted — no override
-  }
+  const { overridePlan } = useAdminPlanOverride();
 
   const isSuperAdmin = roles.includes("super_admin" as any);
 
