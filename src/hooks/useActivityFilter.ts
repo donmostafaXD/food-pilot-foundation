@@ -24,6 +24,8 @@ export const useActivityFilter = (): ActivityFilterResult => {
   const [activityProcesses, setActivityProcesses] = useState<string[]>([]);
   const [planProcessNames, setPlanProcessNames] = useState<string[]>([]);
   const [businessType, setBusinessType] = useState("Food Service");
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [planJustUpdated, setPlanJustUpdated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
