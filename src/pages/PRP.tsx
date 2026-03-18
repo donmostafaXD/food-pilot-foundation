@@ -100,7 +100,7 @@ const programLogMap: Record<string, string> = {
 
 const PRP = () => {
   const { profile, loading: authLoading } = useAuth();
-  const { activityName, planProcessNames, loading: activityLoading } = useActivityFilter();
+  const { activityName, planProcessNames, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("PRP Programs");
   const [printOpen, setPrintOpen] = useState(false);
@@ -166,6 +166,13 @@ const PRP = () => {
     };
     load();
   }, [authLoading, activityLoading, profile]);
+
+  // Show sync notification when plan was just updated
+  useEffect(() => {
+    if (planJustUpdated) {
+      toast.info("Your HACCP plan has changed. System updated related PRP programs.", { duration: 5000 });
+    }
+  }, [planJustUpdated]);
 
   // Filtered programs by activity
   const filteredPrograms = useMemo(() => {

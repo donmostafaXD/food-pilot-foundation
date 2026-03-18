@@ -98,7 +98,7 @@ type ViewMode = "list" | "form" | "entries";
 
 const Logs = () => {
   const { profile, loading: authLoading } = useAuth();
-  const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
+  const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const printHeader = usePrintHeader("Monitoring Logs");
   const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -206,6 +206,13 @@ const Logs = () => {
 
     load();
   }, [authLoading, activityLoading, profile, activityBusinessType]);
+
+  // Show sync notification when plan was just updated
+  useEffect(() => {
+    if (planJustUpdated) {
+      toast.info("Your HACCP plan has changed. System updated related logs and procedures.", { duration: 5000 });
+    }
+  }, [planJustUpdated]);
 
   // Filter logs by activity — use planProcessNames for precise process-level matching
   const filteredLogStructures = useMemo(() => {

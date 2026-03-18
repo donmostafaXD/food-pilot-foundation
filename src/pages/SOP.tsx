@@ -51,7 +51,7 @@ interface SOPItem {
 
 const SOPPage = () => {
   const { profile } = useAuth();
-  const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
+  const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
   const [sops, setSOPs] = useState<SOPItem[]>([]);
   const [searchParams] = useSearchParams();
@@ -79,6 +79,13 @@ const SOPPage = () => {
     if (activityLoading) return;
     loadSOPs();
   }, [activityLoading]);
+
+  // Show sync notification when plan was just updated
+  useEffect(() => {
+    if (planJustUpdated) {
+      toast.info("Your HACCP plan has changed. System updated related SOP procedures.", { duration: 5000 });
+    }
+  }, [planJustUpdated]);
 
   const loadSOPs = async () => {
     setLoading(true);

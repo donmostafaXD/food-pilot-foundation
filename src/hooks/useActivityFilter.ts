@@ -8,6 +8,9 @@ interface ActivityFilterResult {
   /** Process names from the user's actual HACCP plan steps */
   planProcessNames: string[];
   businessType: string;
+  planId: string | null;
+  /** True when a plan was recently saved/updated (auto-clears after read) */
+  planJustUpdated: boolean;
   loading: boolean;
 }
 
@@ -21,6 +24,8 @@ export const useActivityFilter = (): ActivityFilterResult => {
   const [activityProcesses, setActivityProcesses] = useState<string[]>([]);
   const [planProcessNames, setPlanProcessNames] = useState<string[]>([]);
   const [businessType, setBusinessType] = useState("Food Service");
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [planJustUpdated, setPlanJustUpdated] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,6 +49,16 @@ export const useActivityFilter = (): ActivityFilterResult => {
 
       setActivityName(activity);
       setBusinessType(bType);
+      setPlanId(plan?.id || null);
+
+      // Check if plan was just updated (flag set by SetupWizard)
+      const updatedFlag = localStorage.getItem("haccp_plan_updated");
+      if (updatedFlag) {
+        setPlanJustUpdated(true);
+        localStorage.removeItem("haccp_plan_updated");
+      } else {
+        setPlanJustUpdated(false);
+      }
 
       if (activity && plan) {
         // Get processes linked to this activity (from template map)
@@ -74,5 +89,5 @@ export const useActivityFilter = (): ActivityFilterResult => {
     load();
   }, [authLoading, profile?.organization_id, profile?.branch_id]);
 
-  return { activityName, activityProcesses, planProcessNames, businessType, loading };
+  return { activityName, activityProcesses, planProcessNames, businessType, planId, planJustUpdated, loading };
 };
