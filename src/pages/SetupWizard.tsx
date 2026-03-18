@@ -11,6 +11,7 @@ import HACCPTable from "@/components/haccp/HACCPTable";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react";
+import { usePlan } from "@/hooks/usePlan";
 
 export interface ProcessStep {
   process_name: string;
