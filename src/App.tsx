@@ -10,6 +10,9 @@ import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
 import SetupWizard from "./pages/SetupWizard";
+import HACCPPlan from "./pages/HACCPPlan";
+import Documents from "./pages/Documents";
+import SettingsPage from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +45,30 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <SetupWizard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/haccp"
+        element={
+          <ProtectedRoute>
+            <HACCPPlan />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/documents"
+        element={
+          <ProtectedRoute>
+            <Documents />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <SettingsPage />
           </ProtectedRoute>
         }
       />
