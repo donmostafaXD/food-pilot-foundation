@@ -15,6 +15,7 @@ import Documents from "./pages/Documents";
 import SettingsPage from "./pages/Settings";
 import Pricing from "./pages/Pricing";
 import Logs from "./pages/Logs";
+import PRP from "./pages/PRP";
 
 const queryClient = new QueryClient();
 
