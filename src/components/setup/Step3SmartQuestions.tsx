@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
 interface Question {
@@ -15,11 +14,12 @@ interface Props {
   activityName: string;
   excludedProcesses: string[];
   setExcludedProcesses: (v: string[]) => void;
+  answers: Record<number, boolean>;
+  setAnswers: (v: Record<number, boolean>) => void;
 }
 
-const Step3SmartQuestions = ({ activityName, excludedProcesses, setExcludedProcesses }: Props) => {
+const Step3SmartQuestions = ({ activityName, excludedProcesses, setExcludedProcesses, answers, setAnswers }: Props) => {
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [answers, setAnswers] = useState<Record<number, boolean>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,11 +32,24 @@ const Step3SmartQuestions = ({ activityName, excludedProcesses, setExcludedProce
 
       const qs = data || [];
       setQuestions(qs);
-      // Default all to YES (true)
-      const defaults: Record<number, boolean> = {};
-      qs.forEach((q) => (defaults[q.id] = true));
-      setAnswers(defaults);
-      setExcludedProcesses([]);
+
+      // Only set defaults if no answers exist yet for these questions
+      const hasExisting = qs.some((q) => answers[q.id] !== undefined);
+      if (!hasExisting) {
+        const defaults: Record<number, boolean> = {};
+        qs.forEach((q) => (defaults[q.id] = true));
+        setAnswers(defaults);
+        setExcludedProcesses([]);
+      } else {
+        // Recalculate excluded from existing answers
+        const excluded: string[] = [];
+        qs.forEach((q) => {
+          if (!answers[q.id] && q.related_process) {
+            excluded.push(q.related_process);
+          }
+        });
+        setExcludedProcesses(excluded);
+      }
       setLoading(false);
     };
     load();
@@ -46,7 +59,6 @@ const Step3SmartQuestions = ({ activityName, excludedProcesses, setExcludedProce
     const newAnswers = { ...answers, [q.id]: value };
     setAnswers(newAnswers);
 
-    // Recalculate excluded processes
     const excluded: string[] = [];
     questions.forEach((question) => {
       if (!newAnswers[question.id] && question.related_process) {
