@@ -122,12 +122,52 @@ const HACCPPlanPage = () => {
     );
   }
 
+  const handlePrint = (mode: PrintMode) => {
+    if (mode === "blank") {
+      const cols = showRiskFields
+        ? ["Process Step", "Hazard", "S", "L", "Risk", "Control", "Critical Limit", "Monitoring", "Corrective Action"]
+        : ["Process Step", "Hazard", "Control Type", "Critical Limit", "Monitoring", "Corrective Action"];
+      openPrintWindow(printHeader, `<p class="section-title">${showRiskFields ? "Hazard Analysis Table" : "Food Safety Plan"}</p>${blankTable(cols)}`);
+      return;
+    }
+    // data or pdf — same output, pdf via browser print-to-pdf
+    let rows = "";
+    planSteps.forEach(step => {
+      step.hazards.forEach((h, i) => {
+        rows += `<tr>
+          <td>${i === 0 ? escapeHtml(step.process_name) : ""}</td>
+          <td>${escapeHtml(h.hazard_name)}</td>
+          ${showRiskFields ? `<td>${h.severity}</td><td>${h.likelihood}</td><td>${h.risk_score}</td>` : ""}
+          <td><span class="${controlBadgeClass(h.control_type)}">${escapeHtml(h.control_type || "—")}</span></td>
+          <td>${escapeHtml(h.critical_limit || "—")}</td>
+          <td>${escapeHtml(h.monitoring || "—")}</td>
+          <td>${escapeHtml(h.corrective_action || "—")}</td>
+        </tr>`;
+      });
+    });
+    const thRisk = showRiskFields ? "<th>S</th><th>L</th><th>Risk</th>" : "";
+    const html = `<p class="section-title">${showRiskFields ? "Hazard Analysis Table" : "Food Safety Plan"}</p>
+      <table><thead><tr><th>Process Step</th><th>Hazard</th>${thRisk}<th>Control</th><th>Critical Limit</    th><th>Monitoring</th><th>Corrective Action</th></tr></thead><tbody>${rows}</tbody></table>`;
+    openPrintWindow(printHeader, html);
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight mb-6">
-          HACCP Plan
-        </h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            HACCP Plan
+          </h1>
+          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+            <Printer className="w-4 h-4 mr-1" /> Print
+          </Button>
+        </div>
+        <PrintDialog
+          open={printOpen}
+          onClose={() => setPrintOpen(false)}
+          onSelect={handlePrint}
+          title="Print HACCP Plan"
+        />
         <HACCPTable
           processSteps={processSteps}
           isFoodService={isFoodService}
