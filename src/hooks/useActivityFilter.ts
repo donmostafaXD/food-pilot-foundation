@@ -49,6 +49,16 @@ export const useActivityFilter = (): ActivityFilterResult => {
 
       setActivityName(activity);
       setBusinessType(bType);
+      setPlanId(plan?.id || null);
+
+      // Check if plan was just updated (flag set by SetupWizard)
+      const updatedFlag = localStorage.getItem("haccp_plan_updated");
+      if (updatedFlag) {
+        setPlanJustUpdated(true);
+        localStorage.removeItem("haccp_plan_updated");
+      } else {
+        setPlanJustUpdated(false);
+      }
 
       if (activity && plan) {
         // Get processes linked to this activity (from template map)
