@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -19,6 +19,7 @@ interface AuthContextType {
   profile: Profile | null;
   roles: AppRole[];
   loading: boolean;
+  onboardingError: string | null;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string) => Promise<{ error: Error | null; needsVerification: boolean }>;
   signOut: () => Promise<void>;
@@ -41,67 +42,160 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<AppRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [onboardingError, setOnboardingError] = useState<string | null>(null);
+  const provisioningUsersRef = useRef<Set<string>>(new Set());
+  const hydrationPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
-  const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
+  const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
+    const { data, error } = await supabase
       .from("profiles")
       .select("*")
       .eq("user_id", userId)
-      .single();
-    setProfile(data as Profile | null);
+      .maybeSingle();
+
+    if (error) {
+      console.error("[Auth] Failed to fetch profile:", error);
+      return null;
+    }
+
+    return (data as Profile | null) ?? null;
   }, []);
 
-  const fetchRoles = useCallback(async (userId: string) => {
-    const { data } = await supabase
+  const fetchRoles = useCallback(async (userId: string): Promise<AppRole[]> => {
+    const { data, error } = await supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", userId);
-    setRoles((data || []).map((r) => r.role as AppRole));
+
+    if (error) {
+      console.error("[Auth] Failed to fetch roles:", error);
+      return [];
+    }
+
+    return (data || []).map((r) => r.role as AppRole);
   }, []);
 
-  const refreshProfile = useCallback(async () => {
-    if (user) {
-      await Promise.all([fetchProfile(user.id), fetchRoles(user.id)]);
+  const ensureOrganizationContext = useCallback(async (authUser: User, currentProfile: Profile | null) => {
+    if (currentProfile?.organization_id && currentProfile?.branch_id) {
+      return;
     }
-  }, [user, fetchProfile, fetchRoles]);
 
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          // Defer to avoid deadlocks
-          setTimeout(async () => {
-            await Promise.all([
-              fetchProfile(session.user.id),
-              fetchRoles(session.user.id),
-            ]);
-            setLoading(false);
-          }, 0);
-        } else {
-          setProfile(null);
-          setRoles([]);
-          setLoading(false);
-        }
+    if (provisioningUsersRef.current.has(authUser.id)) {
+      return;
+    }
+
+    provisioningUsersRef.current.add(authUser.id);
+
+    try {
+      const metadataFullName = typeof authUser.user_metadata?.full_name === "string"
+        ? authUser.user_metadata.full_name
+        : "";
+      const fallbackFullName = currentProfile?.full_name?.trim() || metadataFullName || authUser.email?.split("@")[0] || "User";
+
+      console.log("[Auth] Missing organization/branch. Running automatic onboarding...");
+
+      const { error } = await supabase.rpc("register_organization", {
+        _org_name: "My Organization",
+        _full_name: fallbackFullName,
+      });
+
+      if (error) {
+        console.error("[Auth] Automatic onboarding failed:", error);
+        setOnboardingError(error.message);
+        return;
       }
-    );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        Promise.all([
-          fetchProfile(session.user.id),
-          fetchRoles(session.user.id),
-        ]).then(() => setLoading(false));
-      } else {
+      console.log("[Auth] Automatic onboarding completed.");
+      setOnboardingError(null);
+    } catch (err) {
+      console.error("[Auth] Unexpected onboarding error:", err);
+      setOnboardingError(err instanceof Error ? err.message : "Unexpected onboarding error");
+    } finally {
+      provisioningUsersRef.current.delete(authUser.id);
+    }
+  }, []);
+
+  const hydrateUserContext = useCallback(async (authUser: User) => {
+    const existingHydration = hydrationPromisesRef.current.get(authUser.id);
+    if (existingHydration) {
+      await existingHydration;
+      return;
+    }
+
+    const hydrationPromise = (async () => {
+      setLoading(true);
+      setOnboardingError(null);
+
+      try {
+        let nextProfile = await fetchProfile(authUser.id);
+        await ensureOrganizationContext(authUser, nextProfile);
+        nextProfile = await fetchProfile(authUser.id);
+        const nextRoles = await fetchRoles(authUser.id);
+
+        setProfile(nextProfile);
+        setRoles(nextRoles);
+      } catch (err) {
+        console.error("[Auth] Failed to initialize user context:", err);
+        setOnboardingError(err instanceof Error ? err.message : "Failed to initialize account state");
+        setProfile(null);
+        setRoles([]);
+      } finally {
         setLoading(false);
       }
+    })();
+
+    hydrationPromisesRef.current.set(authUser.id, hydrationPromise);
+
+    try {
+      await hydrationPromise;
+    } finally {
+      hydrationPromisesRef.current.delete(authUser.id);
+    }
+  }, [fetchProfile, fetchRoles, ensureOrganizationContext]);
+
+  const refreshProfile = useCallback(async () => {
+    if (!user) return;
+    await hydrateUserContext(user);
+  }, [user, hydrateUserContext]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncFromSession = async (nextSession: Session | null) => {
+      if (!isMounted) return;
+
+      setSession(nextSession);
+      const nextUser = nextSession?.user ?? null;
+      setUser(nextUser);
+
+      if (!nextUser) {
+        setProfile(null);
+        setRoles([]);
+        setOnboardingError(null);
+        setLoading(false);
+        return;
+      }
+
+      await hydrateUserContext(nextUser);
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setTimeout(() => {
+        void syncFromSession(nextSession);
+      }, 0);
     });
 
-    return () => subscription.unsubscribe();
-  }, [fetchProfile, fetchRoles]);
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      void syncFromSession(existingSession);
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [hydrateUserContext]);
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -111,7 +205,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) return { error: error as Error | null, needsVerification: false };
-    // If email confirmation is required, session will be null
+
     const needsVerification = !data.session;
     return { error: null, needsVerification };
   };
@@ -125,9 +219,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       _org_name: orgName,
       _full_name: fullName,
     });
+
     if (!error) {
       await refreshProfile();
     }
+
     return { error: error as Error | null };
   };
 
@@ -135,7 +231,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider
-      value={{ user, session, profile, roles, loading, signIn, signUp, signOut, registerOrganization, hasRole, refreshProfile }}
+      value={{
+        user,
+        session,
+        profile,
+        roles,
+        loading,
+        onboardingError,
+        signIn,
+        signUp,
+        signOut,
+        registerOrganization,
+        hasRole,
+        refreshProfile,
+      }}
     >
       {children}
     </AuthContext.Provider>

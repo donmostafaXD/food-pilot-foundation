@@ -9,7 +9,7 @@ import HACCPSummary from "@/components/haccp/HACCPSummary";
 type CheckState = "loading_auth" | "loading_plan" | "ready" | "error";
 
 const Dashboard = () => {
-  const { signOut, profile, loading: authLoading, user } = useAuth();
+  const { signOut, profile, loading: authLoading, user, onboardingError } = useAuth();
   const navigate = useNavigate();
   const [checkState, setCheckState] = useState<CheckState>("loading_auth");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -27,14 +27,17 @@ const Dashboard = () => {
       return;
     }
 
-    // Step 3: Profile not yet available — could be a timing issue
+    if (onboardingError) {
+      setErrorMsg(`Automatic organization setup failed: ${onboardingError}`);
+      setCheckState("error");
+      return;
+    }
+
+    // Step 3: Profile should be available after auth hydration
     if (!profile) {
-      console.log("[Dashboard] Auth loaded but profile is null — waiting or redirecting to register");
-      const timeout = setTimeout(() => {
-        console.log("[Dashboard] Profile still null after timeout — redirecting to /register");
-        navigate("/register", { replace: true });
-      }, 3000);
-      return () => clearTimeout(timeout);
+      setErrorMsg("Profile is not ready yet. Please refresh or sign in again.");
+      setCheckState("error");
+      return;
     }
 
     // Step 4: Profile loaded — check org/branch
@@ -44,12 +47,12 @@ const Dashboard = () => {
     console.log("[Dashboard] Profile loaded:", { orgId, branchId });
 
     if (!orgId || !branchId) {
-      console.log("[Dashboard] No org/branch — redirecting to /register for org setup");
-      navigate("/register", { replace: true });
+      setErrorMsg("Organization setup did not complete. Please sign out and sign in again.");
+      setCheckState("error");
       return;
     }
 
-    // Step 5: Check HACCP plan
+    setErrorMsg(null);
     setCheckState("loading_plan");
 
     const checkPlan = async () => {
@@ -84,7 +87,7 @@ const Dashboard = () => {
     };
 
     checkPlan();
-  }, [authLoading, user, profile, navigate]);
+  }, [authLoading, user, profile, onboardingError, navigate]);
 
   const handleLogout = async () => {
     await signOut();
