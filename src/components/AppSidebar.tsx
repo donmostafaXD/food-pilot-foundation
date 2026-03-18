@@ -33,6 +33,7 @@ const mainItems = [
   { title: "Setup Wizard", url: "/setup", icon: Wand2 },
   { title: "Logs", url: "/logs", icon: ClipboardList },
   { title: "PRP Programs", url: "/prp", icon: Shield },
+  { title: "SOP Procedures", url: "/sop", icon: BookOpen },
   { title: "Documents", url: "/documents", icon: FileText },
   { title: "Pricing", url: "/pricing", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },

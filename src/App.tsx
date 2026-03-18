@@ -93,6 +93,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/sop"
+        element={
+          <ProtectedRoute>
+            <SOP />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/pricing"
         element={
           <ProtectedRoute>
