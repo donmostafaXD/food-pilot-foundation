@@ -23,6 +23,15 @@ interface PlanFeatures {
   // UI visibility
   showRiskFields: boolean;        // S, L, Risk Score columns
   showComplianceTools: boolean;   // Audit, verification, compliance tracking
+  // Module access
+  canAccessSOP: boolean;
+  canAccessPRP: boolean;
+  canAccessDocuments: boolean;
+  canAccessEquipment: boolean;
+  // Editing
+  canEditRiskFields: boolean;     // Can edit S & L in HACCP table
+  // Export
+  canExportFullHACCP: boolean;    // Full hazard analysis & CCP table export
   updatePlan: (newPlan: PlanTier) => Promise<{ error: Error | null }>;
 }
 
@@ -117,18 +126,29 @@ export function usePlan(): PlanFeatures {
     return { error: error as Error | null };
   };
 
+  const isProPlus = isSuperAdmin || plan === "professional" || plan === "premium";
+
   return {
     plan,
     planDisplayName: PLAN_DISPLAY_NAMES[plan],
     loading,
     // Feature gates
-    canAccessManufacturing: isSuperAdmin || plan === "professional" || plan === "premium",
+    canAccessManufacturing: isProPlus,
     canAccessMultiBranch: isSuperAdmin || plan === "premium",
     canAccessAdvancedAnalytics: isSuperAdmin || plan === "premium",
-    canAccessFullHazardLibrary: isSuperAdmin || plan === "professional" || plan === "premium",
-    // UI visibility: risk fields visible on HACCP (professional) and Compliance (premium)
-    showRiskFields: isSuperAdmin || plan === "professional" || plan === "premium",
+    canAccessFullHazardLibrary: isProPlus,
+    // UI visibility
+    showRiskFields: isProPlus,
     showComplianceTools: isSuperAdmin || plan === "premium",
+    // Module access
+    canAccessSOP: isProPlus,
+    canAccessPRP: isProPlus,
+    canAccessDocuments: isSuperAdmin || plan === "premium",
+    canAccessEquipment: isProPlus,
+    // Editing
+    canEditRiskFields: isProPlus,
+    // Export
+    canExportFullHACCP: isProPlus,
     updatePlan,
   };
 }

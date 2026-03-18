@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import PlanGate from "@/components/PlanGate";
 
 // Public pages
 import Home from "./pages/Home";
@@ -58,12 +59,12 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/setup" element={<ProtectedRoute><SetupWizard /></ProtectedRoute>} />
       <Route path="/haccp" element={<ProtectedRoute><HACCPPlan /></ProtectedRoute>} />
-      <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+      <Route path="/documents" element={<ProtectedRoute><PlanGate feature="canAccessDocuments"><Documents /></PlanGate></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
-      <Route path="/prp" element={<ProtectedRoute><PRP /></ProtectedRoute>} />
-      <Route path="/sop" element={<ProtectedRoute><SOP /></ProtectedRoute>} />
-      <Route path="/equipment" element={<ProtectedRoute><EquipmentPage /></ProtectedRoute>} />
+      <Route path="/prp" element={<ProtectedRoute><PlanGate feature="canAccessPRP"><PRP /></PlanGate></ProtectedRoute>} />
+      <Route path="/sop" element={<ProtectedRoute><PlanGate feature="canAccessSOP"><SOP /></PlanGate></ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute><PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate></ProtectedRoute>} />
       <Route path="/app/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute requiredRoles={["Owner", "Manager"]}><UserManagement /></ProtectedRoute>} />
 

@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePlan } from "@/hooks/usePlan";
 import {
   Sidebar,
   SidebarContent,
@@ -30,18 +31,13 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 
-const mainItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
-  { title: "Setup Wizard", url: "/setup", icon: Wand2 },
-  { title: "Logs", url: "/logs", icon: ClipboardList },
-  { title: "PRP Programs", url: "/prp", icon: Shield },
-  { title: "SOP Procedures", url: "/sop", icon: BookOpen },
-  { title: "Equipment", url: "/equipment", icon: Wrench },
-  { title: "Documents", url: "/documents", icon: FileText },
-  { title: "Pricing", url: "/app/pricing", icon: CreditCard },
-  { title: "Settings", url: "/settings", icon: Settings },
-];
+interface NavItem {
+  title: string;
+  url: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** If provided, item is only shown when this returns true */
+  visible?: boolean;
+}
 
 export function AppSidebar() {
   const { state } = useSidebar();
@@ -49,8 +45,29 @@ export function AppSidebar() {
   const location = useLocation();
   const { signOut, profile, roles } = useAuth();
   const isSuperAdmin = roles.includes("super_admin" as any);
+  const {
+    canAccessSOP,
+    canAccessPRP,
+    canAccessDocuments,
+    canAccessEquipment,
+  } = usePlan();
 
   const isActive = (path: string) => location.pathname === path;
+
+  const mainItems: NavItem[] = [
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+    { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
+    { title: "Setup Wizard", url: "/setup", icon: Wand2 },
+    { title: "Logs", url: "/logs", icon: ClipboardList },
+    { title: "PRP Programs", url: "/prp", icon: Shield, visible: canAccessPRP },
+    { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: canAccessSOP },
+    { title: "Equipment", url: "/equipment", icon: Wrench, visible: canAccessEquipment },
+    { title: "Documents", url: "/documents", icon: FileText, visible: canAccessDocuments },
+    { title: "Pricing", url: "/app/pricing", icon: CreditCard },
+    { title: "Settings", url: "/settings", icon: Settings },
+  ];
+
+  const visibleItems = mainItems.filter((item) => item.visible === undefined || item.visible);
 
   return (
     <Sidebar collapsible="icon">
@@ -84,7 +101,7 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
+              {visibleItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
