@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Badge } from "@/components/ui/badge";
+import { Lock } from "lucide-react";
 
 interface Props {
   businessName: string;
@@ -11,6 +13,7 @@ interface Props {
   businessType: "" | "Food Service" | "Manufacturing";
   setBusinessType: (v: "" | "Food Service" | "Manufacturing") => void;
   orgName: string;
+  canAccessManufacturing?: boolean;
 }
 
 const Step1BusinessInfo = ({ businessName, setBusinessName, businessType, setBusinessType, orgName }: Props) => {
