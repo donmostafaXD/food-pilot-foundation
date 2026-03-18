@@ -75,6 +75,8 @@ const programLogMap: Record<string, string> = {
 const PRP = () => {
   const { profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const printHeader = usePrintHeader("PRP Programs");
+  const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [programs, setPrograms] = useState<PRPProgram[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<PRPProgram | null>(null);
