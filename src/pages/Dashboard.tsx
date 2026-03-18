@@ -9,7 +9,7 @@ import HACCPSummary from "@/components/haccp/HACCPSummary";
 type CheckState = "loading_auth" | "loading_plan" | "ready" | "error";
 
 const Dashboard = () => {
-  const { signOut, profile, loading: authLoading, user } = useAuth();
+  const { signOut, profile, loading: authLoading, user, onboardingError } = useAuth();
   const navigate = useNavigate();
   const [checkState, setCheckState] = useState<CheckState>("loading_auth");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
