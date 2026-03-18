@@ -51,6 +51,7 @@ const SetupWizard = () => {
   const [selectedActivity, setSelectedActivity] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [excludedProcesses, setExcludedProcesses] = useState<string[]>([]);
+  const [smartAnswers, setSmartAnswers] = useState<Record<number, boolean>>({});
   const [processSteps, setProcessSteps] = useState<ProcessStep[]>([]);
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
 
