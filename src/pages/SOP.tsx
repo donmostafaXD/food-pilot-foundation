@@ -25,7 +25,8 @@ const SOPPage = () => {
   const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [sops, setSOPs] = useState<SOPItem[]>([]);
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get("search") || "");
   const [filterProcess, setFilterProcess] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [selectedSOP, setSelectedSOP] = useState<SOPItem | null>(null);
