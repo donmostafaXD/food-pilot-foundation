@@ -84,6 +84,9 @@ const Logs = () => {
   const [filterLogType, setFilterLogType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // Equipment for dropdowns
+  const [branchEquipment, setBranchEquipment] = useState<BranchEquipment[]>([]);
+
   // Detect business type from HACCP plan
   const [businessType, setBusinessType] = useState<string>("");
 
