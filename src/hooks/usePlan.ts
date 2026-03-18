@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 
 export type PlanTier = "basic" | "professional" | "premium";
 
@@ -87,10 +88,15 @@ export const PLAN_CONFIG: Record<PlanTier, {
 
 export function usePlan(): PlanFeatures {
   const { profile, roles } = useAuth();
-  const [plan, setPlan] = useState<PlanTier>("basic");
+  const [dbPlan, setDbPlan] = useState<PlanTier>("basic");
   const [loading, setLoading] = useState(true);
 
+  const { overridePlan } = useAdminPlanOverride();
+
   const isSuperAdmin = roles.includes("super_admin" as any);
+
+  // Use override if active, otherwise use DB plan
+  const plan = overridePlan ?? dbPlan;
 
   useEffect(() => {
     if (!profile?.organization_id) {
@@ -98,18 +104,18 @@ export function usePlan(): PlanFeatures {
       return;
     }
 
-    const fetch = async () => {
+    const fetchPlan = async () => {
       const { data } = await supabase
         .from("organizations")
         .select("subscription_plan")
         .eq("id", profile.organization_id!)
         .maybeSingle();
 
-      setPlan((data?.subscription_plan as PlanTier) || "basic");
+      setDbPlan((data?.subscription_plan as PlanTier) || "basic");
       setLoading(false);
     };
 
-    fetch();
+    fetchPlan();
   }, [profile?.organization_id]);
 
   const updatePlan = async (newPlan: PlanTier) => {
@@ -122,11 +128,13 @@ export function usePlan(): PlanFeatures {
       .update({ subscription_plan: newPlan })
       .eq("id", profile.organization_id);
 
-    if (!error) setPlan(newPlan);
+    if (!error) setDbPlan(newPlan);
     return { error: error as Error | null };
   };
 
-  const isProPlus = isSuperAdmin || plan === "professional" || plan === "premium";
+  // When override is active, DON'T let super_admin bypass — simulate the real plan experience
+  const effectiveAdmin = overridePlan ? false : isSuperAdmin;
+  const isProPlus = effectiveAdmin || plan === "professional" || plan === "premium";
 
   return {
     plan,
@@ -134,16 +142,16 @@ export function usePlan(): PlanFeatures {
     loading,
     // Feature gates
     canAccessManufacturing: isProPlus,
-    canAccessMultiBranch: isSuperAdmin || plan === "premium",
-    canAccessAdvancedAnalytics: isSuperAdmin || plan === "premium",
+    canAccessMultiBranch: effectiveAdmin || plan === "premium",
+    canAccessAdvancedAnalytics: effectiveAdmin || plan === "premium",
     canAccessFullHazardLibrary: isProPlus,
     // UI visibility
     showRiskFields: isProPlus,
-    showComplianceTools: isSuperAdmin || plan === "premium",
+    showComplianceTools: effectiveAdmin || plan === "premium",
     // Module access
     canAccessSOP: isProPlus,
     canAccessPRP: isProPlus,
-    canAccessDocuments: isSuperAdmin || plan === "premium",
+    canAccessDocuments: effectiveAdmin || plan === "premium",
     canAccessEquipment: isProPlus,
     // Editing
     canEditRiskFields: isProPlus,
