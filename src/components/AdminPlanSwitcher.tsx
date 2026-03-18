@@ -24,7 +24,7 @@ export function AdminPlanSwitcher() {
   return (
     <div className="flex items-center gap-2">
       {isOverrideActive && (
-        <Badge variant="outline" className="border-amber-500 text-amber-600 bg-amber-50 dark:bg-amber-950/30 dark:text-amber-400 gap-1 text-xs">
+        <Badge variant="outline" className="border-accent text-accent-foreground bg-accent/20 gap-1 text-xs">
           <FlaskConical className="h-3 w-3" />
           Admin Testing Mode
         </Badge>
