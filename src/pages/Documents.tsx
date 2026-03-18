@@ -376,15 +376,24 @@ const Documents = () => {
             <Button variant="ghost" size="sm" onClick={() => setSelectedDoc(null)}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back to Documents
             </Button>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => handlePrint(false)}>
-                <Printer className="w-4 h-4 mr-1" /> Print
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => handlePrint(true)}>
-                <FileDown className="w-4 h-4 mr-1" /> Print Blank
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
           </div>
+
+          <PrintDialog
+            open={printOpen}
+            onClose={() => setPrintOpen(false)}
+            onSelect={(mode: PrintMode) => {
+              const header = { ...printHeader, documentTitle: selectedDoc!.document_name };
+              if (mode === "blank") {
+                handlePrint(true);
+              } else {
+                handlePrint(false);
+              }
+            }}
+            title={`Print: ${selectedDoc?.document_name}`}
+          />
 
           <div ref={printRef}>
             <Card className="shadow-industrial-sm">
