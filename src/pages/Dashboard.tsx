@@ -29,11 +29,10 @@ const Dashboard = () => {
 
     // Step 3: Profile not yet available — could be a timing issue
     if (!profile) {
-      console.log("[Dashboard] Auth loaded but profile is null — waiting or redirecting to setup");
-      // Give a short timeout, then treat as needing setup
+      console.log("[Dashboard] Auth loaded but profile is null — waiting or redirecting to register");
       const timeout = setTimeout(() => {
-        console.log("[Dashboard] Profile still null after timeout — redirecting to /setup");
-        navigate("/setup", { replace: true });
+        console.log("[Dashboard] Profile still null after timeout — redirecting to /register");
+        navigate("/register", { replace: true });
       }, 3000);
       return () => clearTimeout(timeout);
     }
@@ -45,8 +44,8 @@ const Dashboard = () => {
     console.log("[Dashboard] Profile loaded:", { orgId, branchId });
 
     if (!orgId || !branchId) {
-      console.log("[Dashboard] No org/branch — redirecting to /setup");
-      navigate("/setup", { replace: true });
+      console.log("[Dashboard] No org/branch — redirecting to /register for org setup");
+      navigate("/register", { replace: true });
       return;
     }
 
