@@ -75,6 +75,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/logs"
+        element={
+          <ProtectedRoute>
+            <Logs />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/pricing"
         element={
           <ProtectedRoute>
