@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2, Loader2, BookOpen } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import type { ProcessStep, PlanStep, HazardRow } from "@/pages/SetupWizard";
 
 interface Props {
@@ -24,6 +25,7 @@ let idCounter = 0;
 const tempId = () => `temp-${++idCounter}`;
 
 const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setPlanSteps }: Props) => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -212,7 +214,11 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
               <React.Fragment key={`step-${si}`}>
                 {step.hazards.length === 0 ? (
                   <tr key={`step-${si}-empty`} className="border-b border-border">
-                    <td className="p-2 font-medium text-foreground">{step.process_name}</td>
+                     <td className="p-2 font-medium text-foreground">{step.process_name}
+                       <Button variant="ghost" size="sm" className="h-5 px-1 ml-1 text-xs text-primary" onClick={() => navigate(`/sop?search=${encodeURIComponent(step.process_name)}`)}>
+                         <BookOpen className="w-3 h-3 mr-0.5" /> SOP
+                       </Button>
+                     </td>
                     <td colSpan={7} className="p-2 text-muted-foreground text-xs italic">
                       No hazards identified
                     </td>
@@ -227,9 +233,16 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                     const risk = getRiskLabel(h.risk_score);
                     return (
                       <tr key={h.id} className="border-b border-border hover:bg-muted/20">
-                        <td className="p-2 font-medium text-foreground align-top">
-                          {hi === 0 ? step.process_name : ""}
-                          {hi === step.hazards.length - 1 && (
+                         <td className="p-2 font-medium text-foreground align-top">
+                           {hi === 0 && (
+                             <>
+                               {step.process_name}
+                               <Button variant="ghost" size="sm" className="h-5 px-1 ml-1 text-xs text-primary" onClick={() => navigate(`/sop?search=${encodeURIComponent(step.process_name)}`)}>
+                                 <BookOpen className="w-3 h-3 mr-0.5" /> SOP
+                               </Button>
+                             </>
+                           )}
+                           {hi === step.hazards.length - 1 && (
                             <Button variant="ghost" size="sm" className="h-6 px-1 mt-1 text-xs" onClick={() => addHazard(si)}>
                               <Plus className="w-3 h-3 mr-0.5" /> Add
                             </Button>

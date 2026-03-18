@@ -16,6 +16,7 @@ import SettingsPage from "./pages/Settings";
 import Pricing from "./pages/Pricing";
 import Logs from "./pages/Logs";
 import PRP from "./pages/PRP";
+import SOP from "./pages/SOP";
 
 const queryClient = new QueryClient();
 
@@ -88,6 +89,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <PRP />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sop"
+        element={
+          <ProtectedRoute>
+            <SOP />
           </ProtectedRoute>
         }
       />
