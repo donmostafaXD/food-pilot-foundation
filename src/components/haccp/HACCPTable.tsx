@@ -233,9 +233,16 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                     const risk = getRiskLabel(h.risk_score);
                     return (
                       <tr key={h.id} className="border-b border-border hover:bg-muted/20">
-                        <td className="p-2 font-medium text-foreground align-top">
-                          {hi === 0 ? step.process_name : ""}
-                          {hi === step.hazards.length - 1 && (
+                         <td className="p-2 font-medium text-foreground align-top">
+                           {hi === 0 && (
+                             <>
+                               {step.process_name}
+                               <Button variant="ghost" size="sm" className="h-5 px-1 ml-1 text-xs text-primary" onClick={() => navigate(`/sop?search=${encodeURIComponent(step.process_name)}`)}>
+                                 <BookOpen className="w-3 h-3 mr-0.5" /> SOP
+                               </Button>
+                             </>
+                           )}
+                           {hi === step.hazards.length - 1 && (
                             <Button variant="ghost" size="sm" className="h-6 px-1 mt-1 text-xs" onClick={() => addHazard(si)}>
                               <Plus className="w-3 h-3 mr-0.5" /> Add
                             </Button>
