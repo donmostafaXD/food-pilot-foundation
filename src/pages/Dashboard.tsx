@@ -38,6 +38,7 @@ interface PlanData {
 const Dashboard = () => {
   const { profile, loading: authLoading, user, onboardingError, signOut } = useAuth();
   const navigate = useNavigate();
+  const { plan: subscriptionPlan, loading: planLoading } = usePlan();
   const [plan, setPlan] = useState<PlanData | null>(null);
   const [orgName, setOrgName] = useState<string>("");
   const [branchName, setBranchName] = useState<string>("");
