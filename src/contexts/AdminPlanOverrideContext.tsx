@@ -17,9 +17,21 @@ export const useAdminPlanOverride = () => {
 };
 
 export const AdminPlanOverrideProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [overridePlan, setOverridePlan] = useState<PlanTier | null>(null);
+  const [overridePlan, setOverridePlanState] = useState<PlanTier | null>(() => {
+    try {
+      return (localStorage.getItem("admin_selected_plan") as PlanTier) || null;
+    } catch { return null; }
+  });
 
-  const resetOverride = useCallback(() => setOverridePlan(null), []);
+  const setOverridePlan = useCallback((plan: PlanTier | null) => {
+    setOverridePlanState(plan);
+    try {
+      if (plan) localStorage.setItem("admin_selected_plan", plan);
+      else localStorage.removeItem("admin_selected_plan");
+    } catch {}
+  }, []);
+
+  const resetOverride = useCallback(() => setOverridePlan(null), [setOverridePlan]);
 
   return (
     <AdminPlanOverrideContext.Provider value={{ overridePlan, setOverridePlan, isOverrideActive: overridePlan !== null, resetOverride }}>
