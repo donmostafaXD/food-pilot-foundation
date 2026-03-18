@@ -30,7 +30,7 @@ export function AdminPlanSwitcher() {
         </Badge>
       )}
       <div className="flex items-center gap-1.5">
-        <Crown className="h-4 w-4 text-amber-500" />
+        <Crown className="h-4 w-4 text-primary" />
         <Select
           value={overridePlan ?? "original"}
           onValueChange={(v) => setOverridePlan(v === "original" ? null : (v as PlanTier))}
