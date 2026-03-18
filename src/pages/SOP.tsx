@@ -50,7 +50,8 @@ interface SOPItem {
 }
 
 const SOPPage = () => {
-  const { profile } = useAuth();
+  const { profile, roles } = useAuth();
+  const isSuperAdmin = roles.includes("super_admin" as any);
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
   const [sops, setSOPs] = useState<SOPItem[]>([]);
