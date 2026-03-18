@@ -1,22 +1,25 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ActivityFilterResult {
   activityName: string | null;
   activityProcesses: string[];
+  /** Process names from the user's actual HACCP plan steps */
+  planProcessNames: string[];
   businessType: string;
   loading: boolean;
 }
 
 /**
  * Hook that resolves the user's current activity (from their latest HACCP plan)
- * and fetches the related processes from activity_process_map.
+ * and fetches the related processes from activity_process_map + haccp_plan_steps.
  */
 export const useActivityFilter = (): ActivityFilterResult => {
   const { profile, loading: authLoading } = useAuth();
   const [activityName, setActivityName] = useState<string | null>(null);
   const [activityProcesses, setActivityProcesses] = useState<string[]>([]);
+  const [planProcessNames, setPlanProcessNames] = useState<string[]>([]);
   const [businessType, setBusinessType] = useState("Food Service");
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +32,7 @@ export const useActivityFilter = (): ActivityFilterResult => {
       // Get activity from latest HACCP plan
       const { data: plans } = await supabase
         .from("haccp_plans")
-        .select("activity_name, business_type")
+        .select("id, activity_name, business_type")
         .eq("organization_id", profile.organization_id!)
         .eq("branch_id", profile.branch_id!)
         .order("created_at", { ascending: false })
@@ -42,8 +45,8 @@ export const useActivityFilter = (): ActivityFilterResult => {
       setActivityName(activity);
       setBusinessType(bType);
 
-      if (activity) {
-        // Get processes linked to this activity
+      if (activity && plan) {
+        // Get processes linked to this activity (from template map)
         const { data: processMap } = await supabase
           .from("activity_process_map")
           .select("process")
@@ -51,8 +54,18 @@ export const useActivityFilter = (): ActivityFilterResult => {
           .order("process_order");
 
         setActivityProcesses((processMap || []).map((p) => p.process));
+
+        // Get actual plan step process names for precise filtering
+        const { data: planSteps } = await supabase
+          .from("haccp_plan_steps")
+          .select("process_name")
+          .eq("haccp_plan_id", plan.id)
+          .order("step_order");
+
+        setPlanProcessNames((planSteps || []).map((s) => s.process_name));
       } else {
         setActivityProcesses([]);
+        setPlanProcessNames([]);
       }
 
       setLoading(false);
@@ -61,5 +74,5 @@ export const useActivityFilter = (): ActivityFilterResult => {
     load();
   }, [authLoading, profile?.organization_id, profile?.branch_id]);
 
-  return { activityName, activityProcesses, businessType, loading };
+  return { activityName, activityProcesses, planProcessNames, businessType, loading };
 };
