@@ -448,6 +448,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          owner_id: string | null
           subscription_plan: string | null
           updated_at: string
         }
@@ -455,6 +456,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          owner_id?: string | null
           subscription_plan?: string | null
           updated_at?: string
         }
@@ -462,6 +464,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          owner_id?: string | null
           subscription_plan?: string | null
           updated_at?: string
         }
