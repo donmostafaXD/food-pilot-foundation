@@ -69,24 +69,20 @@ const SOPPage = () => {
   const loadSOPs = async () => {
     setLoading(true);
 
-    const queries: Promise<any>[] = [
+    const [{ data: foodService }, { data: manufacturing }] = await Promise.all([
       supabase.from("sop_library").select("*"),
       supabase.from("sop_library_manufacturing").select("*"),
-    ];
+    ]);
 
+    let customData: any[] = [];
     if (profile?.organization_id && profile?.branch_id) {
-      queries.push(
-        supabase
-          .from("custom_sop_items" as any)
-          .select("*")
-          .eq("organization_id", profile.organization_id)
-          .eq("branch_id", profile.branch_id)
-      );
+      const { data } = await supabase
+        .from("custom_sop_items" as any)
+        .select("*")
+        .eq("organization_id", profile.organization_id)
+        .eq("branch_id", profile.branch_id);
+      customData = (data || []) as any[];
     }
-
-    const results = await Promise.all(queries);
-    const [{ data: foodService }, { data: manufacturing }] = results;
-    const customData = results[2]?.data || [];
 
     const items: SOPItem[] = [];
 
