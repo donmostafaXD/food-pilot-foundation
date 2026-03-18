@@ -638,6 +638,42 @@ export type Database = {
         }
         Relationships: []
       }
+      prp_records: {
+        Row: {
+          branch_id: string
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          organization_id: string
+          program_name: string
+          recorded_by: string | null
+          status: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          organization_id: string
+          program_name: string
+          recorded_by?: string | null
+          status?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          program_name?: string
+          recorded_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       sop_library: {
         Row: {
           id: number
