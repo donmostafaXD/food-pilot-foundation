@@ -3,7 +3,7 @@ import { Navigate } from "react-router-dom";
 
 interface Props {
   children: React.ReactNode;
-  requiredRoles?: Array<"Owner" | "Manager" | "QA" | "Staff" | "Auditor">;
+  requiredRoles?: Array<"Owner" | "Manager" | "QA" | "Staff" | "Auditor" | "super_admin">;
 }
 
 const ProtectedRoute = ({ children, requiredRoles }: Props) => {
@@ -19,7 +19,10 @@ const ProtectedRoute = ({ children, requiredRoles }: Props) => {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (requiredRoles && requiredRoles.length > 0) {
+  // Super admin bypasses all role checks
+  const isSuperAdmin = roles.includes("super_admin" as any);
+
+  if (requiredRoles && requiredRoles.length > 0 && !isSuperAdmin) {
     const hasAccess = requiredRoles.some((r) => roles.includes(r));
     if (!hasAccess) {
       return (

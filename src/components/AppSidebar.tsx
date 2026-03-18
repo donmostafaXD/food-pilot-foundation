@@ -67,6 +67,11 @@ export function AppSidebar() {
                   {profile.full_name}
                 </p>
               )}
+              {isSuperAdmin && (
+                <Badge variant="destructive" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
+                  <Crown className="h-3 w-3" /> Super Admin
+                </Badge>
+              )}
             </div>
           ) : (
             <div className="flex justify-center">
