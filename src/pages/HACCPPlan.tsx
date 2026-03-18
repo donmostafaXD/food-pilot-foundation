@@ -129,6 +129,8 @@ const HACCPPlanPage = () => {
           activityName={activityName}
           planSteps={planSteps}
           setPlanSteps={setPlanSteps}
+          showRiskFields={showRiskFields}
+        />
         />
       </div>
     </DashboardLayout>
