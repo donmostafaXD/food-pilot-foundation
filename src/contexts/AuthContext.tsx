@@ -116,24 +116,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const hydrateUserContext = useCallback(async (authUser: User) => {
-    setLoading(true);
-    setOnboardingError(null);
+    const existingHydration = hydrationPromisesRef.current.get(authUser.id);
+    if (existingHydration) {
+      await existingHydration;
+      return;
+    }
+
+    const hydrationPromise = (async () => {
+      setLoading(true);
+      setOnboardingError(null);
+
+      try {
+        let nextProfile = await fetchProfile(authUser.id);
+        await ensureOrganizationContext(authUser, nextProfile);
+        nextProfile = await fetchProfile(authUser.id);
+        const nextRoles = await fetchRoles(authUser.id);
+
+        setProfile(nextProfile);
+        setRoles(nextRoles);
+      } catch (err) {
+        console.error("[Auth] Failed to initialize user context:", err);
+        setOnboardingError(err instanceof Error ? err.message : "Failed to initialize account state");
+        setProfile(null);
+        setRoles([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
+
+    hydrationPromisesRef.current.set(authUser.id, hydrationPromise);
 
     try {
-      let nextProfile = await fetchProfile(authUser.id);
-      await ensureOrganizationContext(authUser, nextProfile);
-      nextProfile = await fetchProfile(authUser.id);
-      const nextRoles = await fetchRoles(authUser.id);
-
-      setProfile(nextProfile);
-      setRoles(nextRoles);
-    } catch (err) {
-      console.error("[Auth] Failed to initialize user context:", err);
-      setOnboardingError(err instanceof Error ? err.message : "Failed to initialize account state");
-      setProfile(null);
-      setRoles([]);
+      await hydrationPromise;
     } finally {
-      setLoading(false);
+      hydrationPromisesRef.current.delete(authUser.id);
     }
   }, [fetchProfile, fetchRoles, ensureOrganizationContext]);
 
