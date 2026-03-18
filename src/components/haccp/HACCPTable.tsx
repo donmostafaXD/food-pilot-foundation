@@ -19,14 +19,19 @@ interface Props {
   activityName: string;
   planSteps: PlanStep[];
   setPlanSteps: (v: PlanStep[]) => void;
+  /** When false (Basic plan), hide S, L, Risk Score columns */
+  showRiskFields?: boolean;
 }
 
 let idCounter = 0;
 const tempId = () => `temp-${++idCounter}`;
 
-const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setPlanSteps }: Props) => {
+const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setPlanSteps, showRiskFields = true }: Props) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
+
+  // Number of extra columns to span when risk fields hidden
+  const emptyColSpan = showRiskFields ? 7 : 4;
 
   useEffect(() => {
     if (planSteps.length > 0) {
@@ -40,7 +45,6 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     setLoading(true);
     const steps: PlanStep[] = [];
 
-    // Resolve process_step_id for ALL steps using numeric IDs
     const { data: allProcessSteps } = await supabase
       .from("process_steps")
       .select("id, process_name");
@@ -55,7 +59,6 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
       const stepId = ps.process_step_id ?? processIdLookup[ps.process_name] ?? null;
 
       if (stepId) {
-        // Load hazards from process_hazard_map using Process_ID
         const { data: hazMapData } = await supabase
           .from("process_hazard_map")
           .select("hazard_id")
@@ -72,7 +75,6 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
           hazardLibData = data || [];
         }
 
-        // Load defaults from ccp_table (template only)
         const { data: ccpData } = await supabase
           .from("ccp_table")
           .select("*")
@@ -83,15 +85,12 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
           ccpByHazard[c.hazard_id] = c;
         });
 
-        // Build hazard rows with dynamic risk + safeguard logic
         hazardLibData.forEach((h) => {
           const defaults = ccpByHazard[h.id];
           const severity = defaults?.severity ?? 3;
           const likelihood = defaults?.likelihood ?? 3;
           const riskScore = calculateRiskScore(severity, likelihood);
           const defaultCT = defaults?.default_control_type || null;
-
-          // Resolve with safeguard protection
           const resolved = resolveControlType(riskScore, defaultCT);
 
           hazards.push({
@@ -123,11 +122,6 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     setLoading(false);
   };
 
-  /**
-   * Update a hazard field. When Severity or Likelihood changes:
-   * → Recalculate Risk_Score automatically
-   * → Update CCP/OPRP/PRP status with safeguard protection
-   */
   const updateHazard = (stepIdx: number, hazIdx: number, field: keyof HazardRow, value: any) => {
     const newSteps = [...planSteps];
     const hazard = { ...newSteps[stepIdx].hazards[hazIdx] };
@@ -135,11 +129,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     if (field === "severity" || field === "likelihood") {
       const num = Math.max(1, Math.min(5, parseInt(value) || 1));
       (hazard as any)[field] = num;
-
-      // Dynamic recalculation
       hazard.risk_score = calculateRiskScore(hazard.severity, hazard.likelihood);
-
-      // Resolve with safeguard — uses stored default_control_type
       const resolved = resolveControlType(hazard.risk_score, hazard.default_control_type);
       hazard.control_type = resolved.controlType;
       hazard.safeguard_applied = resolved.safeguardApplied;
@@ -192,8 +182,14 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">HACCP Analysis</h2>
-        <p className="text-sm text-muted-foreground mt-1">Review and edit hazard analysis. Risk scores update automatically.</p>
+        <h2 className="text-lg font-semibold text-foreground">
+          {showRiskFields ? "HACCP Analysis" : "Food Safety Plan"}
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          {showRiskFields
+            ? "Review and edit hazard analysis. Risk scores update automatically."
+            : "Review your food safety controls. Upgrade to HACCP plan for full risk analysis."}
+        </p>
       </div>
 
       <div className="overflow-x-auto">
@@ -202,9 +198,16 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
             <tr className="bg-muted/50">
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Process Step</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Hazard</th>
-              <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">S</th>
-              <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">L</th>
-              <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-24">Risk</th>
+              {showRiskFields && (
+                <>
+                  <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">S</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">L</th>
+                  <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-24">Risk</th>
+                </>
+              )}
+              {!showRiskFields && (
+                <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-20">Type</th>
+              )}
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Critical Limit</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Monitoring</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Corrective Action</th>
@@ -221,7 +224,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                          <BookOpen className="w-3 h-3 mr-0.5" /> SOP
                        </Button>
                      </td>
-                    <td colSpan={7} className="p-2 text-muted-foreground text-xs italic">
+                    <td colSpan={emptyColSpan} className="p-2 text-muted-foreground text-xs italic">
                       No hazards identified
                     </td>
                     <td className="p-2">
@@ -257,43 +260,59 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                             onChange={(e) => updateHazard(si, hi, "hazard_name", e.target.value)}
                           />
                         </td>
-                        <td className="p-2 text-center">
-                          <Input
-                            className="h-7 w-12 text-xs text-center tabular-nums mx-auto"
-                            type="number"
-                            min={1}
-                            max={5}
-                            value={h.severity}
-                            onChange={(e) => updateHazard(si, hi, "severity", e.target.value)}
-                          />
-                        </td>
-                        <td className="p-2 text-center">
-                          <Input
-                            className="h-7 w-12 text-xs text-center tabular-nums mx-auto"
-                            type="number"
-                            min={1}
-                            max={5}
-                            value={h.likelihood}
-                            onChange={(e) => updateHazard(si, hi, "likelihood", e.target.value)}
-                          />
-                        </td>
-                        <td className="p-2 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <Badge className={`${risk.className} text-xs tabular-nums`}>
-                              {h.risk_score} {risk.label}
+
+                        {/* HACCP / Compliance: show S, L, Risk Score */}
+                        {showRiskFields && (
+                          <>
+                            <td className="p-2 text-center">
+                              <Input
+                                className="h-7 w-12 text-xs text-center tabular-nums mx-auto"
+                                type="number"
+                                min={1}
+                                max={5}
+                                value={h.severity}
+                                onChange={(e) => updateHazard(si, hi, "severity", e.target.value)}
+                              />
+                            </td>
+                            <td className="p-2 text-center">
+                              <Input
+                                className="h-7 w-12 text-xs text-center tabular-nums mx-auto"
+                                type="number"
+                                min={1}
+                                max={5}
+                                value={h.likelihood}
+                                onChange={(e) => updateHazard(si, hi, "likelihood", e.target.value)}
+                              />
+                            </td>
+                            <td className="p-2 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <Badge className={`${risk.className} text-xs tabular-nums`}>
+                                  {h.risk_score} {risk.label}
+                                </Badge>
+                                {h.safeguard_applied && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top" className="max-w-[220px] text-xs">
+                                      Safety safeguard active. This step is typically a CCP and cannot be downgraded by score alone.
+                                    </TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </div>
+                            </td>
+                          </>
+                        )}
+
+                        {/* Basic plan: show control type label only */}
+                        {!showRiskFields && (
+                          <td className="p-2 text-center">
+                            <Badge className={`${risk.className} text-xs`}>
+                              {risk.label}
                             </Badge>
-                            {h.safeguard_applied && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                </TooltipTrigger>
-                                <TooltipContent side="top" className="max-w-[220px] text-xs">
-                                  Safety safeguard active. This step is typically a CCP and cannot be downgraded by score alone.
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                          </div>
-                        </td>
+                          </td>
+                        )}
+
                         <td className="p-2">
                           <Input
                             className="h-7 text-xs"

@@ -4,13 +4,25 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type PlanTier = "basic" | "professional" | "premium";
 
+/** Display names mapping internal tier → user-facing name */
+export const PLAN_DISPLAY_NAMES: Record<PlanTier, string> = {
+  basic: "Basic",
+  professional: "HACCP",
+  premium: "Compliance",
+};
+
 interface PlanFeatures {
   plan: PlanTier;
+  planDisplayName: string;
   loading: boolean;
+  // Feature gates
   canAccessManufacturing: boolean;
   canAccessMultiBranch: boolean;
   canAccessAdvancedAnalytics: boolean;
   canAccessFullHazardLibrary: boolean;
+  // UI visibility
+  showRiskFields: boolean;        // S, L, Risk Score columns
+  showComplianceTools: boolean;   // Audit, verification, compliance tracking
   updatePlan: (newPlan: PlanTier) => Promise<{ error: Error | null }>;
 }
 
@@ -23,22 +35,24 @@ export const PLAN_CONFIG: Record<PlanTier, {
   basic: {
     name: "Basic",
     price: 29,
-    description: "Perfect for small food service businesses",
+    description: "Simple food safety for small businesses",
     features: [
       "Food Service activities",
-      "Setup Wizard & HACCP Plan",
-      "Basic hazard analysis",
+      "Simplified HACCP view",
+      "CCP / OPRP / PRP labels",
+      "Critical limits & monitoring",
       "Document generation",
       "1 branch",
     ],
   },
   professional: {
-    name: "Professional",
+    name: "HACCP",
     price: 79,
-    description: "Full HACCP system for growing businesses",
+    description: "Full HACCP system with risk analysis",
     features: [
       "Food Service + Manufacturing",
-      "Full HACCP system",
+      "Full risk analysis (S × L)",
+      "Editable severity & likelihood",
       "Complete hazard library",
       "SOP & log management",
       "1 branch",
@@ -46,14 +60,16 @@ export const PLAN_CONFIG: Record<PlanTier, {
     ],
   },
   premium: {
-    name: "Premium",
+    name: "Compliance",
     price: 149,
-    description: "Enterprise-grade food safety management",
+    description: "Enterprise-grade food safety & compliance",
     features: [
-      "Everything in Professional",
+      "Everything in HACCP",
+      "Audit tools & verification",
+      "Compliance tracking",
+      "Full document management",
       "Multi-branch support",
       "Advanced analytics",
-      "Audit-ready reports",
       "Unlimited branches",
       "Dedicated support",
     ],
@@ -103,11 +119,16 @@ export function usePlan(): PlanFeatures {
 
   return {
     plan,
+    planDisplayName: PLAN_DISPLAY_NAMES[plan],
     loading,
+    // Feature gates
     canAccessManufacturing: isSuperAdmin || plan === "professional" || plan === "premium",
     canAccessMultiBranch: isSuperAdmin || plan === "premium",
     canAccessAdvancedAnalytics: isSuperAdmin || plan === "premium",
     canAccessFullHazardLibrary: isSuperAdmin || plan === "professional" || plan === "premium",
+    // UI visibility: risk fields visible on HACCP (professional) and Compliance (premium)
+    showRiskFields: isSuperAdmin || plan === "professional" || plan === "premium",
+    showComplianceTools: isSuperAdmin || plan === "premium",
     updatePlan,
   };
 }
