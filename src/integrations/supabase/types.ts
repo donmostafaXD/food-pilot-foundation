@@ -190,6 +190,108 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_log_structures: {
+        Row: {
+          branch_id: string
+          created_at: string
+          fields: Json
+          id: string
+          log_name: string
+          organization_id: string
+          related_process_step: string | null
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          fields?: Json
+          id?: string
+          log_name: string
+          organization_id: string
+          related_process_step?: string | null
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          fields?: Json
+          id?: string
+          log_name?: string
+          organization_id?: string
+          related_process_step?: string | null
+        }
+        Relationships: []
+      }
+      custom_prp_programs: {
+        Row: {
+          activity: string | null
+          branch_id: string
+          created_at: string
+          description: string | null
+          frequency: string | null
+          id: string
+          organization_id: string
+          program_name: string
+          responsible: string | null
+        }
+        Insert: {
+          activity?: string | null
+          branch_id: string
+          created_at?: string
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          organization_id: string
+          program_name: string
+          responsible?: string | null
+        }
+        Update: {
+          activity?: string | null
+          branch_id?: string
+          created_at?: string
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          organization_id?: string
+          program_name?: string
+          responsible?: string | null
+        }
+        Relationships: []
+      }
+      custom_sop_items: {
+        Row: {
+          branch_id: string
+          category: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          procedure_text: string | null
+          process_step: string
+          responsible: string | null
+          sop_name: string
+        }
+        Insert: {
+          branch_id: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          procedure_text?: string | null
+          process_step: string
+          responsible?: string | null
+          sop_name: string
+        }
+        Update: {
+          branch_id?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          procedure_text?: string | null
+          process_step?: string
+          responsible?: string | null
+          sop_name?: string
+        }
+        Relationships: []
+      }
       decision_tree_questions: {
         Row: {
           activity: string
