@@ -209,7 +209,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
           </thead>
           <tbody>
             {planSteps.map((step, si) => (
-              <>
+              <React.Fragment key={`step-${si}`}>
                 {step.hazards.length === 0 ? (
                   <tr key={`step-${si}-empty`} className="border-b border-border">
                     <td className="p-2 font-medium text-foreground">{step.process_name}</td>
