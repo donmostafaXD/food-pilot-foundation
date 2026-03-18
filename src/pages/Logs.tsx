@@ -72,6 +72,8 @@ type ViewMode = "list" | "form" | "entries";
 
 const Logs = () => {
   const { profile, loading: authLoading } = useAuth();
+  const printHeader = usePrintHeader("Monitoring Logs");
+  const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [logStructures, setLogStructures] = useState<LogStructure[]>([]);
   const [mfgLogs, setMfgLogs] = useState<MfgLogStructure[]>([]);
