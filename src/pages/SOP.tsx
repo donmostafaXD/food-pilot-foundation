@@ -98,6 +98,33 @@ const SOPPage = () => {
     );
   }
 
+  const handlePrint = (mode: PrintMode) => {
+    if (selectedSOP) {
+      // Print single SOP
+      const header = { ...printHeader, documentTitle: selectedSOP.sop_name };
+      if (mode === "blank") {
+        openPrintWindow(header, `<p class="section-title">Procedure</p>${blankTable(["Step #", "Action", "Notes"], 12)}<p class="section-title">Sign-off</p>${blankTable(["Name", "Signature", "Date"], 3)}`);
+      } else {
+        const procedures = selectedSOP.procedure_text?.split(/\n|(?:\d+\.\s)/).filter(Boolean).map(s => s.trim()) || [];
+        const procHtml = procedures.length > 0
+          ? `<ol>${procedures.map(s => `<li style="margin:4px 0">${escapeHtml(s)}</li>`).join("")}</ol>`
+          : `<p style="color:#999;font-style:italic">No procedure details available.</p>`;
+        openPrintWindow(header, `<p class="section-title">Procedure</p>${procHtml}<p class="section-title">Related Process</p><p>${escapeHtml(selectedSOP.process_step)}</p>${selectedSOP.responsible ? `<p class="section-title">Responsible</p><p>${escapeHtml(selectedSOP.responsible)}</p>` : ""}`);
+      }
+      return;
+    }
+    // Print all SOPs list
+    if (mode === "blank") {
+      openPrintWindow(printHeader, blankTable(["SOP Title", "Process Step", "Category", "Responsible"], 20));
+    } else {
+      let rows = "";
+      filtered.forEach(s => {
+        rows += `<tr><td>${escapeHtml(s.sop_name)}</td><td>${escapeHtml(s.process_step)}</td><td>${escapeHtml(s.category)}</td><td>${escapeHtml(s.responsible || "—")}</td></tr>`;
+      });
+      openPrintWindow(printHeader, `<table><thead><tr><th>SOP Title</th><th>Process Step</th><th>Category</th><th>Responsible</th></tr></thead><tbody>${rows}</tbody></table>`);
+    }
+  };
+
   if (selectedSOP) {
     const procedures = selectedSOP.procedure_text
       ? selectedSOP.procedure_text.split(/\n|(?:\d+\.\s)/).filter(Boolean).map((s) => s.trim())
