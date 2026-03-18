@@ -20,7 +20,17 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Loader2, Search, ArrowLeft, BookOpen, Printer, Plus, Library, PenLine, Eye } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Search, ArrowLeft, BookOpen, Printer, Plus, Library, PenLine, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
@@ -36,11 +46,12 @@ interface SOPItem {
   category: "Food Service" | "Manufacturing" | "Custom";
   process_step_id?: number;
   isCustom?: boolean;
+  customId?: string;
 }
 
 const SOPPage = () => {
   const { profile } = useAuth();
-  const { activityName, activityProcesses, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
+  const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
   const [sops, setSOPs] = useState<SOPItem[]>([]);
   const [searchParams] = useSearchParams();
@@ -60,6 +71,9 @@ const SOPPage = () => {
   const [customProcedure, setCustomProcedure] = useState("");
   const [customResponsible, setCustomResponsible] = useState("");
   const [addSaving, setAddSaving] = useState(false);
+
+  // Delete dialog
+  const [deleteTarget, setDeleteTarget] = useState<SOPItem | null>(null);
 
   useEffect(() => {
     if (activityLoading) return;
@@ -121,6 +135,7 @@ const SOPPage = () => {
         responsible: s.responsible,
         category: "Custom",
         isCustom: true,
+        customId: s.id,
       });
     });
 
@@ -128,17 +143,20 @@ const SOPPage = () => {
     setLoading(false);
   };
 
-  // Filter by activity
+  // Filter by activity — use planProcessNames for precise process-level matching
   const activityFiltered = useMemo(() => {
-    if (showAllLibrary || !activityName || activityProcesses.length === 0) return sops;
+    if (showAllLibrary || !activityName) return sops;
+    const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
+    if (processNames.length === 0) return sops;
+
     return sops.filter((s) => {
       if (s.isCustom) return true;
-      // Match by process step name against activity processes
-      return activityProcesses.some((p) =>
+      // Match by process step name against plan processes
+      return processNames.some((p) =>
         s.process_step.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [sops, showAllLibrary, activityName, activityProcesses]);
+  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames]);
 
   const processSteps = [...new Set(activityFiltered.map((s) => s.process_step))].sort();
 
@@ -175,14 +193,14 @@ const SOPPage = () => {
     if (!customName.trim() || !customProcess.trim() || !profile?.organization_id || !profile?.branch_id) return;
     setAddSaving(true);
 
-    const { error } = await supabase.from("custom_sop_items" as any).insert({
+    const { data: inserted, error } = await supabase.from("custom_sop_items" as any).insert({
       organization_id: profile.organization_id,
       branch_id: profile.branch_id,
       sop_name: customName.trim(),
       process_step: customProcess.trim(),
       procedure_text: customProcedure || null,
       responsible: customResponsible || null,
-    } as any);
+    } as any).select("id").single();
 
     setAddSaving(false);
 
@@ -191,10 +209,11 @@ const SOPPage = () => {
       console.error(error);
     } else {
       toast.success("Custom SOP created");
+      const newId = (inserted as any)?.id || crypto.randomUUID();
       setSOPs((prev) => [
         ...prev,
         {
-          id: crypto.randomUUID(),
+          id: newId,
           sop_name: customName.trim(),
           process_step: customProcess.trim(),
           description: customProcedure || null,
@@ -202,10 +221,29 @@ const SOPPage = () => {
           responsible: customResponsible || null,
           category: "Custom",
           isCustom: true,
+          customId: newId,
         },
       ]);
       setAddDialogOpen(false);
     }
+  };
+
+  // Delete custom SOP
+  const handleDeleteCustomSOP = async () => {
+    if (!deleteTarget?.customId) return;
+    const { error } = await supabase
+      .from("custom_sop_items" as any)
+      .delete()
+      .eq("id", deleteTarget.customId);
+
+    if (error) {
+      toast.error("Failed to delete custom SOP");
+      console.error(error);
+    } else {
+      toast.success(`"${deleteTarget.sop_name}" deleted`);
+      setSOPs((prev) => prev.filter((s) => !(s.isCustom && s.customId === deleteTarget.customId)));
+    }
+    setDeleteTarget(null);
   };
 
   if (loading || activityLoading) {
@@ -269,8 +307,9 @@ const SOPPage = () => {
                   <p className="text-sm text-muted-foreground mt-1">Related Process: {selectedSOP.process_step}</p>
                 </div>
                 <div className="flex gap-1">
-                  <Badge variant="outline">{selectedSOP.category}</Badge>
-                  {selectedSOP.isCustom && <Badge variant="secondary" className="text-[10px]">Custom</Badge>}
+                  <Badge variant={selectedSOP.isCustom ? "outline" : "secondary"}>
+                    {selectedSOP.isCustom ? "Custom" : "System"}
+                  </Badge>
                 </div>
               </div>
             </CardHeader>
@@ -413,9 +452,23 @@ const SOPPage = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="text-sm font-semibold text-foreground leading-tight">{sop.sop_name}</h3>
-                    <div className="flex gap-1 shrink-0">
-                      <Badge variant="outline" className="text-[10px]">{sop.category}</Badge>
-                      {sop.isCustom && <Badge variant="secondary" className="text-[10px]">Custom</Badge>}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Badge variant={sop.isCustom ? "outline" : "secondary"} className="text-[10px]">
+                        {sop.isCustom ? "Custom" : "System"}
+                      </Badge>
+                      {sop.isCustom && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(sop);
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">{sop.process_step}</p>
@@ -510,11 +563,24 @@ const SOPPage = () => {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">Related Process Step</Label>
-                  <Input
-                    value={customProcess}
-                    onChange={(e) => setCustomProcess(e.target.value)}
-                    placeholder="e.g. Cooking"
-                  />
+                  {planProcessNames.length > 0 ? (
+                    <Select value={customProcess} onValueChange={setCustomProcess}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select process..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {planProcessNames.map((p) => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={customProcess}
+                      onChange={(e) => setCustomProcess(e.target.value)}
+                      placeholder="e.g. Cooking"
+                    />
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">Procedure</Label>
@@ -546,6 +612,24 @@ const SOPPage = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Custom SOP</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{deleteTarget?.sop_name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteCustomSOP} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
