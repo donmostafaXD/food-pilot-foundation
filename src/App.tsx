@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
+import SetupWizard from "./pages/SetupWizard";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +34,14 @@ const AppRoutes = () => {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/setup"
+        element={
+          <ProtectedRoute>
+            <SetupWizard />
           </ProtectedRoute>
         }
       />
