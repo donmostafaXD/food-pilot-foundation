@@ -44,6 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [onboardingError, setOnboardingError] = useState<string | null>(null);
   const provisioningUsersRef = useRef<Set<string>>(new Set());
+  const hydrationPromisesRef = useRef<Map<string, Promise<void>>>(new Map());
 
   const fetchProfile = useCallback(async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
