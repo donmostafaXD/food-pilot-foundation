@@ -16,7 +16,7 @@ interface Props {
   canAccessManufacturing?: boolean;
 }
 
-const Step1BusinessInfo = ({ businessName, setBusinessName, businessType, setBusinessType, orgName }: Props) => {
+const Step1BusinessInfo = ({ businessName, setBusinessName, businessType, setBusinessType, orgName, canAccessManufacturing = true }: Props) => {
   const { profile } = useAuth();
 
   // Pre-fill business name from organization
