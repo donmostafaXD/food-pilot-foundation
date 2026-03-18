@@ -58,6 +58,12 @@ interface LogEntry {
   created_at: string;
 }
 
+interface BranchEquipment {
+  id: string;
+  equipment_name: string;
+  status: string;
+}
+
 type ViewMode = "list" | "form" | "entries";
 
 const Logs = () => {
