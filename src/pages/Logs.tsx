@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActivityFilter } from "@/hooks/useActivityFilter";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -25,6 +27,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   ClipboardList,
   Plus,
   ArrowLeft,
@@ -32,6 +42,9 @@ import {
   AlertTriangle,
   Loader2,
   Printer,
+  Library,
+  PenLine,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
@@ -42,6 +55,7 @@ interface LogStructure {
   log_name: string;
   related_process_step: string | null;
   fields: string[];
+  isCustom?: boolean;
 }
 
 interface MfgLogStructure {
@@ -72,6 +86,7 @@ type ViewMode = "list" | "form" | "entries";
 
 const Logs = () => {
   const { profile, loading: authLoading } = useAuth();
+  const { activityName, activityProcesses, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
   const printHeader = usePrintHeader("Monitoring Logs");
   const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -84,6 +99,16 @@ const Logs = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [entriesLoading, setEntriesLoading] = useState(false);
+  const [showAllLibrary, setShowAllLibrary] = useState(false);
+
+  // Add Item dialog
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addMode, setAddMode] = useState<"library" | "custom" | null>(null);
+  const [libraryLogs, setLibraryLogs] = useState<LogStructure[]>([]);
+  const [customLogName, setCustomLogName] = useState("");
+  const [customLogFields, setCustomLogFields] = useState("");
+  const [customLogProcess, setCustomLogProcess] = useState("");
+  const [addSaving, setAddSaving] = useState(false);
 
   // Filters
   const [filterDate, setFilterDate] = useState("");
@@ -103,21 +128,12 @@ const Logs = () => {
   );
 
   useEffect(() => {
-    if (authLoading || !profile?.organization_id) return;
+    if (authLoading || activityLoading || !profile?.organization_id) return;
 
     const load = async () => {
       setLoading(true);
 
-      // Get business type from latest HACCP plan
-      const { data: plans } = await supabase
-        .from("haccp_plans")
-        .select("business_type")
-        .eq("organization_id", profile.organization_id!)
-        .eq("branch_id", profile.branch_id!)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      const bType = plans?.[0]?.business_type || "Food Service";
+      const bType = activityBusinessType;
       setBusinessType(bType);
 
       if (bType === "Manufacturing") {
@@ -128,7 +144,6 @@ const Logs = () => {
       } else {
         const { data } = await supabase.from("logs_structure").select("*");
         if (data) {
-          // Group by log_name
           const grouped: Record<string, LogStructure> = {};
           data.forEach((row) => {
             if (!grouped[row.log_name]) {
@@ -144,6 +159,23 @@ const Logs = () => {
         }
       }
 
+      // Load custom log structures
+      const { data: customLogs } = await supabase
+        .from("custom_log_structures" as any)
+        .select("*")
+        .eq("organization_id", profile.organization_id!)
+        .eq("branch_id", profile.branch_id!);
+
+      if (customLogs && customLogs.length > 0) {
+        const customStructures: LogStructure[] = (customLogs as any[]).map((cl: any) => ({
+          log_name: cl.log_name,
+          related_process_step: cl.related_process_step,
+          fields: Array.isArray(cl.fields) ? cl.fields : [],
+          isCustom: true,
+        }));
+        setLogStructures((prev) => [...prev, ...customStructures]);
+      }
+
       // Load branch equipment for dropdowns
       const { data: eqData } = await supabase
         .from("equipment" as any)
@@ -157,10 +189,32 @@ const Logs = () => {
     };
 
     load();
-  }, [authLoading, profile]);
+  }, [authLoading, activityLoading, profile, activityBusinessType]);
+
+  // Filter logs by activity
+  const filteredLogStructures = useMemo(() => {
+    if (showAllLibrary || !activityName || activityProcesses.length === 0) {
+      return logStructures;
+    }
+    return logStructures.filter((log) => {
+      if (log.isCustom) return true; // always show custom
+      if (!log.related_process_step) return true; // generic logs
+      return activityProcesses.some((p) =>
+        log.related_process_step?.toLowerCase().includes(p.toLowerCase())
+      );
+    });
+  }, [logStructures, showAllLibrary, activityName, activityProcesses]);
 
   // Available log names
   const logNames = useMemo(() => {
+    if (businessType === "Manufacturing") {
+      return [...new Set(mfgLogs.map((l) => l.log_name))].sort();
+    }
+    return filteredLogStructures.map((l) => l.log_name).sort();
+  }, [businessType, filteredLogStructures, mfgLogs]);
+
+  // All log names (for filter dropdowns in entries view)
+  const allLogNames = useMemo(() => {
     if (businessType === "Manufacturing") {
       return [...new Set(mfgLogs.map((l) => l.log_name))].sort();
     }
@@ -266,7 +320,64 @@ const Logs = () => {
     setViewMode("entries");
   };
 
-  if (authLoading || loading) {
+  // Add from library
+  const openAddDialog = () => {
+    setAddMode(null);
+    setCustomLogName("");
+    setCustomLogFields("");
+    setCustomLogProcess("");
+    // Load all library logs not already shown
+    const currentNames = new Set(logNames);
+    setLibraryLogs(logStructures.filter((l) => !currentNames.has(l.log_name)));
+    setAddDialogOpen(true);
+  };
+
+  const addFromLibrary = (log: LogStructure) => {
+    // For library items, we just enable showAll temporarily or add as custom reference
+    setShowAllLibrary(true);
+    setAddDialogOpen(false);
+    toast.success(`"${log.log_name}" is now visible`);
+  };
+
+  const addCustomLog = async () => {
+    if (!customLogName.trim() || !profile?.organization_id || !profile?.branch_id) return;
+    setAddSaving(true);
+
+    const fields = customLogFields
+      .split(",")
+      .map((f) => f.trim())
+      .filter(Boolean);
+    if (fields.length === 0) fields.push("Date", "Time", "Value", "Notes");
+
+    const { error } = await supabase.from("custom_log_structures" as any).insert({
+      organization_id: profile.organization_id,
+      branch_id: profile.branch_id,
+      log_name: customLogName.trim(),
+      fields,
+      related_process_step: customLogProcess || null,
+    } as any);
+
+    setAddSaving(false);
+
+    if (error) {
+      toast.error("Failed to create custom log");
+      console.error(error);
+    } else {
+      toast.success("Custom log created");
+      setLogStructures((prev) => [
+        ...prev,
+        {
+          log_name: customLogName.trim(),
+          related_process_step: customLogProcess || null,
+          fields,
+          isCustom: true,
+        },
+      ]);
+      setAddDialogOpen(false);
+    }
+  };
+
+  if (authLoading || loading || activityLoading) {
     return (
       <DashboardLayout>
         <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-4">
@@ -290,6 +401,11 @@ const Logs = () => {
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Monitoring Logs</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Record and view daily food safety logs
+              {activityName && (
+                <Badge variant="secondary" className="ml-2 text-[10px]">
+                  {activityName}
+                </Badge>
+              )}
             </p>
           </div>
           <div className="flex gap-2">
@@ -315,7 +431,6 @@ const Logs = () => {
           open={printOpen}
           onClose={() => setPrintOpen(false)}
           onSelect={(mode: PrintMode) => {
-            // Determine which logs to print: only selected log if in form view, otherwise all
             const targetLogs = selectedLog ? [selectedLog] : logNames;
 
             const getFieldsForLog = (name: string) => {
@@ -334,7 +449,6 @@ const Logs = () => {
               });
               openPrintWindow(printHeader, html);
             } else {
-              // Print with data — filter to selected log if applicable
               const printEntries = async () => {
                 let query = supabase
                   .from("log_entries" as any)
@@ -372,6 +486,29 @@ const Logs = () => {
         {/* Log Selection */}
         {viewMode === "list" && (
           <>
+            {/* Activity filter toggle + Add button */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                {activityName && (
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-muted-foreground" />
+                    <Label htmlFor="show-all-logs" className="text-sm text-muted-foreground cursor-pointer">
+                      Show All Library
+                    </Label>
+                    <Switch
+                      id="show-all-logs"
+                      checked={showAllLibrary}
+                      onCheckedChange={setShowAllLibrary}
+                    />
+                  </div>
+                )}
+              </div>
+              <Button size="sm" onClick={openAddDialog} className="gap-1.5">
+                <Plus className="w-4 h-4" />
+                Add Item
+              </Button>
+            </div>
+
             {logNames.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center py-16 gap-3">
@@ -387,6 +524,7 @@ const Logs = () => {
                   const isCCP = ccpLogNames.some((n) =>
                     name.toLowerCase().includes(n.toLowerCase())
                   ) || name.toLowerCase().includes("ccp");
+                  const isCustom = logStructures.find((l) => l.log_name === name)?.isCustom;
                   return (
                     <Card
                       key={name}
@@ -405,11 +543,18 @@ const Logs = () => {
                         </div>
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground truncate">{name}</p>
-                          {isCCP && (
-                            <Badge variant="destructive" className="text-[10px] mt-1">
-                              CCP Related
-                            </Badge>
-                          )}
+                          <div className="flex gap-1 mt-1">
+                            {isCCP && (
+                              <Badge variant="destructive" className="text-[10px]">
+                                CCP Related
+                              </Badge>
+                            )}
+                            {isCustom && (
+                              <Badge variant="outline" className="text-[10px]">
+                                Custom
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
                       </CardContent>
@@ -553,7 +698,7 @@ const Logs = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Logs</SelectItem>
-                        {logNames.map((name) => (
+                        {allLogNames.map((name) => (
                           <SelectItem key={name} value={name}>
                             {name}
                           </SelectItem>
@@ -659,6 +804,114 @@ const Logs = () => {
             </Card>
           </>
         )}
+
+        {/* Add Item Dialog */}
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Log</DialogTitle>
+              <DialogDescription>Select from the library or create a custom log.</DialogDescription>
+            </DialogHeader>
+
+            {!addMode && (
+              <div className="grid grid-cols-2 gap-3 py-4">
+                <Card
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => setAddMode("library")}
+                >
+                  <CardContent className="flex flex-col items-center gap-2 py-6">
+                    <Library className="w-6 h-6 text-primary" />
+                    <span className="text-sm font-medium">From Library</span>
+                    <span className="text-xs text-muted-foreground text-center">
+                      Select from system logs
+                    </span>
+                  </CardContent>
+                </Card>
+                <Card
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => setAddMode("custom")}
+                >
+                  <CardContent className="flex flex-col items-center gap-2 py-6">
+                    <PenLine className="w-6 h-6 text-primary" />
+                    <span className="text-sm font-medium">Create Custom</span>
+                    <span className="text-xs text-muted-foreground text-center">
+                      Build your own log
+                    </span>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {addMode === "library" && (
+              <div className="space-y-2 max-h-60 overflow-y-auto py-2">
+                {libraryLogs.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    All library logs are already visible.
+                  </p>
+                ) : (
+                  libraryLogs.map((log) => (
+                    <button
+                      key={log.log_name}
+                      className="w-full text-left px-3 py-2 rounded-md hover:bg-accent text-sm transition-colors"
+                      onClick={() => addFromLibrary(log)}
+                    >
+                      {log.log_name}
+                      {log.related_process_step && (
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({log.related_process_step})
+                        </span>
+                      )}
+                    </button>
+                  ))
+                )}
+                <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAddMode(null)}>
+                  <ArrowLeft className="w-3 h-3 mr-1" /> Back
+                </Button>
+              </div>
+            )}
+
+            {addMode === "custom" && (
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Log Name</Label>
+                  <Input
+                    value={customLogName}
+                    onChange={(e) => setCustomLogName(e.target.value)}
+                    placeholder="e.g. Oil Quality Log"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Fields (comma-separated)</Label>
+                  <Input
+                    value={customLogFields}
+                    onChange={(e) => setCustomLogFields(e.target.value)}
+                    placeholder="Date, Time, Temperature, Notes"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Leave empty for default fields (Date, Time, Value, Notes)
+                  </p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Related Process (optional)</Label>
+                  <Input
+                    value={customLogProcess}
+                    onChange={(e) => setCustomLogProcess(e.target.value)}
+                    placeholder="e.g. Cooking"
+                  />
+                </div>
+                <DialogFooter className="gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setAddMode(null)}>
+                    <ArrowLeft className="w-3 h-3 mr-1" /> Back
+                  </Button>
+                  <Button onClick={addCustomLog} disabled={!customLogName.trim() || addSaving}>
+                    {addSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                    Create Log
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

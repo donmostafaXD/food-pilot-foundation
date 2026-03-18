@@ -1,31 +1,46 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActivityFilter } from "@/hooks/useActivityFilter";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, ArrowLeft, BookOpen, Printer } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Loader2, Search, ArrowLeft, BookOpen, Printer, Plus, Library, PenLine, Eye } from "lucide-react";
+import { toast } from "sonner";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import { openPrintWindow, blankTable, escapeHtml } from "@/lib/printUtils";
 
 interface SOPItem {
-  id: number;
+  id: number | string;
   sop_name: string;
   process_step: string;
   description: string | null;
   procedure_text: string | null;
   responsible: string | null;
-  category: "Food Service" | "Manufacturing";
+  category: "Food Service" | "Manufacturing" | "Custom";
   process_step_id?: number;
+  isCustom?: boolean;
 }
 
 const SOPPage = () => {
   const { profile } = useAuth();
+  const { activityName, activityProcesses, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
   const [sops, setSOPs] = useState<SOPItem[]>([]);
   const [searchParams] = useSearchParams();
@@ -34,23 +49,48 @@ const SOPPage = () => {
   const [filterCategory, setFilterCategory] = useState("all");
   const [selectedSOP, setSelectedSOP] = useState<SOPItem | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
+  const [showAllLibrary, setShowAllLibrary] = useState(false);
   const printHeader = usePrintHeader("SOP Procedures");
 
+  // Add Item dialog
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addMode, setAddMode] = useState<"library" | "custom" | null>(null);
+  const [customName, setCustomName] = useState("");
+  const [customProcess, setCustomProcess] = useState("");
+  const [customProcedure, setCustomProcedure] = useState("");
+  const [customResponsible, setCustomResponsible] = useState("");
+  const [addSaving, setAddSaving] = useState(false);
+
   useEffect(() => {
+    if (activityLoading) return;
     loadSOPs();
-  }, []);
+  }, [activityLoading]);
 
   const loadSOPs = async () => {
     setLoading(true);
 
-    const [{ data: foodService }, { data: manufacturing }] = await Promise.all([
+    const queries: Promise<any>[] = [
       supabase.from("sop_library").select("*"),
       supabase.from("sop_library_manufacturing").select("*"),
-    ]);
+    ];
+
+    if (profile?.organization_id && profile?.branch_id) {
+      queries.push(
+        supabase
+          .from("custom_sop_items" as any)
+          .select("*")
+          .eq("organization_id", profile.organization_id)
+          .eq("branch_id", profile.branch_id)
+      );
+    }
+
+    const results = await Promise.all(queries);
+    const [{ data: foodService }, { data: manufacturing }] = results;
+    const customData = results[2]?.data || [];
 
     const items: SOPItem[] = [];
 
-    (foodService || []).forEach((s) => {
+    (foodService || []).forEach((s: any) => {
       items.push({
         id: s.id,
         sop_name: s.sop_title,
@@ -62,9 +102,9 @@ const SOPPage = () => {
       });
     });
 
-    (manufacturing || []).forEach((s) => {
+    (manufacturing || []).forEach((s: any) => {
       items.push({
-        id: s.id + 10000, // offset to avoid id collision
+        id: s.id + 10000,
         sop_name: s.sop_name,
         process_step: `Step #${s.process_step_id}`,
         description: s.description,
@@ -75,20 +115,104 @@ const SOPPage = () => {
       });
     });
 
+    (customData as any[]).forEach((s: any) => {
+      items.push({
+        id: s.id,
+        sop_name: s.sop_name,
+        process_step: s.process_step,
+        description: s.procedure_text,
+        procedure_text: s.procedure_text,
+        responsible: s.responsible,
+        category: "Custom",
+        isCustom: true,
+      });
+    });
+
     setSOPs(items);
     setLoading(false);
   };
 
-  const processSteps = [...new Set(sops.map((s) => s.process_step))].sort();
+  // Filter by activity
+  const activityFiltered = useMemo(() => {
+    if (showAllLibrary || !activityName || activityProcesses.length === 0) return sops;
+    return sops.filter((s) => {
+      if (s.isCustom) return true;
+      // Match by process step name against activity processes
+      return activityProcesses.some((p) =>
+        s.process_step.toLowerCase().includes(p.toLowerCase())
+      );
+    });
+  }, [sops, showAllLibrary, activityName, activityProcesses]);
 
-  const filtered = sops.filter((s) => {
+  const processSteps = [...new Set(activityFiltered.map((s) => s.process_step))].sort();
+
+  const filtered = activityFiltered.filter((s) => {
     if (search && !s.sop_name.toLowerCase().includes(search.toLowerCase()) && !s.process_step.toLowerCase().includes(search.toLowerCase())) return false;
     if (filterProcess !== "all" && s.process_step !== filterProcess) return false;
     if (filterCategory !== "all" && s.category !== filterCategory) return false;
     return true;
   });
 
-  if (loading) {
+  // Library SOPs not currently shown (for add from library)
+  const libraryHidden = useMemo(() => {
+    if (!activityName) return [];
+    const shownNames = new Set(activityFiltered.map((s) => `${s.category}-${s.id}`));
+    return sops.filter((s) => !s.isCustom && !shownNames.has(`${s.category}-${s.id}`));
+  }, [sops, activityFiltered, activityName]);
+
+  const openAddDialog = () => {
+    setAddMode(null);
+    setCustomName("");
+    setCustomProcess("");
+    setCustomProcedure("");
+    setCustomResponsible("");
+    setAddDialogOpen(true);
+  };
+
+  const addFromLibrary = () => {
+    setShowAllLibrary(true);
+    setAddDialogOpen(false);
+    toast.success("All library SOPs are now visible");
+  };
+
+  const addCustomSOP = async () => {
+    if (!customName.trim() || !customProcess.trim() || !profile?.organization_id || !profile?.branch_id) return;
+    setAddSaving(true);
+
+    const { error } = await supabase.from("custom_sop_items" as any).insert({
+      organization_id: profile.organization_id,
+      branch_id: profile.branch_id,
+      sop_name: customName.trim(),
+      process_step: customProcess.trim(),
+      procedure_text: customProcedure || null,
+      responsible: customResponsible || null,
+    } as any);
+
+    setAddSaving(false);
+
+    if (error) {
+      toast.error("Failed to create custom SOP");
+      console.error(error);
+    } else {
+      toast.success("Custom SOP created");
+      setSOPs((prev) => [
+        ...prev,
+        {
+          id: crypto.randomUUID(),
+          sop_name: customName.trim(),
+          process_step: customProcess.trim(),
+          description: customProcedure || null,
+          procedure_text: customProcedure || null,
+          responsible: customResponsible || null,
+          category: "Custom",
+          isCustom: true,
+        },
+      ]);
+      setAddDialogOpen(false);
+    }
+  };
+
+  if (loading || activityLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
@@ -100,7 +224,6 @@ const SOPPage = () => {
 
   const handlePrint = (mode: PrintMode) => {
     if (selectedSOP) {
-      // Print single SOP
       const header = { ...printHeader, documentTitle: selectedSOP.sop_name };
       if (mode === "blank") {
         openPrintWindow(header, `<p class="section-title">Procedure</p>${blankTable(["Step #", "Action", "Notes"], 12)}<p class="section-title">Sign-off</p>${blankTable(["Name", "Signature", "Date"], 3)}`);
@@ -113,7 +236,6 @@ const SOPPage = () => {
       }
       return;
     }
-    // Print all SOPs list
     if (mode === "blank") {
       openPrintWindow(printHeader, blankTable(["SOP Title", "Process Step", "Category", "Responsible"], 20));
     } else {
@@ -150,11 +272,13 @@ const SOPPage = () => {
                   <CardTitle className="text-xl">{selectedSOP.sop_name}</CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">Related Process: {selectedSOP.process_step}</p>
                 </div>
-                <Badge variant="outline">{selectedSOP.category}</Badge>
+                <div className="flex gap-1">
+                  <Badge variant="outline">{selectedSOP.category}</Badge>
+                  {selectedSOP.isCustom && <Badge variant="secondary" className="text-[10px]">Custom</Badge>}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Procedure */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Procedure</h3>
                 {procedures.length > 0 ? (
@@ -168,7 +292,6 @@ const SOPPage = () => {
                 )}
               </div>
 
-              {/* Critical Instructions */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Critical Instructions</h3>
                 <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3">
@@ -178,7 +301,6 @@ const SOPPage = () => {
                 </div>
               </div>
 
-              {/* Hygiene / Safety */}
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Hygiene & Safety Notes</h3>
                 <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
@@ -188,7 +310,6 @@ const SOPPage = () => {
                 </ul>
               </div>
 
-              {/* Responsible */}
               {selectedSOP.responsible && (
                 <div>
                   <h3 className="text-sm font-semibold text-foreground mb-1">Responsible</h3>
@@ -206,45 +327,77 @@ const SOPPage = () => {
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">SOP Procedures</h1>
-          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
-            <Printer className="w-4 h-4 mr-1" /> Print
-          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">SOP Procedures</h1>
+            {activityName && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Showing procedures for
+                <Badge variant="secondary" className="ml-2 text-[10px]">
+                  {activityName}
+                </Badge>
+              </p>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
+            <Button size="sm" onClick={openAddDialog} className="gap-1.5">
+              <Plus className="w-4 h-4" />
+              Add Item
+            </Button>
+          </div>
         </div>
         <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} onSelect={handlePrint} title="Print SOP Procedures" />
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search SOPs..."
-              className="pl-9"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        {/* Activity toggle + Filters */}
+        <div className="flex flex-col gap-4 mb-6">
+          {activityName && (
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-muted-foreground" />
+              <Label htmlFor="show-all-sop" className="text-sm text-muted-foreground cursor-pointer">
+                Show All Library
+              </Label>
+              <Switch
+                id="show-all-sop"
+                checked={showAllLibrary}
+                onCheckedChange={setShowAllLibrary}
+              />
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search SOPs..."
+                className="pl-9"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <Select value={filterProcess} onValueChange={setFilterProcess}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Process Step" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Processes</SelectItem>
+                {processSteps.map((p) => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="Food Service">Food Service</SelectItem>
+                <SelectItem value="Manufacturing">Manufacturing</SelectItem>
+                <SelectItem value="Custom">Custom</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={filterProcess} onValueChange={setFilterProcess}>
-            <SelectTrigger className="w-full sm:w-[200px]">
-              <SelectValue placeholder="Process Step" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Processes</SelectItem>
-              {processSteps.map((p) => (
-                <SelectItem key={p} value={p}>{p}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="Food Service">Food Service</SelectItem>
-              <SelectItem value="Manufacturing">Manufacturing</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
 
         {/* SOP Grid */}
@@ -264,7 +417,10 @@ const SOPPage = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <h3 className="text-sm font-semibold text-foreground leading-tight">{sop.sop_name}</h3>
-                    <Badge variant="outline" className="text-[10px] shrink-0">{sop.category}</Badge>
+                    <div className="flex gap-1 shrink-0">
+                      <Badge variant="outline" className="text-[10px]">{sop.category}</Badge>
+                      {sop.isCustom && <Badge variant="secondary" className="text-[10px]">Custom</Badge>}
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">{sop.process_step}</p>
                   {sop.responsible && (
@@ -275,6 +431,125 @@ const SOPPage = () => {
             ))}
           </div>
         )}
+
+        {/* Add Item Dialog */}
+        <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add SOP</DialogTitle>
+              <DialogDescription>Select from the library or create a custom procedure.</DialogDescription>
+            </DialogHeader>
+
+            {!addMode && (
+              <div className="grid grid-cols-2 gap-3 py-4">
+                <Card
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => setAddMode("library")}
+                >
+                  <CardContent className="flex flex-col items-center gap-2 py-6">
+                    <Library className="w-6 h-6 text-primary" />
+                    <span className="text-sm font-medium">From Library</span>
+                    <span className="text-xs text-muted-foreground text-center">
+                      Select from system SOPs
+                    </span>
+                  </CardContent>
+                </Card>
+                <Card
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => setAddMode("custom")}
+                >
+                  <CardContent className="flex flex-col items-center gap-2 py-6">
+                    <PenLine className="w-6 h-6 text-primary" />
+                    <span className="text-sm font-medium">Create Custom</span>
+                    <span className="text-xs text-muted-foreground text-center">
+                      Write your own SOP
+                    </span>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {addMode === "library" && (
+              <div className="space-y-2 max-h-60 overflow-y-auto py-2">
+                {libraryHidden.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    All library SOPs are already visible.
+                  </p>
+                ) : (
+                  <>
+                    {libraryHidden.slice(0, 20).map((s) => (
+                      <button
+                        key={`${s.category}-${s.id}`}
+                        className="w-full text-left px-3 py-2 rounded-md hover:bg-accent text-sm transition-colors"
+                        onClick={() => addFromLibrary()}
+                      >
+                        {s.sop_name}
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({s.process_step})
+                        </span>
+                      </button>
+                    ))}
+                    {libraryHidden.length > 20 && (
+                      <p className="text-xs text-muted-foreground text-center">
+                        +{libraryHidden.length - 20} more — use "Show All Library" toggle
+                      </p>
+                    )}
+                  </>
+                )}
+                <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAddMode(null)}>
+                  <ArrowLeft className="w-3 h-3 mr-1" /> Back
+                </Button>
+              </div>
+            )}
+
+            {addMode === "custom" && (
+              <div className="space-y-4 py-2">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">SOP Name</Label>
+                  <Input
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                    placeholder="e.g. Deep Fryer Oil Change"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Related Process Step</Label>
+                  <Input
+                    value={customProcess}
+                    onChange={(e) => setCustomProcess(e.target.value)}
+                    placeholder="e.g. Cooking"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Procedure</Label>
+                  <Textarea
+                    value={customProcedure}
+                    onChange={(e) => setCustomProcedure(e.target.value)}
+                    placeholder="Step-by-step instructions..."
+                    rows={4}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Responsible</Label>
+                  <Input
+                    value={customResponsible}
+                    onChange={(e) => setCustomResponsible(e.target.value)}
+                    placeholder="e.g. Kitchen Staff"
+                  />
+                </div>
+                <DialogFooter className="gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setAddMode(null)}>
+                    <ArrowLeft className="w-3 h-3 mr-1" /> Back
+                  </Button>
+                  <Button onClick={addCustomSOP} disabled={!customName.trim() || !customProcess.trim() || addSaving}>
+                    {addSaving && <Loader2 className="w-4 h-4 mr-1 animate-spin" />}
+                    Create SOP
+                  </Button>
+                </DialogFooter>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
