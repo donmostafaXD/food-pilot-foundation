@@ -31,8 +31,12 @@ import {
   Filter,
   AlertTriangle,
   Loader2,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
+import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
+import { usePrintHeader } from "@/hooks/usePrintHeader";
+import { openPrintWindow, blankTable, escapeHtml } from "@/lib/printUtils";
 
 interface LogStructure {
   log_name: string;
