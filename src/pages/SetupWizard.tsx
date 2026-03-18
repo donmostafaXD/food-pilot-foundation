@@ -241,7 +241,7 @@ const SetupWizard = () => {
           )}
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 };
 
