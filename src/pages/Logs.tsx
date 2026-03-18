@@ -138,6 +138,15 @@ const Logs = () => {
         }
       }
 
+      // Load branch equipment for dropdowns
+      const { data: eqData } = await supabase
+        .from("equipment" as any)
+        .select("id, equipment_name, status")
+        .eq("organization_id", profile.organization_id!)
+        .eq("branch_id", profile.branch_id!)
+        .eq("status", "Active");
+      setBranchEquipment((eqData || []) as unknown as BranchEquipment[]);
+
       setLoading(false);
     };
 
