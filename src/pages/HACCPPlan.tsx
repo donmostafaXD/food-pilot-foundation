@@ -11,7 +11,7 @@ import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 const HACCPPlanPage = () => {
   const { profile } = useAuth();
-  const { showRiskFields } = usePlan();
+  const { showRiskFields, canEditRiskFields } = usePlan();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [planExists, setPlanExists] = useState(false);
