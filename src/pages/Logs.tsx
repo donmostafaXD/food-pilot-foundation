@@ -396,6 +396,24 @@ const Logs = () => {
                           setFormData((prev) => ({ ...prev, [field]: e.target.value }))
                         }
                       />
+                    ) : (field.toLowerCase().includes("equipment") || field.toLowerCase().includes("unit name") || field.toLowerCase().includes("fridge") || field.toLowerCase().includes("freezer")) && branchEquipment.length > 0 ? (
+                      <Select
+                        value={formData[field] || ""}
+                        onValueChange={(val) =>
+                          setFormData((prev) => ({ ...prev, [field]: val }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select equipment..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {branchEquipment.map((eq) => (
+                            <SelectItem key={eq.id} value={eq.equipment_name}>
+                              {eq.equipment_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <Input
                         value={formData[field] || ""}
@@ -403,6 +421,7 @@ const Logs = () => {
                           setFormData((prev) => ({ ...prev, [field]: e.target.value }))
                         }
                         placeholder={`Enter ${field.toLowerCase()}`}
+                      />
                       />
                     )}
                   </div>
