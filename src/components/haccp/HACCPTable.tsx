@@ -297,7 +297,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                     );
                   })
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>
