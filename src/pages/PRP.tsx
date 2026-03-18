@@ -33,9 +33,13 @@ import {
   Loader2,
   ClipboardList,
   ExternalLink,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
+import { usePrintHeader } from "@/hooks/usePrintHeader";
+import { openPrintWindow, blankTable, escapeHtml } from "@/lib/printUtils";
 
 interface PRPProgram {
   id: number;
@@ -71,6 +75,8 @@ const programLogMap: Record<string, string> = {
 const PRP = () => {
   const { profile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const printHeader = usePrintHeader("PRP Programs");
+  const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [programs, setPrograms] = useState<PRPProgram[]>([]);
   const [selectedProgram, setSelectedProgram] = useState<PRPProgram | null>(null);
@@ -196,6 +202,9 @@ const PRP = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
             {viewMode !== "list" && (
               <Button variant="outline" size="sm" onClick={() => setViewMode("list")}>
                 <ArrowLeft className="w-4 h-4 mr-1" />
@@ -210,6 +219,31 @@ const PRP = () => {
             )}
           </div>
         </div>
+
+        <PrintDialog
+          open={printOpen}
+          onClose={() => setPrintOpen(false)}
+          onSelect={(mode: PrintMode) => {
+            if (mode === "blank") {
+              openPrintWindow(printHeader, `<p class="section-title">PRP Compliance Record</p>${blankTable(["Date", "Program", "Status", "Notes", "Recorded By"], 15)}`);
+            } else {
+              let rows = "";
+              if (records.length > 0) {
+                records.forEach(r => {
+                  rows += `<tr><td>${r.date}</td><td>${escapeHtml(r.program_name)}</td><td><span class="badge ${r.status === "Completed" ? "badge-ok" : "badge-notok"}">${r.status}</span></td><td>${escapeHtml(r.notes || "—")}</td></tr>`;
+                });
+                openPrintWindow(printHeader, `<table><thead><tr><th>Date</th><th>Program</th><th>Status</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>`);
+              } else {
+                // Print programs list
+                programs.forEach(p => {
+                  rows += `<tr><td>${escapeHtml(p.program_name)}</td><td>${escapeHtml(p.frequency || "—")}</td><td>${escapeHtml(p.responsible || "—")}</td><td>${escapeHtml(p.description || "—")}</td></tr>`;
+                });
+                openPrintWindow(printHeader, `<table><thead><tr><th>Program</th><th>Frequency</th><th>Responsible</th><th>Description</th></tr></thead><tbody>${rows}</tbody></table>`);
+              }
+            }
+          }}
+          title="Print PRP Programs"
+        />
 
         {/* Program List */}
         {viewMode === "list" && (

@@ -8,7 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Search, ArrowLeft, BookOpen } from "lucide-react";
+import { Loader2, Search, ArrowLeft, BookOpen, Printer } from "lucide-react";
+import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
+import { usePrintHeader } from "@/hooks/usePrintHeader";
+import { openPrintWindow, blankTable, escapeHtml } from "@/lib/printUtils";
 
 interface SOPItem {
   id: number;
@@ -30,6 +33,8 @@ const SOPPage = () => {
   const [filterProcess, setFilterProcess] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [selectedSOP, setSelectedSOP] = useState<SOPItem | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const printHeader = usePrintHeader("SOP Procedures");
 
   useEffect(() => {
     loadSOPs();
@@ -93,6 +98,33 @@ const SOPPage = () => {
     );
   }
 
+  const handlePrint = (mode: PrintMode) => {
+    if (selectedSOP) {
+      // Print single SOP
+      const header = { ...printHeader, documentTitle: selectedSOP.sop_name };
+      if (mode === "blank") {
+        openPrintWindow(header, `<p class="section-title">Procedure</p>${blankTable(["Step #", "Action", "Notes"], 12)}<p class="section-title">Sign-off</p>${blankTable(["Name", "Signature", "Date"], 3)}`);
+      } else {
+        const procedures = selectedSOP.procedure_text?.split(/\n|(?:\d+\.\s)/).filter(Boolean).map(s => s.trim()) || [];
+        const procHtml = procedures.length > 0
+          ? `<ol>${procedures.map(s => `<li style="margin:4px 0">${escapeHtml(s)}</li>`).join("")}</ol>`
+          : `<p style="color:#999;font-style:italic">No procedure details available.</p>`;
+        openPrintWindow(header, `<p class="section-title">Procedure</p>${procHtml}<p class="section-title">Related Process</p><p>${escapeHtml(selectedSOP.process_step)}</p>${selectedSOP.responsible ? `<p class="section-title">Responsible</p><p>${escapeHtml(selectedSOP.responsible)}</p>` : ""}`);
+      }
+      return;
+    }
+    // Print all SOPs list
+    if (mode === "blank") {
+      openPrintWindow(printHeader, blankTable(["SOP Title", "Process Step", "Category", "Responsible"], 20));
+    } else {
+      let rows = "";
+      filtered.forEach(s => {
+        rows += `<tr><td>${escapeHtml(s.sop_name)}</td><td>${escapeHtml(s.process_step)}</td><td>${escapeHtml(s.category)}</td><td>${escapeHtml(s.responsible || "—")}</td></tr>`;
+      });
+      openPrintWindow(printHeader, `<table><thead><tr><th>SOP Title</th><th>Process Step</th><th>Category</th><th>Responsible</th></tr></thead><tbody>${rows}</tbody></table>`);
+    }
+  };
+
   if (selectedSOP) {
     const procedures = selectedSOP.procedure_text
       ? selectedSOP.procedure_text.split(/\n|(?:\d+\.\s)/).filter(Boolean).map((s) => s.trim())
@@ -101,9 +133,15 @@ const SOPPage = () => {
     return (
       <DashboardLayout>
         <div className="p-6 lg:p-8 max-w-3xl mx-auto">
-          <Button variant="ghost" size="sm" className="mb-4 gap-1" onClick={() => setSelectedSOP(null)}>
-            <ArrowLeft className="w-4 h-4" /> Back to list
-          </Button>
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="ghost" size="sm" className="gap-1" onClick={() => setSelectedSOP(null)}>
+              <ArrowLeft className="w-4 h-4" /> Back to list
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
+          </div>
+          <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} onSelect={handlePrint} title={`Print: ${selectedSOP.sop_name}`} />
 
           <Card>
             <CardHeader className="pb-4">
@@ -167,7 +205,13 @@ const SOPPage = () => {
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold text-foreground tracking-tight mb-6">SOP Procedures</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">SOP Procedures</h1>
+          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+            <Printer className="w-4 h-4 mr-1" /> Print
+          </Button>
+        </div>
+        <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} onSelect={handlePrint} title="Print SOP Procedures" />
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
