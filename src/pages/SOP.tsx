@@ -133,8 +133,15 @@ const SOPPage = () => {
     return (
       <DashboardLayout>
         <div className="p-6 lg:p-8 max-w-3xl mx-auto">
-          <Button variant="ghost" size="sm" className="mb-4 gap-1" onClick={() => setSelectedSOP(null)}>
-            <ArrowLeft className="w-4 h-4" /> Back to list
+          <div className="flex items-center justify-between mb-4">
+            <Button variant="ghost" size="sm" className="gap-1" onClick={() => setSelectedSOP(null)}>
+              <ArrowLeft className="w-4 h-4" /> Back to list
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
+          </div>
+          <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} onSelect={handlePrint} title={`Print: ${selectedSOP.sop_name}`} />
           </Button>
 
           <Card>
