@@ -214,7 +214,11 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
               <React.Fragment key={`step-${si}`}>
                 {step.hazards.length === 0 ? (
                   <tr key={`step-${si}-empty`} className="border-b border-border">
-                    <td className="p-2 font-medium text-foreground">{step.process_name}</td>
+                     <td className="p-2 font-medium text-foreground">{step.process_name}
+                       <Button variant="ghost" size="sm" className="h-5 px-1 ml-1 text-xs text-primary" onClick={() => navigate(`/sop?search=${encodeURIComponent(step.process_name)}`)}>
+                         <BookOpen className="w-3 h-3 mr-0.5" /> SOP
+                       </Button>
+                     </td>
                     <td colSpan={7} className="p-2 text-muted-foreground text-xs italic">
                       No hazards identified
                     </td>
