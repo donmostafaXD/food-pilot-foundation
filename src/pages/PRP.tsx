@@ -33,9 +33,13 @@ import {
   Loader2,
   ClipboardList,
   ExternalLink,
+  Printer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
+import { usePrintHeader } from "@/hooks/usePrintHeader";
+import { openPrintWindow, blankTable, escapeHtml } from "@/lib/printUtils";
 
 interface PRPProgram {
   id: number;
