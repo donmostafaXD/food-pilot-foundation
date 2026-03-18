@@ -61,9 +61,11 @@ export const PLAN_CONFIG: Record<PlanTier, {
 };
 
 export function usePlan(): PlanFeatures {
-  const { profile } = useAuth();
+  const { profile, roles } = useAuth();
   const [plan, setPlan] = useState<PlanTier>("basic");
   const [loading, setLoading] = useState(true);
+
+  const isSuperAdmin = roles.includes("super_admin" as any);
 
   useEffect(() => {
     if (!profile?.organization_id) {
@@ -102,10 +104,10 @@ export function usePlan(): PlanFeatures {
   return {
     plan,
     loading,
-    canAccessManufacturing: plan === "professional" || plan === "premium",
-    canAccessMultiBranch: plan === "premium",
-    canAccessAdvancedAnalytics: plan === "premium",
-    canAccessFullHazardLibrary: plan === "professional" || plan === "premium",
+    canAccessManufacturing: isSuperAdmin || plan === "professional" || plan === "premium",
+    canAccessMultiBranch: isSuperAdmin || plan === "premium",
+    canAccessAdvancedAnalytics: isSuperAdmin || plan === "premium",
+    canAccessFullHazardLibrary: isSuperAdmin || plan === "professional" || plan === "premium",
     updatePlan,
   };
 }

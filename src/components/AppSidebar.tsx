@@ -10,7 +10,9 @@ import {
   Shield,
   BookOpen,
   Wrench,
+  Crown,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -45,7 +47,8 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { signOut, profile } = useAuth();
+  const { signOut, profile, roles } = useAuth();
+  const isSuperAdmin = roles.includes("super_admin" as any);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -63,6 +66,11 @@ export function AppSidebar() {
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">
                   {profile.full_name}
                 </p>
+              )}
+              {isSuperAdmin && (
+                <Badge variant="destructive" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
+                  <Crown className="h-3 w-3" /> Super Admin
+                </Badge>
               )}
             </div>
           ) : (
