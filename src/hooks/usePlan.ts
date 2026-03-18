@@ -87,10 +87,24 @@ export const PLAN_CONFIG: Record<PlanTier, {
 
 export function usePlan(): PlanFeatures {
   const { profile, roles } = useAuth();
-  const [plan, setPlan] = useState<PlanTier>("basic");
+  const [dbPlan, setDbPlan] = useState<PlanTier>("basic");
   const [loading, setLoading] = useState(true);
 
+  // Import dynamically to avoid hard dependency when provider isn't mounted
+  let overridePlan: PlanTier | null = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { useAdminPlanOverride } = require("@/contexts/AdminPlanOverrideContext");
+    const override = useAdminPlanOverride();
+    overridePlan = override.overridePlan;
+  } catch {
+    // Provider not mounted — no override
+  }
+
   const isSuperAdmin = roles.includes("super_admin" as any);
+
+  // Use override if active, otherwise use DB plan
+  const plan = overridePlan ?? dbPlan;
 
   useEffect(() => {
     if (!profile?.organization_id) {
@@ -98,18 +112,18 @@ export function usePlan(): PlanFeatures {
       return;
     }
 
-    const fetch = async () => {
+    const fetchPlan = async () => {
       const { data } = await supabase
         .from("organizations")
         .select("subscription_plan")
         .eq("id", profile.organization_id!)
         .maybeSingle();
 
-      setPlan((data?.subscription_plan as PlanTier) || "basic");
+      setDbPlan((data?.subscription_plan as PlanTier) || "basic");
       setLoading(false);
     };
 
-    fetch();
+    fetchPlan();
   }, [profile?.organization_id]);
 
   const updatePlan = async (newPlan: PlanTier) => {
