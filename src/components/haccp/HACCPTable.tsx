@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Loader2, BookOpen } from "lucide-react";
+import { Plus, Trash2, Loader2, BookOpen, ShieldAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ProcessStep, PlanStep, HazardRow } from "@/pages/SetupWizard";
 import {
   calculateRiskScore,
@@ -51,11 +52,10 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
 
     for (const ps of processSteps) {
       const hazards: HazardRow[] = [];
-      // Always resolve via numeric ID — no text-based matching
       const stepId = ps.process_step_id ?? processIdLookup[ps.process_name] ?? null;
 
       if (stepId) {
-        // Step 1: Load hazards from process_hazard_map using Process_ID
+        // Load hazards from process_hazard_map using Process_ID
         const { data: hazMapData } = await supabase
           .from("process_hazard_map")
           .select("hazard_id")
@@ -63,7 +63,6 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
 
         const hazardIds = (hazMapData || []).map((h) => h.hazard_id);
 
-        // Step 2: Load hazard details from hazard_library
         let hazardLibData: any[] = [];
         if (hazardIds.length > 0) {
           const { data } = await supabase
@@ -73,7 +72,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
           hazardLibData = data || [];
         }
 
-        // Step 3: Load defaults from ccp_table (template only)
+        // Load defaults from ccp_table (template only)
         const { data: ccpData } = await supabase
           .from("ccp_table")
           .select("*")
@@ -84,18 +83,16 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
           ccpByHazard[c.hazard_id] = c;
         });
 
-        // Step 4: Build hazard rows with dynamic risk calculation
+        // Build hazard rows with dynamic risk + safeguard logic
         hazardLibData.forEach((h) => {
           const defaults = ccpByHazard[h.id];
           const severity = defaults?.severity ?? 3;
           const likelihood = defaults?.likelihood ?? 3;
           const riskScore = calculateRiskScore(severity, likelihood);
+          const defaultCT = defaults?.default_control_type || null;
 
-          // Control type is determined dynamically, with ccp_table as starting template
-          const controlType = resolveControlType(
-            riskScore,
-            defaults?.default_control_type,
-          );
+          // Resolve with safeguard protection
+          const resolved = resolveControlType(riskScore, defaultCT);
 
           hazards.push({
             id: tempId(),
@@ -104,7 +101,9 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
             severity,
             likelihood,
             risk_score: riskScore,
-            control_type: controlType,
+            control_type: resolved.controlType,
+            default_control_type: defaultCT,
+            safeguard_applied: resolved.safeguardApplied,
             critical_limit: defaults?.critical_limit || null,
             monitoring: defaults?.monitoring || null,
             corrective_action: defaults?.corrective_action || null,
@@ -127,7 +126,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
   /**
    * Update a hazard field. When Severity or Likelihood changes:
    * → Recalculate Risk_Score automatically
-   * → Update CCP/OPRP status instantly
+   * → Update CCP/OPRP/PRP status with safeguard protection
    */
   const updateHazard = (stepIdx: number, hazIdx: number, field: keyof HazardRow, value: any) => {
     const newSteps = [...planSteps];
@@ -140,8 +139,10 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
       // Dynamic recalculation
       hazard.risk_score = calculateRiskScore(hazard.severity, hazard.likelihood);
 
-      // Auto-update control type based on new risk score
-      hazard.control_type = resolveControlType(hazard.risk_score);
+      // Resolve with safeguard — uses stored default_control_type
+      const resolved = resolveControlType(hazard.risk_score, hazard.default_control_type);
+      hazard.control_type = resolved.controlType;
+      hazard.safeguard_applied = resolved.safeguardApplied;
     } else {
       (hazard as any)[field] = value;
     }
@@ -155,6 +156,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     const severity = 3;
     const likelihood = 3;
     const riskScore = calculateRiskScore(severity, likelihood);
+    const resolved = resolveControlType(riskScore);
     newSteps[stepIdx].hazards.push({
       id: tempId(),
       hazard_name: "New Hazard",
@@ -162,7 +164,9 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
       severity,
       likelihood,
       risk_score: riskScore,
-      control_type: resolveControlType(riskScore),
+      control_type: resolved.controlType,
+      default_control_type: null,
+      safeguard_applied: false,
       critical_limit: null,
       monitoring: null,
       corrective_action: null,
@@ -228,7 +232,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                   </tr>
                 ) : (
                   step.hazards.map((h, hi) => {
-                    const risk = getRiskDisplay(h.risk_score);
+                    const risk = getRiskDisplay(h.risk_score, h.control_type);
                     return (
                       <tr key={h.id} className="border-b border-border hover:bg-muted/20">
                          <td className="p-2 font-medium text-foreground align-top">
@@ -274,9 +278,21 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                           />
                         </td>
                         <td className="p-2 text-center">
-                          <Badge className={`${risk.className} text-xs tabular-nums`}>
-                            {h.risk_score} {risk.label}
-                          </Badge>
+                          <div className="flex items-center justify-center gap-1">
+                            <Badge className={`${risk.className} text-xs tabular-nums`}>
+                              {h.risk_score} {risk.label}
+                            </Badge>
+                            {h.safeguard_applied && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="max-w-[220px] text-xs">
+                                  Safety safeguard active. This step is typically a CCP and cannot be downgraded by score alone.
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                          </div>
                         </td>
                         <td className="p-2">
                           <Input
