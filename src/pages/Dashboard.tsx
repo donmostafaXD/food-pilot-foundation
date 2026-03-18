@@ -17,8 +17,11 @@ import {
   Pencil,
   Table,
   Loader2,
+  ArrowUpRight,
+  Sparkles,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { usePlan, PLAN_CONFIG } from "@/hooks/usePlan";
 
 interface PlanData {
   id: string;
