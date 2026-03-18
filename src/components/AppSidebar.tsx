@@ -9,6 +9,7 @@ import {
   ClipboardList,
   Shield,
   BookOpen,
+  Wrench,
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
