@@ -27,17 +27,14 @@ const Step4ProcessFlowBuilder = ({
     const load = async () => {
       setLoading(true);
 
-      // Load process flow from activity_process_map
+      // Step 1: Load processes from Activity_Process_Map based on selected Activity
       const { data: flowData } = await supabase
         .from("activity_process_map")
         .select("*")
         .eq("activity", activityName)
         .order("process_order");
 
-      console.log("[Step4] Activity:", activityName);
-      console.log("[Step4] Excluded processes:", excludedProcesses);
-      console.log("[Step4] All processes from DB:", (flowData || []).map(f => f.process));
-
+      // Step 3: For each "No" answer → remove related Process from flow
       let steps: ProcessStep[] = (flowData || [])
         .filter((f) => !excludedProcesses.includes(f.process))
         .map((f) => ({
@@ -46,10 +43,8 @@ const Step4ProcessFlowBuilder = ({
           process_step_id: null,
         }));
 
-      console.log("[Step4] Filtered steps:", steps.map(s => s.process_name));
-
-      // For manufacturing, resolve process_step_id
-      if (!isFoodService && steps.length > 0) {
+      // Resolve process_step_id for ALL activities using numeric IDs
+      if (steps.length > 0) {
         const processNames = steps.map((s) => s.process_name);
 
         // Get all process_steps matching these names
@@ -59,25 +54,10 @@ const Step4ProcessFlowBuilder = ({
           .in("process_name", processNames);
 
         if (psData && psData.length > 0) {
-          const psIds = psData.map((ps) => ps.id);
-
-          // Filter to only IDs that exist in ccp_analysis
-          const { data: ccpData } = await supabase
-            .from("ccp_analysis")
-            .select("process_step_id")
-            .in("process_step_id", psIds);
-
-          const validIds = new Set((ccpData || []).map((c) => c.process_step_id));
-
-          // Build name → id map (prefer IDs in ccp_analysis)
+          // Build name → id map
           const nameToId: Record<string, number> = {};
           psData.forEach((ps) => {
-            if (validIds.has(ps.id)) {
-              nameToId[ps.process_name] = ps.id;
-            }
-          });
-          // Fallback for names not in ccp_analysis
-          psData.forEach((ps) => {
+            // For duplicates, first match wins (process_steps IDs are unique per name)
             if (!nameToId[ps.process_name]) {
               nameToId[ps.process_name] = ps.id;
             }

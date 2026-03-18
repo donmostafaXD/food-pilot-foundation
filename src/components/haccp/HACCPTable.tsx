@@ -6,6 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Loader2, BookOpen } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import type { ProcessStep, PlanStep, HazardRow } from "@/pages/SetupWizard";
+import {
+  calculateRiskScore,
+  getRiskDisplay,
+  resolveControlType,
+} from "@/lib/haccp-engine";
 
 interface Props {
   processSteps: ProcessStep[];
@@ -14,12 +19,6 @@ interface Props {
   planSteps: PlanStep[];
   setPlanSteps: (v: PlanStep[]) => void;
 }
-
-const getRiskLabel = (score: number) => {
-  if (score >= 12) return { label: "CCP", className: "bg-destructive text-destructive-foreground" };
-  if (score >= 8) return { label: "OPRP", className: "bg-warning text-warning-foreground" };
-  return { label: "PRP", className: "bg-muted text-muted-foreground" };
-};
 
 let idCounter = 0;
 const tempId = () => `temp-${++idCounter}`;
@@ -40,23 +39,23 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     setLoading(true);
     const steps: PlanStep[] = [];
 
-    // Resolve process_step_id for steps that don't have one (Food Service)
-    let processIdLookup: Record<string, number> = {};
-    if (isFoodService) {
-      const { data: allProcessSteps } = await supabase
-        .from("process_steps")
-        .select("id, process_name");
-      (allProcessSteps || []).forEach((p) => {
-        processIdLookup[p.process_name] = p.id;
-      });
-    }
+    // Resolve process_step_id for ALL steps using numeric IDs
+    const { data: allProcessSteps } = await supabase
+      .from("process_steps")
+      .select("id, process_name");
+
+    const processIdLookup: Record<string, number> = {};
+    (allProcessSteps || []).forEach((p) => {
+      processIdLookup[p.process_name] = p.id;
+    });
 
     for (const ps of processSteps) {
       const hazards: HazardRow[] = [];
+      // Always resolve via numeric ID — no text-based matching
       const stepId = ps.process_step_id ?? processIdLookup[ps.process_name] ?? null;
 
       if (stepId) {
-        // Unified path: use process_hazard_map (numeric IDs) + hazard_library + ccp_table
+        // Step 1: Load hazards from process_hazard_map using Process_ID
         const { data: hazMapData } = await supabase
           .from("process_hazard_map")
           .select("hazard_id")
@@ -64,6 +63,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
 
         const hazardIds = (hazMapData || []).map((h) => h.hazard_id);
 
+        // Step 2: Load hazard details from hazard_library
         let hazardLibData: any[] = [];
         if (hazardIds.length > 0) {
           const { data } = await supabase
@@ -73,7 +73,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
           hazardLibData = data || [];
         }
 
-        // Get CCP/OPRP defaults from ccp_table
+        // Step 3: Load defaults from ccp_table (template only)
         const { data: ccpData } = await supabase
           .from("ccp_table")
           .select("*")
@@ -84,32 +84,30 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
           ccpByHazard[c.hazard_id] = c;
         });
 
-        // Also check ccp_analysis for manufacturing
-        if (!isFoodService) {
-          const { data: ccpAnalysis } = await supabase
-            .from("ccp_analysis")
-            .select("*")
-            .eq("process_step_id", stepId);
-          (ccpAnalysis || []).forEach((c) => {
-            if (!ccpByHazard[c.hazard_id]) ccpByHazard[c.hazard_id] = c;
-          });
-        }
-
+        // Step 4: Build hazard rows with dynamic risk calculation
         hazardLibData.forEach((h) => {
-          const ccp = ccpByHazard[h.id];
-          const severity = ccp?.severity ?? 3;
-          const likelihood = ccp?.likelihood ?? 3;
+          const defaults = ccpByHazard[h.id];
+          const severity = defaults?.severity ?? 3;
+          const likelihood = defaults?.likelihood ?? 3;
+          const riskScore = calculateRiskScore(severity, likelihood);
+
+          // Control type is determined dynamically, with ccp_table as starting template
+          const controlType = resolveControlType(
+            riskScore,
+            defaults?.default_control_type,
+          );
+
           hazards.push({
             id: tempId(),
             hazard_name: h.hazard_name,
             hazard_type: h.hazard_type,
             severity,
             likelihood,
-            risk_score: severity * likelihood,
-            control_type: ccp?.default_control_type || ccp?.control_type || null,
-            critical_limit: ccp?.critical_limit || null,
-            monitoring: ccp?.monitoring || null,
-            corrective_action: ccp?.corrective_action || null,
+            risk_score: riskScore,
+            control_type: controlType,
+            critical_limit: defaults?.critical_limit || null,
+            monitoring: defaults?.monitoring || null,
+            corrective_action: defaults?.corrective_action || null,
           });
         });
       }
@@ -126,6 +124,11 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     setLoading(false);
   };
 
+  /**
+   * Update a hazard field. When Severity or Likelihood changes:
+   * → Recalculate Risk_Score automatically
+   * → Update CCP/OPRP status instantly
+   */
   const updateHazard = (stepIdx: number, hazIdx: number, field: keyof HazardRow, value: any) => {
     const newSteps = [...planSteps];
     const hazard = { ...newSteps[stepIdx].hazards[hazIdx] };
@@ -133,7 +136,12 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     if (field === "severity" || field === "likelihood") {
       const num = Math.max(1, Math.min(5, parseInt(value) || 1));
       (hazard as any)[field] = num;
-      hazard.risk_score = hazard.severity * hazard.likelihood;
+
+      // Dynamic recalculation
+      hazard.risk_score = calculateRiskScore(hazard.severity, hazard.likelihood);
+
+      // Auto-update control type based on new risk score
+      hazard.control_type = resolveControlType(hazard.risk_score);
     } else {
       (hazard as any)[field] = value;
     }
@@ -144,14 +152,17 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
 
   const addHazard = (stepIdx: number) => {
     const newSteps = [...planSteps];
+    const severity = 3;
+    const likelihood = 3;
+    const riskScore = calculateRiskScore(severity, likelihood);
     newSteps[stepIdx].hazards.push({
       id: tempId(),
       hazard_name: "New Hazard",
       hazard_type: null,
-      severity: 3,
-      likelihood: 3,
-      risk_score: 9,
-      control_type: null,
+      severity,
+      likelihood,
+      risk_score: riskScore,
+      control_type: resolveControlType(riskScore),
       critical_limit: null,
       monitoring: null,
       corrective_action: null,
@@ -189,7 +200,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Hazard</th>
               <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">S</th>
               <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">L</th>
-              <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-20">Risk</th>
+              <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-24">Risk</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Critical Limit</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Monitoring</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Corrective Action</th>
@@ -217,7 +228,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                   </tr>
                 ) : (
                   step.hazards.map((h, hi) => {
-                    const risk = getRiskLabel(h.risk_score);
+                    const risk = getRiskDisplay(h.risk_score);
                     return (
                       <tr key={h.id} className="border-b border-border hover:bg-muted/20">
                          <td className="p-2 font-medium text-foreground align-top">
@@ -264,7 +275,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                         </td>
                         <td className="p-2 text-center">
                           <Badge className={`${risk.className} text-xs tabular-nums`}>
-                            {h.risk_score} {h.risk_score >= 12 ? "CCP" : ""}
+                            {h.risk_score} {risk.label}
                           </Badge>
                         </td>
                         <td className="p-2">

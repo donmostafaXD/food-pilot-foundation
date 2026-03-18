@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ShieldCheck, AlertTriangle, Activity } from "lucide-react";
+import { CCP_THRESHOLD, OPRP_THRESHOLD } from "@/lib/haccp-engine";
 
 interface PlanSummary {
   id: string;
@@ -42,7 +43,6 @@ const HACCPSummary = () => {
 
       const plan = plans[0];
 
-      // Get steps and hazards
       const { data: steps } = await supabase
         .from("haccp_plan_steps")
         .select("id")
@@ -60,8 +60,8 @@ const HACCPSummary = () => {
 
         (hazards || []).forEach((h) => {
           totalHazards++;
-          if (h.risk_score >= 12) ccpCount++;
-          else if (h.risk_score >= 8) oprpCount++;
+          if (h.risk_score >= CCP_THRESHOLD) ccpCount++;
+          else if (h.risk_score >= OPRP_THRESHOLD) oprpCount++;
           else prpCount++;
         });
       }
@@ -106,12 +106,12 @@ const HACCPSummary = () => {
           <div className="text-center p-3 rounded-lg bg-warning/10">
             <Activity className="w-4 h-4 mx-auto text-warning mb-1" />
             <span className="text-2xl font-bold tabular-nums text-warning">{summary.oprpCount}</span>
-            <p className="text-xs text-muted-foreground mt-0.5">Medium Risk</p>
+            <p className="text-xs text-muted-foreground mt-0.5">OPRPs</p>
           </div>
           <div className="text-center p-3 rounded-lg bg-muted">
             <ShieldCheck className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
             <span className="text-2xl font-bold tabular-nums text-foreground">{summary.prpCount}</span>
-            <p className="text-xs text-muted-foreground mt-0.5">Low Risk</p>
+            <p className="text-xs text-muted-foreground mt-0.5">PRPs</p>
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-3 text-center">
