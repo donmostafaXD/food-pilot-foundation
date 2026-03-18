@@ -37,7 +37,7 @@ const mainItems = [
   { title: "SOP Procedures", url: "/sop", icon: BookOpen },
   { title: "Equipment", url: "/equipment", icon: Wrench },
   { title: "Documents", url: "/documents", icon: FileText },
-  { title: "Pricing", url: "/pricing", icon: CreditCard },
+  { title: "Pricing", url: "/app/pricing", icon: CreditCard },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

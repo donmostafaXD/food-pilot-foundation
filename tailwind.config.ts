@@ -71,9 +71,9 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["'Public Sans'", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["'Inter'", "system-ui", "-apple-system", "sans-serif"],
         mono: ["'JetBrains Mono'", "monospace"],
-        display: ["'Public Sans'", "system-ui", "sans-serif"],
+        display: ["'Inter'", "system-ui", "sans-serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

@@ -5,8 +5,18 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+
+// Public pages
+import Home from "./pages/Home";
+import PricingPublic from "./pages/PricingPublic";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+
+// Auth pages
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+
+// App pages
 import Dashboard from "./pages/Dashboard";
 import UserManagement from "./pages/UserManagement";
 import SetupWizard from "./pages/SetupWizard";
@@ -34,98 +44,31 @@ const AppRoutes = () => {
 
   return (
     <Routes>
-      <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
+      {/* Public pages */}
+      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Home />} />
+      <Route path="/pricing" element={user ? <Navigate to="/app/pricing" replace /> : <PricingPublic />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contact" element={<Contact />} />
+
+      {/* Auth */}
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/setup"
-        element={
-          <ProtectedRoute>
-            <SetupWizard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/haccp"
-        element={
-          <ProtectedRoute>
-            <HACCPPlan />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/documents"
-        element={
-          <ProtectedRoute>
-            <Documents />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/settings"
-        element={
-          <ProtectedRoute>
-            <SettingsPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/logs"
-        element={
-          <ProtectedRoute>
-            <Logs />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/prp"
-        element={
-          <ProtectedRoute>
-            <PRP />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/sop"
-        element={
-          <ProtectedRoute>
-            <SOP />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/equipment"
-        element={
-          <ProtectedRoute>
-            <EquipmentPage />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/pricing"
-        element={
-          <ProtectedRoute>
-            <Pricing />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/users"
-        element={
-          <ProtectedRoute requiredRoles={["Owner", "Manager"]}>
-            <UserManagement />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="*" element={<Navigate to={user ? "/dashboard" : "/login"} replace />} />
+
+      {/* Protected app routes */}
+      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/setup" element={<ProtectedRoute><SetupWizard /></ProtectedRoute>} />
+      <Route path="/haccp" element={<ProtectedRoute><HACCPPlan /></ProtectedRoute>} />
+      <Route path="/documents" element={<ProtectedRoute><Documents /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
+      <Route path="/prp" element={<ProtectedRoute><PRP /></ProtectedRoute>} />
+      <Route path="/sop" element={<ProtectedRoute><SOP /></ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute><EquipmentPage /></ProtectedRoute>} />
+      <Route path="/app/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute requiredRoles={["Owner", "Manager"]}><UserManagement /></ProtectedRoute>} />
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
     </Routes>
   );
 };
