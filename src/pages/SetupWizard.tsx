@@ -8,6 +8,7 @@ import Step2ActivitySelection from "@/components/setup/Step2ActivitySelection";
 import Step3SmartQuestions from "@/components/setup/Step3SmartQuestions";
 import Step4ProcessFlowBuilder from "@/components/setup/Step4ProcessFlowBuilder";
 import HACCPTable from "@/components/haccp/HACCPTable";
+import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Save, Loader2 } from "lucide-react";
 
