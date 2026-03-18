@@ -315,37 +315,55 @@ const Logs = () => {
           open={printOpen}
           onClose={() => setPrintOpen(false)}
           onSelect={(mode: PrintMode) => {
+            // Determine which logs to print: only selected log if in form view, otherwise all
+            const targetLogs = selectedLog ? [selectedLog] : logNames;
+
+            const getFieldsForLog = (name: string) => {
+              if (businessType === "Manufacturing") {
+                const log = mfgLogs.find(l => l.log_name === name);
+                return log ? ["Date", "Time", log.parameter || "Measurement", log.unit ? `Value (${log.unit})` : "Value", "Staff", "Status", "Notes"] : ["Date", "Time", "Value", "Status", "Notes"];
+              }
+              const log = logStructures.find(l => l.log_name === name);
+              return [...(log?.fields || []), "Status"];
+            };
+
             if (mode === "blank") {
-              // Blank log templates for each log type
               let html = "";
-              logNames.forEach(name => {
-                const fields = (() => {
-                  if (businessType === "Manufacturing") {
-                    const log = mfgLogs.find(l => l.log_name === name);
-                    return log ? ["Date", "Time", log.parameter || "Measurement", log.unit ? `Value (${log.unit})` : "Value", "Staff", "Status", "Notes"] : ["Date", "Time", "Value", "Status", "Notes"];
-                  }
-                  const log = logStructures.find(l => l.log_name === name);
-                  return [...(log?.fields || []), "Status"];
-                })();
-                html += `<p class="section-title">${escapeHtml(name)}</p>${blankTable(fields, 10)}`;
+              targetLogs.forEach(name => {
+                html += `<p class="section-title">${escapeHtml(name)}</p>${blankTable(getFieldsForLog(name), 10)}`;
               });
               openPrintWindow(printHeader, html);
             } else {
-              // Print with data
-              if (entries.length === 0) {
-                // Load entries first then print
-                toast.info("Loading entries for print...");
-                loadEntries().then(() => {
-                  // entries state won't be updated yet, so we print from current
+              // Print with data — filter to selected log if applicable
+              const printEntries = async () => {
+                let query = supabase
+                  .from("log_entries" as any)
+                  .select("*")
+                  .eq("organization_id", profile!.organization_id!)
+                  .eq("branch_id", profile!.branch_id!)
+                  .order("created_at", { ascending: false })
+                  .limit(100);
+
+                if (selectedLog) {
+                  query = query.eq("log_name", selectedLog);
+                }
+
+                const { data } = await query;
+                const result = (data || []) as unknown as LogEntry[];
+
+                if (result.length === 0) {
+                  toast.info("No entries found to print");
+                  return;
+                }
+
+                let rows = "";
+                result.forEach(e => {
+                  const details = Object.entries(e.data || {}).filter(([k]) => k !== "Date" && k !== "Time").map(([k, v]) => `${k}: ${v}`).join(", ");
+                  rows += `<tr><td>${new Date(e.created_at).toLocaleDateString()}</td><td>${escapeHtml(e.log_name)}</td><td>${escapeHtml(e.process_step || "—")}</td><td><span class="badge ${e.status === "Not OK" ? "badge-notok" : "badge-ok"}">${e.status || "OK"}</span></td><td>${escapeHtml(details || "—")}</td></tr>`;
                 });
-                return;
-              }
-              let rows = "";
-              entries.forEach(e => {
-                const details = Object.entries(e.data || {}).filter(([k]) => k !== "Date" && k !== "Time").map(([k, v]) => `${k}: ${v}`).join(", ");
-                rows += `<tr><td>${new Date(e.created_at).toLocaleDateString()}</td><td>${escapeHtml(e.log_name)}</td><td>${escapeHtml(e.process_step || "—")}</td><td><span class="badge ${e.status === "Not OK" ? "badge-notok" : "badge-ok"}">${e.status || "OK"}</span></td><td>${escapeHtml(details || "—")}</td></tr>`;
-              });
-              openPrintWindow(printHeader, `<table><thead><tr><th>Date</th><th>Log</th><th>Process</th><th>Status</th><th>Details</th></tr></thead><tbody>${rows}</tbody></table>`);
+                openPrintWindow(printHeader, `<table><thead><tr><th>Date</th><th>Log</th><th>Process</th><th>Status</th><th>Details</th></tr></thead><tbody>${rows}</tbody></table>`);
+              };
+              printEntries();
             }
           }}
           title="Print Monitoring Logs"
