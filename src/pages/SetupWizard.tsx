@@ -227,6 +227,8 @@ const SetupWizard = () => {
               activityName={selectedActivity}
               planSteps={planSteps}
               setPlanSteps={setPlanSteps}
+              showRiskFields={showRiskFields}
+            />
             />
           )}
         </div>
