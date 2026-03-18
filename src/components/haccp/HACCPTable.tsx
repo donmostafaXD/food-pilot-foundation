@@ -40,97 +40,84 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     setLoading(true);
     const steps: PlanStep[] = [];
 
+    // Resolve process_step_id for steps that don't have one (Food Service)
+    let processIdLookup: Record<string, number> = {};
+    if (isFoodService) {
+      const { data: allProcessSteps } = await supabase
+        .from("process_steps")
+        .select("id, process_name");
+      (allProcessSteps || []).forEach((p) => {
+        processIdLookup[p.process_name] = p.id;
+      });
+    }
+
     for (const ps of processSteps) {
       const hazards: HazardRow[] = [];
+      const stepId = ps.process_step_id ?? processIdLookup[ps.process_name] ?? null;
 
-      if (isFoodService) {
-        // Food Service path: use process_hazard_map + ccp_table by process name
-        const { data: hazardData } = await supabase
+      if (stepId) {
+        // Unified path: use process_hazard_map (numeric IDs) + hazard_library + ccp_table
+        const { data: hazMapData } = await supabase
           .from("process_hazard_map")
-          .select("*")
-          .eq("process", ps.process_name);
+          .select("hazard_id")
+          .eq("process_id", stepId);
 
+        const hazardIds = (hazMapData || []).map((h) => h.hazard_id);
+
+        let hazardLibData: any[] = [];
+        if (hazardIds.length > 0) {
+          const { data } = await supabase
+            .from("hazard_library")
+            .select("*")
+            .in("id", hazardIds);
+          hazardLibData = data || [];
+        }
+
+        // Get CCP/OPRP defaults from ccp_table
         const { data: ccpData } = await supabase
           .from("ccp_table")
           .select("*")
-          .eq("process", ps.process_name);
+          .eq("process_id", stepId);
 
-        const ccpMap: Record<string, any> = {};
+        const ccpByHazard: Record<number, any> = {};
         (ccpData || []).forEach((c) => {
-          ccpMap[c.hazard] = c;
+          ccpByHazard[c.hazard_id] = c;
         });
 
-        (hazardData || []).forEach((h) => {
-          const ccp = ccpMap[h.hazard];
-          const severity = 3;
-          const likelihood = 3;
+        // Also check ccp_analysis for manufacturing
+        if (!isFoodService) {
+          const { data: ccpAnalysis } = await supabase
+            .from("ccp_analysis")
+            .select("*")
+            .eq("process_step_id", stepId);
+          (ccpAnalysis || []).forEach((c) => {
+            if (!ccpByHazard[c.hazard_id]) ccpByHazard[c.hazard_id] = c;
+          });
+        }
+
+        hazardLibData.forEach((h) => {
+          const ccp = ccpByHazard[h.id];
+          const severity = ccp?.severity ?? 3;
+          const likelihood = ccp?.likelihood ?? 3;
           hazards.push({
             id: tempId(),
-            hazard_name: h.hazard,
-            hazard_type: null,
+            hazard_name: h.hazard_name,
+            hazard_type: h.hazard_type,
             severity,
             likelihood,
             risk_score: severity * likelihood,
-            control_type: ccp?.is_ccp ? "CCP" : null,
+            control_type: ccp?.default_control_type || ccp?.control_type || null,
             critical_limit: ccp?.critical_limit || null,
             monitoring: ccp?.monitoring || null,
-            corrective_action: null,
+            corrective_action: ccp?.corrective_action || null,
           });
         });
-      } else {
-        // Manufacturing path: use process_step_hazard_map + hazard_library + ccp_analysis by process_step_id
-        if (ps.process_step_id) {
-          const { data: hazMapData } = await supabase
-            .from("process_step_hazard_map")
-            .select("hazard_id")
-            .eq("process_step_id", ps.process_step_id);
-
-          const hazardIds = (hazMapData || []).map((h) => h.hazard_id);
-
-          let hazardLibData: any[] = [];
-          if (hazardIds.length > 0) {
-            const { data } = await supabase
-              .from("hazard_library")
-              .select("*")
-              .in("id", hazardIds);
-            hazardLibData = data || [];
-          }
-
-          // Get CCP analysis for this step
-          const { data: ccpData } = await supabase
-            .from("ccp_analysis")
-            .select("*")
-            .eq("process_step_id", ps.process_step_id);
-
-          const ccpByHazard: Record<number, any> = {};
-          (ccpData || []).forEach((c) => {
-            ccpByHazard[c.hazard_id] = c;
-          });
-
-          hazardLibData.forEach((h) => {
-            const ccp = ccpByHazard[h.id];
-            const severity = ccp?.severity ?? 3;
-            const likelihood = ccp?.likelihood ?? 3;
-            hazards.push({
-              id: tempId(),
-              hazard_name: h.hazard_name,
-              hazard_type: h.hazard_type,
-              severity,
-              likelihood,
-              risk_score: severity * likelihood,
-              control_type: ccp?.control_type || null,
-              critical_limit: ccp?.critical_limit || null,
-              monitoring: ccp?.monitoring || null,
-              corrective_action: ccp?.corrective_action || null,
-            });
-          });
-        }
       }
 
       steps.push({
         process_name: ps.process_name,
         step_order: ps.process_order,
-        process_step_id: ps.process_step_id ?? null,
+        process_step_id: stepId,
         hazards,
       });
     }
