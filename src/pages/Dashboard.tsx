@@ -45,8 +45,8 @@ const Dashboard = () => {
     console.log("[Dashboard] Profile loaded:", { orgId, branchId });
 
     if (!orgId || !branchId) {
-      console.log("[Dashboard] No org/branch — redirecting to /setup");
-      navigate("/setup", { replace: true });
+      console.log("[Dashboard] No org/branch — redirecting to /register for org setup");
+      navigate("/register", { replace: true });
       return;
     }
 
