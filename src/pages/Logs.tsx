@@ -207,6 +207,13 @@ const Logs = () => {
     load();
   }, [authLoading, activityLoading, profile, activityBusinessType]);
 
+  // Show sync notification when plan was just updated
+  useEffect(() => {
+    if (planJustUpdated) {
+      toast.info("Your HACCP plan has changed. System updated related logs and procedures.", { duration: 5000 });
+    }
+  }, [planJustUpdated]);
+
   // Filter logs by activity — use planProcessNames for precise process-level matching
   const filteredLogStructures = useMemo(() => {
     if (showAllLibrary || !activityName) {

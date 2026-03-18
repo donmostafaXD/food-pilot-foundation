@@ -167,6 +167,13 @@ const PRP = () => {
     load();
   }, [authLoading, activityLoading, profile]);
 
+  // Show sync notification when plan was just updated
+  useEffect(() => {
+    if (planJustUpdated) {
+      toast.info("Your HACCP plan has changed. System updated related PRP programs.", { duration: 5000 });
+    }
+  }, [planJustUpdated]);
+
   // Filtered programs by activity
   const filteredPrograms = useMemo(() => {
     if (showAllLibrary || !activityName) return programs;

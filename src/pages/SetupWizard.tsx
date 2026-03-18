@@ -143,6 +143,7 @@ const SetupWizard = () => {
         }
       }
 
+      localStorage.setItem("haccp_plan_updated", "true");
       toast.success("HACCP Plan saved successfully!");
       navigate("/dashboard", { replace: true });
     } catch (err: any) {

@@ -80,6 +80,13 @@ const SOPPage = () => {
     loadSOPs();
   }, [activityLoading]);
 
+  // Show sync notification when plan was just updated
+  useEffect(() => {
+    if (planJustUpdated) {
+      toast.info("Your HACCP plan has changed. System updated related SOP procedures.", { duration: 5000 });
+    }
+  }, [planJustUpdated]);
+
   const loadSOPs = async () => {
     setLoading(true);
 
