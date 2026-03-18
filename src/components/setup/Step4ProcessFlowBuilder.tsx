@@ -34,6 +34,10 @@ const Step4ProcessFlowBuilder = ({
         .eq("activity", activityName)
         .order("process_order");
 
+      console.log("[Step4] Activity:", activityName);
+      console.log("[Step4] Excluded processes:", excludedProcesses);
+      console.log("[Step4] All processes from DB:", (flowData || []).map(f => f.process));
+
       let steps: ProcessStep[] = (flowData || [])
         .filter((f) => !excludedProcesses.includes(f.process))
         .map((f) => ({
@@ -41,6 +45,8 @@ const Step4ProcessFlowBuilder = ({
           process_order: f.process_order,
           process_step_id: null,
         }));
+
+      console.log("[Step4] Filtered steps:", steps.map(s => s.process_name));
 
       // For manufacturing, resolve process_step_id
       if (!isFoodService && steps.length > 0) {
