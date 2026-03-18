@@ -18,7 +18,6 @@ import {
   Search,
   ArrowLeft,
   Printer,
-  FileDown,
   ShieldCheck,
   Shield,
   FolderOpen,
@@ -29,6 +28,9 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
+import { usePrintHeader } from "@/hooks/usePrintHeader";
+import { openPrintWindow, escapeHtml } from "@/lib/printUtils";
 
 // ── Types ──────────────────────────────────────────
 interface DocLibraryItem {
