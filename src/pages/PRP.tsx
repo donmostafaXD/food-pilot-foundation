@@ -35,6 +35,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Shield,
   ArrowLeft,
   Filter,
@@ -48,6 +58,7 @@ import {
   Library,
   PenLine,
   Eye,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -63,6 +74,7 @@ interface PRPProgram {
   responsible: string | null;
   activity: string;
   isCustom?: boolean;
+  customId?: string;
 }
 
 interface PRPRecord {
@@ -88,7 +100,7 @@ const programLogMap: Record<string, string> = {
 
 const PRP = () => {
   const { profile, loading: authLoading } = useAuth();
-  const { activityName, loading: activityLoading } = useActivityFilter();
+  const { activityName, planProcessNames, loading: activityLoading } = useActivityFilter();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("PRP Programs");
   const [printOpen, setPrintOpen] = useState(false);
@@ -110,6 +122,9 @@ const PRP = () => {
   const [customFrequency, setCustomFrequency] = useState("");
   const [customResponsible, setCustomResponsible] = useState("");
   const [addSaving, setAddSaving] = useState(false);
+
+  // Delete dialog
+  const [deleteTarget, setDeleteTarget] = useState<PRPProgram | null>(null);
 
   // Filters
   const [filterDate, setFilterDate] = useState("");
@@ -141,6 +156,7 @@ const PRP = () => {
             responsible: cp.responsible,
             activity: cp.activity || activityName || "Custom",
             isCustom: true,
+            customId: cp.id,
           });
         });
       }
@@ -254,7 +270,7 @@ const PRP = () => {
     if (!customName.trim() || !profile?.organization_id || !profile?.branch_id) return;
     setAddSaving(true);
 
-    const { error } = await supabase.from("custom_prp_programs" as any).insert({
+    const { data: inserted, error } = await supabase.from("custom_prp_programs" as any).insert({
       organization_id: profile.organization_id,
       branch_id: profile.branch_id,
       program_name: customName.trim(),
@@ -262,7 +278,7 @@ const PRP = () => {
       frequency: customFrequency || null,
       responsible: customResponsible || null,
       activity: activityName || "Custom",
-    } as any);
+    } as any).select("id").single();
 
     setAddSaving(false);
 
@@ -271,20 +287,40 @@ const PRP = () => {
       console.error(error);
     } else {
       toast.success("Custom PRP program created");
+      const newId = (inserted as any)?.id || crypto.randomUUID();
       setPrograms((prev) => [
         ...prev,
         {
-          id: crypto.randomUUID(),
+          id: newId,
           program_name: customName.trim(),
           description: customDesc || null,
           frequency: customFrequency || null,
           responsible: customResponsible || null,
           activity: activityName || "Custom",
           isCustom: true,
+          customId: newId,
         },
       ]);
       setAddDialogOpen(false);
     }
+  };
+
+  // Delete custom PRP
+  const handleDeleteCustomPRP = async () => {
+    if (!deleteTarget?.customId) return;
+    const { error } = await supabase
+      .from("custom_prp_programs" as any)
+      .delete()
+      .eq("id", deleteTarget.customId);
+
+    if (error) {
+      toast.error("Failed to delete custom program");
+      console.error(error);
+    } else {
+      toast.success(`"${deleteTarget.program_name}" deleted`);
+      setPrograms((prev) => prev.filter((p) => !(p.isCustom && p.customId === deleteTarget.customId)));
+    }
+    setDeleteTarget(null);
   };
 
   // Library programs not currently shown
@@ -428,13 +464,24 @@ const PRP = () => {
                                   {program.frequency}
                                 </Badge>
                               )}
-                              {program.isCustom && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  Custom
-                                </Badge>
-                              )}
+                              <Badge variant={program.isCustom ? "outline" : "secondary"} className="text-[10px]">
+                                {program.isCustom ? "Custom" : "System"}
+                              </Badge>
                             </div>
                           </div>
+                          {program.isCustom && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(program);
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
                         </div>
                         {program.description && (
                           <p className="text-xs text-muted-foreground line-clamp-2">
@@ -477,9 +524,9 @@ const PRP = () => {
               <CardTitle className="text-base flex items-center gap-2">
                 <Shield className="w-5 h-5 text-primary" />
                 {selectedProgram.program_name}
-                {selectedProgram.isCustom && (
-                  <Badge variant="outline" className="text-[10px]">Custom</Badge>
-                )}
+                <Badge variant={selectedProgram.isCustom ? "outline" : "secondary"} className="text-[10px]">
+                  {selectedProgram.isCustom ? "Custom" : "System"}
+                </Badge>
               </CardTitle>
               {selectedProgram.description && (
                 <CardDescription>{selectedProgram.description}</CardDescription>
@@ -786,6 +833,24 @@ const PRP = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Custom Program</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{deleteTarget?.program_name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteCustomPRP} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );

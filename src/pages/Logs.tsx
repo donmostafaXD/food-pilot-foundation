@@ -35,6 +35,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ClipboardList,
   Plus,
   ArrowLeft,
@@ -45,6 +55,7 @@ import {
   Library,
   PenLine,
   Eye,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
@@ -56,6 +67,7 @@ interface LogStructure {
   related_process_step: string | null;
   fields: string[];
   isCustom?: boolean;
+  customId?: string;
 }
 
 interface MfgLogStructure {
@@ -86,7 +98,7 @@ type ViewMode = "list" | "form" | "entries";
 
 const Logs = () => {
   const { profile, loading: authLoading } = useAuth();
-  const { activityName, activityProcesses, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
+  const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, loading: activityLoading } = useActivityFilter();
   const printHeader = usePrintHeader("Monitoring Logs");
   const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -109,6 +121,9 @@ const Logs = () => {
   const [customLogFields, setCustomLogFields] = useState("");
   const [customLogProcess, setCustomLogProcess] = useState("");
   const [addSaving, setAddSaving] = useState(false);
+
+  // Delete dialog
+  const [deleteTarget, setDeleteTarget] = useState<LogStructure | null>(null);
 
   // Filters
   const [filterDate, setFilterDate] = useState("");
@@ -172,6 +187,7 @@ const Logs = () => {
           related_process_step: cl.related_process_step,
           fields: Array.isArray(cl.fields) ? cl.fields : [],
           isCustom: true,
+          customId: cl.id,
         }));
         setLogStructures((prev) => [...prev, ...customStructures]);
       }
@@ -191,19 +207,22 @@ const Logs = () => {
     load();
   }, [authLoading, activityLoading, profile, activityBusinessType]);
 
-  // Filter logs by activity
+  // Filter logs by activity — use planProcessNames for precise process-level matching
   const filteredLogStructures = useMemo(() => {
-    if (showAllLibrary || !activityName || activityProcesses.length === 0) {
+    if (showAllLibrary || !activityName) {
       return logStructures;
     }
+    const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
+    if (processNames.length === 0) return logStructures;
+
     return logStructures.filter((log) => {
       if (log.isCustom) return true; // always show custom
       if (!log.related_process_step) return true; // generic logs
-      return activityProcesses.some((p) =>
+      return processNames.some((p) =>
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [logStructures, showAllLibrary, activityName, activityProcesses]);
+  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames]);
 
   // Available log names
   const logNames = useMemo(() => {
@@ -320,6 +339,24 @@ const Logs = () => {
     setViewMode("entries");
   };
 
+  // Delete custom log
+  const handleDeleteCustomLog = async () => {
+    if (!deleteTarget?.customId) return;
+    const { error } = await supabase
+      .from("custom_log_structures" as any)
+      .delete()
+      .eq("id", deleteTarget.customId);
+
+    if (error) {
+      toast.error("Failed to delete custom log");
+      console.error(error);
+    } else {
+      toast.success(`"${deleteTarget.log_name}" deleted`);
+      setLogStructures((prev) => prev.filter((l) => !(l.isCustom && l.customId === deleteTarget.customId)));
+    }
+    setDeleteTarget(null);
+  };
+
   // Add from library
   const openAddDialog = () => {
     setAddMode(null);
@@ -333,7 +370,6 @@ const Logs = () => {
   };
 
   const addFromLibrary = (log: LogStructure) => {
-    // For library items, we just enable showAll temporarily or add as custom reference
     setShowAllLibrary(true);
     setAddDialogOpen(false);
     toast.success(`"${log.log_name}" is now visible`);
@@ -349,13 +385,13 @@ const Logs = () => {
       .filter(Boolean);
     if (fields.length === 0) fields.push("Date", "Time", "Value", "Notes");
 
-    const { error } = await supabase.from("custom_log_structures" as any).insert({
+    const { data: inserted, error } = await supabase.from("custom_log_structures" as any).insert({
       organization_id: profile.organization_id,
       branch_id: profile.branch_id,
       log_name: customLogName.trim(),
       fields,
       related_process_step: customLogProcess || null,
-    } as any);
+    } as any).select("id").single();
 
     setAddSaving(false);
 
@@ -371,6 +407,7 @@ const Logs = () => {
           related_process_step: customLogProcess || null,
           fields,
           isCustom: true,
+          customId: (inserted as any)?.id,
         },
       ]);
       setAddDialogOpen(false);
@@ -524,7 +561,8 @@ const Logs = () => {
                   const isCCP = ccpLogNames.some((n) =>
                     name.toLowerCase().includes(n.toLowerCase())
                   ) || name.toLowerCase().includes("ccp");
-                  const isCustom = logStructures.find((l) => l.log_name === name)?.isCustom;
+                  const logStruct = logStructures.find((l) => l.log_name === name);
+                  const isCustom = logStruct?.isCustom;
                   return (
                     <Card
                       key={name}
@@ -549,14 +587,27 @@ const Logs = () => {
                                 CCP Related
                               </Badge>
                             )}
-                            {isCustom && (
-                              <Badge variant="outline" className="text-[10px]">
-                                Custom
-                              </Badge>
-                            )}
+                            <Badge variant={isCustom ? "outline" : "secondary"} className="text-[10px]">
+                              {isCustom ? "Custom" : "System"}
+                            </Badge>
                           </div>
                         </div>
-                        <Plus className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <div className="flex items-center gap-1 shrink-0">
+                          {isCustom && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setDeleteTarget(logStruct!);
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          )}
+                          <Plus className="w-4 h-4 text-muted-foreground" />
+                        </div>
                       </CardContent>
                     </Card>
                   );
@@ -893,11 +944,25 @@ const Logs = () => {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-sm">Related Process (optional)</Label>
-                  <Input
-                    value={customLogProcess}
-                    onChange={(e) => setCustomLogProcess(e.target.value)}
-                    placeholder="e.g. Cooking"
-                  />
+                  {planProcessNames.length > 0 ? (
+                    <Select value={customLogProcess} onValueChange={setCustomLogProcess}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select process..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">None</SelectItem>
+                        {planProcessNames.map((p) => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={customLogProcess}
+                      onChange={(e) => setCustomLogProcess(e.target.value)}
+                      placeholder="e.g. Cooking"
+                    />
+                  )}
                 </div>
                 <DialogFooter className="gap-2">
                   <Button variant="ghost" size="sm" onClick={() => setAddMode(null)}>
@@ -912,6 +977,24 @@ const Logs = () => {
             )}
           </DialogContent>
         </Dialog>
+
+        {/* Delete Confirmation */}
+        <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Custom Log</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete "{deleteTarget?.log_name}"? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteCustomLog} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
