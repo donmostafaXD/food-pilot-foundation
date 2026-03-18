@@ -33,6 +33,8 @@ const SOPPage = () => {
   const [filterProcess, setFilterProcess] = useState("all");
   const [filterCategory, setFilterCategory] = useState("all");
   const [selectedSOP, setSelectedSOP] = useState<SOPItem | null>(null);
+  const [printOpen, setPrintOpen] = useState(false);
+  const printHeader = usePrintHeader("SOP Procedures");
 
   useEffect(() => {
     loadSOPs();
