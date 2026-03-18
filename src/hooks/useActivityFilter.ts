@@ -8,6 +8,9 @@ interface ActivityFilterResult {
   /** Process names from the user's actual HACCP plan steps */
   planProcessNames: string[];
   businessType: string;
+  planId: string | null;
+  /** True when a plan was recently saved/updated (auto-clears after read) */
+  planJustUpdated: boolean;
   loading: boolean;
 }
 
