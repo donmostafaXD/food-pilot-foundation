@@ -89,5 +89,5 @@ export const useActivityFilter = (): ActivityFilterResult => {
     load();
   }, [authLoading, profile?.organization_id, profile?.branch_id]);
 
-  return { activityName, activityProcesses, planProcessNames, businessType, loading };
+  return { activityName, activityProcesses, planProcessNames, businessType, planId, planJustUpdated, loading };
 };
