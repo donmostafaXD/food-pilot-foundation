@@ -25,6 +25,7 @@ let idCounter = 0;
 const tempId = () => `temp-${++idCounter}`;
 
 const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setPlanSteps }: Props) => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
