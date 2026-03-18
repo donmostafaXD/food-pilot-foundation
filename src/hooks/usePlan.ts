@@ -147,11 +147,11 @@ export function usePlan(): PlanFeatures {
     canAccessFullHazardLibrary: isProPlus,
     // UI visibility
     showRiskFields: isProPlus,
-    showComplianceTools: isSuperAdmin || plan === "premium",
+    showComplianceTools: effectiveAdmin || plan === "premium",
     // Module access
     canAccessSOP: isProPlus,
     canAccessPRP: isProPlus,
-    canAccessDocuments: isSuperAdmin || plan === "premium",
+    canAccessDocuments: effectiveAdmin || plan === "premium",
     canAccessEquipment: isProPlus,
     // Editing
     canEditRiskFields: isProPlus,
