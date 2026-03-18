@@ -23,6 +23,15 @@ interface PlanFeatures {
   // UI visibility
   showRiskFields: boolean;        // S, L, Risk Score columns
   showComplianceTools: boolean;   // Audit, verification, compliance tracking
+  // Module access
+  canAccessSOP: boolean;
+  canAccessPRP: boolean;
+  canAccessDocuments: boolean;
+  canAccessEquipment: boolean;
+  // Editing
+  canEditRiskFields: boolean;     // Can edit S & L in HACCP table
+  // Export
+  canExportFullHACCP: boolean;    // Full hazard analysis & CCP table export
   updatePlan: (newPlan: PlanTier) => Promise<{ error: Error | null }>;
 }
 
