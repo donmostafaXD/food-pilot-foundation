@@ -348,11 +348,13 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                             readOnly={isReadOnly}
                           />
                         </td>
+                        {!isReadOnly && (
                         <td className="p-2">
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeHazard(si, hi)}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </td>
+                        )}
                       </tr>
                     );
                   })
