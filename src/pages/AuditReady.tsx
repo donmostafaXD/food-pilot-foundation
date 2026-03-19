@@ -9,6 +9,8 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
+import { usePrintHeader } from "@/hooks/usePrintHeader";
+import { openPrintWindow, escapeHtml } from "@/lib/printUtils";
 
 import {
   ShieldCheck,
@@ -35,15 +37,30 @@ interface ModuleStatus {
   detail: string;
 }
 
+/** Logs allowed on Basic plan */
+const BASIC_ALLOWED_LOGS = new Set([
+  "Receiving Log",
+  "Cold Storage Log",
+  "Cooking Temperature Log",
+  "Hot Holding Log",
+  "Cleaning Log",
+  "Pest Control Log",
+  "Training Log",
+]);
+
 const AuditReady = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { plan, showRiskFields, showComplianceTools, canAccessSOP, canAccessPRP, loading: planLoading } = usePlan();
-  // Print header available via usePrintHeader if needed
+  const printHeader = usePrintHeader("Audit Ready Report");
+  const isBasicPlan = plan === "basic";
 
   const [modules, setModules] = useState<ModuleStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [missingItems, setMissingItems] = useState<string[]>([]);
+
+  // Track log names for the report
+  const [availableLogNames, setAvailableLogNames] = useState<string[]>([]);
 
   useEffect(() => {
     if (planLoading || !profile?.organization_id || !profile?.branch_id) return;
@@ -75,7 +92,7 @@ const AuditReady = () => {
     });
     if (!haccpComplete) missing.push("HACCP Plan not active or missing");
 
-    // 2. Hazard Analysis (plan hazards)
+    // 2. Hazard Analysis
     if (showRiskFields) {
       const { data: hazards } = await supabase
         .from("haccp_plan_hazards")
@@ -92,7 +109,35 @@ const AuditReady = () => {
       if (hazardCount === 0) missing.push("Hazard analysis not completed");
     }
 
-    // 3. CCP Monitoring (log entries)
+    // 3. Monitoring Logs — include custom logs
+    // Get available log names (system + custom)
+    const logNamesSet = new Set<string>();
+
+    // System logs
+    const { data: sysLogs } = await supabase.from("logs_structure").select("log_name");
+    if (sysLogs) {
+      sysLogs.forEach(l => {
+        if (isBasicPlan) {
+          if (BASIC_ALLOWED_LOGS.has(l.log_name)) logNamesSet.add(l.log_name);
+        } else {
+          logNamesSet.add(l.log_name);
+        }
+      });
+    }
+
+    // Custom logs
+    const { data: customLogs } = await supabase
+      .from("custom_log_structures" as any)
+      .select("log_name")
+      .eq("organization_id", orgId)
+      .eq("branch_id", branchId);
+    if (customLogs) {
+      (customLogs as any[]).forEach(l => logNamesSet.add(l.log_name));
+    }
+
+    const logNamesList = [...logNamesSet].sort();
+    setAvailableLogNames(logNamesList);
+
     const { data: logEntries } = await supabase
       .from("log_entries")
       .select("id")
@@ -105,7 +150,7 @@ const AuditReady = () => {
       icon: ClipboardList,
       status: logCount >= 10 ? "complete" : logCount > 0 ? "partial" : "missing",
       count: logCount,
-      detail: logCount > 0 ? `${logCount} log entries recorded` : "No logs recorded",
+      detail: logCount > 0 ? `${logCount} log entries recorded (${logNamesList.length} log types)` : "No logs recorded",
     });
     if (logCount === 0) missing.push("Temperature / monitoring logs missing");
 
@@ -193,8 +238,69 @@ const AuditReady = () => {
     { name: "FSMS Documents", route: "/documents", available: showComplianceTools },
   ];
 
-  const handlePrintAll = () => {
-    window.print();
+  /** Print a clean A4 formatted audit report */
+  const handlePrintReport = async () => {
+    const orgId = profile!.organization_id!;
+    const branchId = profile!.branch_id!;
+
+    // Build module status table
+    let moduleRows = "";
+    modules.forEach(m => {
+      const statusLabel = m.status === "complete" ? "✓ Complete" : m.status === "partial" ? "⚠ Partial" : "✗ Missing";
+      const badgeClass = m.status === "complete" ? "badge-ok" : m.status === "missing" ? "badge-notok" : "badge-oprp";
+      moduleRows += `<tr><td>${escapeHtml(m.name)}</td><td>${m.count}</td><td><span class="badge ${badgeClass}">${statusLabel}</span></td><td>${escapeHtml(m.detail)}</td></tr>`;
+    });
+
+    let html = `
+      <p class="section-title">Audit Readiness Score: ${auditScore}%</p>
+      <table>
+        <thead><tr><th>Module</th><th>Count</th><th>Status</th><th>Detail</th></tr></thead>
+        <tbody>${moduleRows}</tbody>
+      </table>
+    `;
+
+    // Missing items
+    if (missingItems.length > 0) {
+      html += `<p class="section-title">Missing Requirements</p><ul>`;
+      missingItems.forEach(item => {
+        html += `<li style="margin:4px 0;font-size:11px;">✗ ${escapeHtml(item)}</li>`;
+      });
+      html += `</ul>`;
+    }
+
+    // Available documents
+    const availDocs = documents.filter(d => d.available);
+    html += `<p class="section-title">Available Documents</p><table><thead><tr><th>#</th><th>Document</th><th>Status</th></tr></thead><tbody>`;
+    availDocs.forEach((doc, i) => {
+      html += `<tr><td>${i + 1}</td><td>${escapeHtml(doc.name)}</td><td>Available</td></tr>`;
+    });
+    html += `</tbody></table>`;
+
+    // Available log types
+    if (availableLogNames.length > 0) {
+      html += `<p class="section-title">Available Log Types (${availableLogNames.length})</p><table><thead><tr><th>#</th><th>Log Name</th></tr></thead><tbody>`;
+      availableLogNames.forEach((name, i) => {
+        html += `<tr><td>${i + 1}</td><td>${escapeHtml(name)}</td></tr>`;
+      });
+      html += `</tbody></table>`;
+    }
+
+    // Signature section
+    html += `
+      <div style="margin-top:40px;">
+        <p class="section-title">Signatures</p>
+        <table>
+          <thead><tr><th>Role</th><th>Name</th><th>Signature</th><th>Date</th></tr></thead>
+          <tbody>
+            <tr><td>Prepared By</td><td class="blank-line"></td><td class="blank-line"></td><td class="blank-line"></td></tr>
+            <tr><td>Reviewed By</td><td class="blank-line"></td><td class="blank-line"></td><td class="blank-line"></td></tr>
+            <tr><td>Approved By</td><td class="blank-line"></td><td class="blank-line"></td><td class="blank-line"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    openPrintWindow(printHeader, html);
   };
 
   if (loading || planLoading) {
@@ -219,10 +325,10 @@ const AuditReady = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handlePrintAll}>
+            <Button variant="outline" size="sm" onClick={handlePrintReport}>
               <Printer className="h-4 w-4 mr-1.5" /> Print Report
             </Button>
-            <Button size="sm" onClick={handlePrintAll}>
+            <Button size="sm" onClick={handlePrintReport}>
               <Download className="h-4 w-4 mr-1.5" /> Download Audit Package
             </Button>
           </div>
@@ -288,10 +394,7 @@ const AuditReady = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => {
-                        navigate(doc.route);
-                        setTimeout(() => window.print(), 500);
-                      }}
+                      onClick={() => navigate(doc.route)}
                     >
                       <Printer className="h-4 w-4 mr-1" /> Print
                     </Button>
