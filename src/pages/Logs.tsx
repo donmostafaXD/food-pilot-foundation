@@ -606,10 +606,12 @@ const Logs = () => {
                   </div>
                 )}
               </div>
-              <Button size="sm" onClick={openAddDialog} className="gap-1.5">
-                <Plus className="w-4 h-4" />
-                Add Item
-              </Button>
+              {!isStaffPreview && (
+                <Button size="sm" onClick={openAddDialog} className="gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  Add Item
+                </Button>
+              )}
             </div>
 
             {logNames.length === 0 ? (
