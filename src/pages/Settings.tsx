@@ -661,7 +661,11 @@ const UsersSection = () => {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canManage) return;
+    if (!canManageUsers) return;
+    if (userLimitReached) {
+      toast({ title: "User limit reached", description: `Your plan allows a maximum of ${maxUsers} users.`, variant: "destructive" });
+      return;
+    }
     setInviting(true);
 
     try {
