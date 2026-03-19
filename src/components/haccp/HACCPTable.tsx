@@ -217,7 +217,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Critical Limit</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Monitoring</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Corrective Action</th>
-              <th className="p-2 border-b border-border w-10"></th>
+              {!isReadOnly && <th className="p-2 border-b border-border w-10"></th>}
             </tr>
           </thead>
           <tbody>
