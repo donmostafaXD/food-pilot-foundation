@@ -48,7 +48,7 @@ const STEPS = ["Business Info", "Activity", "Questions", "Process Flow", "HACCP 
 const SetupWizard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { canAccessManufacturing, showRiskFields, canEditRiskFields } = usePlan();
+  const { canAccessManufacturing, showRiskFields, canEditRiskFields, plan: subscriptionPlan } = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
