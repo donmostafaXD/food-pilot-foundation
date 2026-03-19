@@ -150,59 +150,7 @@ const HACCPPlanPage = () => {
     openPrintWindow(printHeader, html);
   };
 
-  const handleSave = async () => {
-    if (!planId) return;
-    setSaving(true);
-    try {
-      // Delete existing steps & hazards, then re-insert
-      const { data: existingSteps } = await supabase
-        .from("haccp_plan_steps")
-        .select("id")
-        .eq("haccp_plan_id", planId);
-      const existingStepIds = (existingSteps || []).map(s => s.id);
-      if (existingStepIds.length > 0) {
-        await supabase.from("haccp_plan_hazards").delete().in("haccp_plan_step_id", existingStepIds);
-      }
-      await supabase.from("haccp_plan_steps").delete().eq("haccp_plan_id", planId);
 
-      // Insert new steps and hazards
-      for (const step of planSteps) {
-        const { data: insertedStep } = await supabase
-          .from("haccp_plan_steps")
-          .insert({
-            haccp_plan_id: planId,
-            process_name: step.process_name,
-            step_order: step.step_order,
-            process_step_id: step.process_step_id,
-          })
-          .select("id")
-          .single();
-
-        if (insertedStep && step.hazards.length > 0) {
-          await supabase.from("haccp_plan_hazards").insert(
-            step.hazards.map(h => ({
-              haccp_plan_step_id: insertedStep.id,
-              hazard_name: h.hazard_name,
-              hazard_type: h.hazard_type,
-              severity: h.severity,
-              likelihood: h.likelihood,
-              risk_score: h.risk_score,
-              control_type: h.control_type,
-              critical_limit: h.critical_limit,
-              monitoring: h.monitoring,
-              corrective_action: h.corrective_action,
-            }))
-          );
-        }
-      }
-
-      await supabase.from("haccp_plans").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", planId);
-      toast.success("HACCP Plan saved successfully");
-    } catch (err: any) {
-      toast.error("Failed to save", { description: err.message });
-    }
-    setSaving(false);
-  };
 
   return (
     <DashboardLayout>
