@@ -68,6 +68,7 @@ export function AppSidebar() {
 
   const { plan } = usePlan();
   const showDocuments = !isStaffRestricted && !planLoading && canAccessDocuments && plan === "premium";
+  const showEquipment = !isStaffRestricted; // Equipment visible for ALL plans
 
   const mainItems: NavItem[] = [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
