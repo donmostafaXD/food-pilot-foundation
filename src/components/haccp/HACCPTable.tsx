@@ -345,6 +345,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                             className="h-7 text-xs"
                             value={h.corrective_action || ""}
                             onChange={(e) => updateHazard(si, hi, "corrective_action", e.target.value)}
+                            readOnly={isReadOnly}
                           />
                         </td>
                         <td className="p-2">
