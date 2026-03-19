@@ -598,6 +598,7 @@ interface Branch {
 const UsersSection = () => {
   const { profile, hasRole } = useAuth();
   const { plan } = usePlan();
+  const { maxUsers, allowedInviteRoles, canManageUsers, canInviteAnyRole } = useRoleAccess();
   const { toast } = useToast();
 
   const [users, setUsers] = useState<OrgUser[]>([]);
@@ -607,16 +608,12 @@ const UsersSection = () => {
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFullName, setInviteFullName] = useState("");
-  const [inviteRole, setInviteRole] = useState<AppRole>("Staff");
+  const [inviteRole, setInviteRole] = useState<AppRole>(allowedInviteRoles[0] || "Staff");
   const [inviteBranch, setInviteBranch] = useState<string>("");
   const [inviting, setInviting] = useState(false);
 
-  const canManage = hasRole("Owner") || hasRole("Manager");
   const isBasicPlan = plan === "basic";
-
-  const roleOptions: AppRole[] = isBasicPlan
-    ? ["Staff"]
-    : ["Owner", "Manager", "QA", "Staff", "Auditor"];
+  const userLimitReached = users.length >= maxUsers;
 
   const loadData = async () => {
     if (!profile?.organization_id) return;
