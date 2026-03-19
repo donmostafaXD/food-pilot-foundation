@@ -270,13 +270,17 @@ const Logs = () => {
     return filteredLogStructures.map((l) => l.log_name).sort();
   }, [businessType, filteredLogStructures, mfgLogs]);
 
-  // All log names (for filter dropdowns in entries view)
+  // All log names (for filter dropdowns in entries view) — also plan-filtered
   const allLogNames = useMemo(() => {
     if (businessType === "Manufacturing") {
       return [...new Set(mfgLogs.map((l) => l.log_name))].sort();
     }
-    return logStructures.map((l) => l.log_name).sort();
-  }, [businessType, logStructures, mfgLogs]);
+    let base = logStructures;
+    if (isBasicPlan) {
+      base = base.filter((l) => l.isCustom || (BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name)));
+    }
+    return base.map((l) => l.log_name).sort();
+  }, [businessType, logStructures, mfgLogs, isBasicPlan]);
 
   // Get fields for selected log
   const selectedFields = useMemo(() => {
