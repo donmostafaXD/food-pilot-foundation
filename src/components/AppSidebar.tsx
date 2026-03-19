@@ -51,6 +51,7 @@ export function AppSidebar() {
     canAccessPRP,
     canAccessDocuments,
     canAccessEquipment,
+    loading: planLoading,
   } = usePlan();
 
   const isActive = (path: string) => location.pathname === path;
@@ -60,10 +61,10 @@ export function AppSidebar() {
     { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
     { title: "Setup Wizard", url: "/setup", icon: Wand2 },
     { title: "Logs", url: "/logs", icon: ClipboardList },
-    { title: "PRP Programs", url: "/prp", icon: Shield, visible: canAccessPRP },
-    { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: canAccessSOP },
-    { title: "Equipment", url: "/equipment", icon: Wrench, visible: canAccessEquipment },
-    { title: "Documents", url: "/documents", icon: FileText, visible: canAccessDocuments },
+    { title: "PRP Programs", url: "/prp", icon: Shield, visible: !planLoading && canAccessPRP },
+    { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: !planLoading && canAccessSOP },
+    { title: "Equipment", url: "/equipment", icon: Wrench, visible: !planLoading && canAccessEquipment },
+    { title: "Documents", url: "/documents", icon: FileText, visible: !planLoading && canAccessDocuments },
     { title: "Audit Ready", url: "/audit", icon: ClipboardCheck },
     { title: "Pricing", url: "/app/pricing", icon: CreditCard },
     { title: "Settings", url: "/settings", icon: Settings },

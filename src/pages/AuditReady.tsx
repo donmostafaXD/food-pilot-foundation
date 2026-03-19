@@ -197,7 +197,7 @@ const AuditReady = () => {
     window.print();
   };
 
-  if (loading) {
+  if (loading || planLoading) {
     return (
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center bg-background">

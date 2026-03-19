@@ -14,19 +14,25 @@ export function useBranchLimit() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!profile?.organization_id || planLoading) return;
+    if (planLoading) return;
+
+    if (!profile?.organization_id) {
+      setBranchCount(0);
+      setLoading(false);
+      return;
+    }
 
     const fetchCount = async () => {
       const { count } = await supabase
         .from("branches")
         .select("id", { count: "exact", head: true })
-        .eq("organization_id", profile.organization_id!);
+        .eq("organization_id", profile.organization_id);
 
       setBranchCount(count ?? 0);
       setLoading(false);
     };
 
-    fetchCount();
+    void fetchCount();
   }, [profile?.organization_id, planLoading]);
 
   return {

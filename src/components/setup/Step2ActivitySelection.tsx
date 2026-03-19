@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 
 interface ActivityType {
@@ -15,29 +14,46 @@ interface Props {
   selectedActivity: string;
   setSelectedActivity: (v: string) => void;
   setSelectedTemplate: (v: string) => void;
+  canAccessManufacturing?: boolean;
 }
 
-const Step2ActivitySelection = ({ businessType, selectedActivity, setSelectedActivity, setSelectedTemplate }: Props) => {
+const Step2ActivitySelection = ({
+  businessType,
+  selectedActivity,
+  setSelectedActivity,
+  setSelectedTemplate,
+  canAccessManufacturing = true,
+}: Props) => {
   const [activities, setActivities] = useState<ActivityType[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+
+      const effectiveBusinessType = canAccessManufacturing ? businessType : "Food Service";
       let query = supabase.from("activity_types").select("*");
 
-      if (businessType === "Food Service") {
+      if (effectiveBusinessType === "Food Service") {
         query = query.in("template", ["Food Service", "Bakery"]);
       } else {
         query = query.eq("template", "Manufacturing");
       }
 
-      const { data } = await query;
-      setActivities(data || []);
+      const { data, error } = await query.order("activity_name", { ascending: true });
+      const nextActivities = error ? [] : (data || []);
+      setActivities(nextActivities);
+
+      if (selectedActivity && !nextActivities.some((act) => act.activity_name === selectedActivity)) {
+        setSelectedActivity("");
+        setSelectedTemplate("");
+      }
+
       setLoading(false);
     };
-    load();
-  }, [businessType]);
+
+    void load();
+  }, [businessType, canAccessManufacturing, selectedActivity, setSelectedActivity, setSelectedTemplate]);
 
   const handleSelect = (act: ActivityType) => {
     setSelectedActivity(act.activity_name);

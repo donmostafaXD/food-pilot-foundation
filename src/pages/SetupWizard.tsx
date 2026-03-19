@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,7 +48,13 @@ const STEPS = ["Business Info", "Activity", "Questions", "Process Flow", "HACCP 
 const SetupWizard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { canAccessManufacturing, showRiskFields, canEditRiskFields, plan: subscriptionPlan } = usePlan();
+  const {
+    canAccessManufacturing,
+    showRiskFields,
+    canEditRiskFields,
+    plan: subscriptionPlan,
+    loading: planLoading,
+  } = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -61,6 +67,30 @@ const SetupWizard = () => {
   const [smartAnswers, setSmartAnswers] = useState<Record<number, boolean>>({});
   const [processSteps, setProcessSteps] = useState<ProcessStep[]>([]);
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
+
+  useEffect(() => {
+    if (planLoading || canAccessManufacturing) return;
+
+    if (businessType !== "Food Service") {
+      setBusinessType("Food Service");
+    }
+
+    if (selectedTemplate === "Manufacturing") {
+      setSelectedActivity("");
+      setSelectedTemplate("");
+      setExcludedProcesses([]);
+      setSmartAnswers({});
+      setProcessSteps([]);
+      setPlanSteps([]);
+      if (currentStep > 1) setCurrentStep(1);
+    }
+  }, [
+    planLoading,
+    canAccessManufacturing,
+    businessType,
+    selectedTemplate,
+    currentStep,
+  ]);
 
   const isFoodService = businessType === "Food Service";
 
@@ -88,6 +118,14 @@ const SetupWizard = () => {
       return;
     }
 
+    if (!canAccessManufacturing && selectedTemplate === "Manufacturing") {
+      toast.error("Manufacturing activities are not available on Basic plan.");
+      setCurrentStep(1);
+      return;
+    }
+
+    const effectiveBusinessType = canAccessManufacturing ? businessType : "Food Service";
+
     setSaving(true);
     try {
       // 1. Create haccp_plan
@@ -96,7 +134,7 @@ const SetupWizard = () => {
         .insert({
           organization_id: profile.organization_id,
           branch_id: profile.branch_id,
-          business_type: businessType,
+          business_type: effectiveBusinessType,
           activity_name: selectedActivity,
           status: "active",
         })
@@ -156,6 +194,16 @@ const SetupWizard = () => {
     }
   };
 
+  if (planLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-5xl mx-auto">
@@ -203,6 +251,7 @@ const SetupWizard = () => {
               selectedActivity={selectedActivity}
               setSelectedActivity={setSelectedActivity}
               setSelectedTemplate={setSelectedTemplate}
+              canAccessManufacturing={canAccessManufacturing}
             />
           )}
           {currentStep === 2 && (
