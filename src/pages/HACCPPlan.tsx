@@ -6,6 +6,7 @@ import HACCPTable from "@/components/haccp/HACCPTable";
 import { Loader2, Printer, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
