@@ -48,7 +48,7 @@ const STEPS = ["Business Info", "Activity", "Questions", "Process Flow", "HACCP 
 const SetupWizard = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { canAccessManufacturing, showRiskFields, canEditRiskFields } = usePlan();
+  const { canAccessManufacturing, showRiskFields, canEditRiskFields, plan: subscriptionPlan } = usePlan();
   const [currentStep, setCurrentStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -122,13 +122,15 @@ const SetupWizard = () => {
 
         // 3. Insert hazards for this step
         if (step.hazards.length > 0) {
+          const isBasicPlan = subscriptionPlan === "basic";
           const hazardInserts = step.hazards.map((h) => ({
             haccp_plan_step_id: stepData.id,
             hazard_name: h.hazard_name,
             hazard_type: h.hazard_type,
-            severity: h.severity,
-            likelihood: h.likelihood,
-            risk_score: h.risk_score,
+            // Basic plan: store system defaults, don't process user-edited S/L/Risk
+            severity: isBasicPlan ? 3 : h.severity,
+            likelihood: isBasicPlan ? 3 : h.likelihood,
+            risk_score: isBasicPlan ? 9 : h.risk_score,
             control_type: h.control_type,
             critical_limit: h.critical_limit,
             monitoring: h.monitoring,
