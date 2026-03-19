@@ -18,7 +18,7 @@ interface Props {
   isFoodService: boolean;
   activityName: string;
   planSteps: PlanStep[];
-  setPlanSteps: (v: PlanStep[]) => void;
+  setPlanSteps?: (v: PlanStep[]) => void;
   /** When false (Basic plan), hide S, L, Risk Score columns */
   showRiskFields?: boolean;
   /** When false (Basic plan), disable editing of S & L */
@@ -30,6 +30,7 @@ const tempId = () => `temp-${++idCounter}`;
 
 const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setPlanSteps, showRiskFields = true, canEditRiskFields = true }: Props) => {
   const navigate = useNavigate();
+  const isReadOnly = !setPlanSteps;
   const [loading, setLoading] = useState(true);
 
   // Number of extra columns to span when risk fields hidden
@@ -120,11 +121,12 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
       });
     }
 
-    setPlanSteps(steps);
+    setPlanSteps?.(steps);
     setLoading(false);
   };
 
   const updateHazard = (stepIdx: number, hazIdx: number, field: keyof HazardRow, value: any) => {
+    if (isReadOnly) return;
     const newSteps = [...planSteps];
     const hazard = { ...newSteps[stepIdx].hazards[hazIdx] };
 
@@ -140,10 +142,11 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     }
 
     newSteps[stepIdx].hazards[hazIdx] = hazard;
-    setPlanSteps(newSteps);
+    setPlanSteps?.(newSteps);
   };
 
   const addHazard = (stepIdx: number) => {
+    if (isReadOnly) return;
     const newSteps = [...planSteps];
     const severity = 3;
     const likelihood = 3;
@@ -163,13 +166,14 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
       monitoring: null,
       corrective_action: null,
     });
-    setPlanSteps(newSteps);
+    setPlanSteps?.(newSteps);
   };
 
   const removeHazard = (stepIdx: number, hazIdx: number) => {
+    if (isReadOnly) return;
     const newSteps = [...planSteps];
     newSteps[stepIdx].hazards = newSteps[stepIdx].hazards.filter((_, i) => i !== hazIdx);
-    setPlanSteps(newSteps);
+    setPlanSteps?.(newSteps);
   };
 
   if (loading) {
@@ -213,7 +217,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Critical Limit</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Monitoring</th>
               <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Corrective Action</th>
-              <th className="p-2 border-b border-border w-10"></th>
+              {!isReadOnly && <th className="p-2 border-b border-border w-10"></th>}
             </tr>
           </thead>
           <tbody>
@@ -229,11 +233,13 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                     <td colSpan={emptyColSpan} className="p-2 text-muted-foreground text-xs italic">
                       No hazards identified
                     </td>
+                    {!isReadOnly && (
                     <td className="p-2">
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addHazard(si)}>
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
                     </td>
+                    )}
                   </tr>
                 ) : (
                   step.hazards.map((h, hi) => {
@@ -249,7 +255,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                                </Button>
                              </>
                            )}
-                           {hi === step.hazards.length - 1 && (
+                           {hi === step.hazards.length - 1 && !isReadOnly && (
                             <Button variant="ghost" size="sm" className="h-6 px-1 mt-1 text-xs" onClick={() => addHazard(si)}>
                               <Plus className="w-3 h-3 mr-0.5" /> Add
                             </Button>
@@ -260,6 +266,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                             className="h-7 text-xs"
                             value={h.hazard_name}
                             onChange={(e) => updateHazard(si, hi, "hazard_name", e.target.value)}
+                            readOnly={isReadOnly}
                           />
                         </td>
 
@@ -274,7 +281,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                                 max={5}
                                 value={h.severity}
                                 onChange={(e) => updateHazard(si, hi, "severity", e.target.value)}
-                                disabled={!canEditRiskFields}
+                                disabled={!canEditRiskFields || isReadOnly}
                               />
                             </td>
                             <td className="p-2 text-center">
@@ -285,7 +292,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                                 max={5}
                                 value={h.likelihood}
                                 onChange={(e) => updateHazard(si, hi, "likelihood", e.target.value)}
-                                disabled={!canEditRiskFields}
+                                disabled={!canEditRiskFields || isReadOnly}
                               />
                             </td>
                             <td className="p-2 text-center">
@@ -322,6 +329,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                             className="h-7 text-xs"
                             value={h.critical_limit || ""}
                             onChange={(e) => updateHazard(si, hi, "critical_limit", e.target.value)}
+                            readOnly={isReadOnly}
                           />
                         </td>
                         <td className="p-2">
@@ -329,6 +337,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                             className="h-7 text-xs"
                             value={h.monitoring || ""}
                             onChange={(e) => updateHazard(si, hi, "monitoring", e.target.value)}
+                            readOnly={isReadOnly}
                           />
                         </td>
                         <td className="p-2">
@@ -336,13 +345,16 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                             className="h-7 text-xs"
                             value={h.corrective_action || ""}
                             onChange={(e) => updateHazard(si, hi, "corrective_action", e.target.value)}
+                            readOnly={isReadOnly}
                           />
                         </td>
+                        {!isReadOnly && (
                         <td className="p-2">
                           <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeHazard(si, hi)}>
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </td>
+                        )}
                       </tr>
                     );
                   })
