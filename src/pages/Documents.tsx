@@ -290,18 +290,31 @@ const Documents = () => {
     })();
   }, []);
 
-  // Documents excluded from HACCP plan (compliance-only)
-  const HACCP_EXCLUDED_DOCS = useMemo(() => new Set([
-    "food safety policy",
-    "food safety objectives",
-    "haccp team",
-    "product description",
-    "intended use",
-    "internal audit",
-    "validation",
-    "recall procedure",
-    "traceability",
-  ]), []);
+  // Documents allowed for HACCP plan (certification-essential only)
+  const HACCP_ALLOWED_DOC_KEYWORDS = useMemo(() => [
+    "flow diagram",
+    "haccp verification",
+    "record keeping",
+    "corrective action",
+    "supplier approval",
+    "approved supplier",
+    "raw material",
+    "allergen",
+    "calibration",
+    "equipment",
+    "cleaning",
+    "sanitation",
+    "pest control",
+    "training",
+    "non-conformance",
+    "hold & release",
+    "document control",
+    "record control",
+    "risk assessment",
+    "hazard evaluation",
+    "haccp plan",
+    "hazard analysis",
+  ], []);
 
   const filtered = documents.filter((d) => {
     const matchesSearch =
