@@ -66,6 +66,9 @@ export function AppSidebar() {
   // Staff restriction: real Staff role OR preview Staff
   const isStaffRestricted = effectiveRole === "Staff";
 
+  const { plan } = usePlan();
+  const showDocuments = !isStaffRestricted && !planLoading && canAccessDocuments && plan === "premium";
+
   const mainItems: NavItem[] = [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
@@ -73,8 +76,8 @@ export function AppSidebar() {
     { title: "PRP Programs", url: "/prp", icon: Shield, visible: !isStaffRestricted && !planLoading && canAccessPRP },
     { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: !isStaffRestricted && !planLoading && canAccessSOP },
     { title: "Equipment", url: "/equipment", icon: Wrench, visible: !isStaffRestricted && !planLoading && canAccessEquipment },
-    { title: "Documents", url: "/documents", icon: FileText, visible: !isStaffRestricted && !planLoading && canAccessDocuments },
-    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: canAccessAudit },
+    { title: "Documents", url: "/documents", icon: FileText, visible: showDocuments },
+    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: canAccessAudit && plan === "premium" },
     { title: "Settings", url: "/settings", icon: Settings, visible: canAccessSettings },
   ];
 
