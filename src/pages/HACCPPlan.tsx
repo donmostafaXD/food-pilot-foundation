@@ -14,7 +14,7 @@ import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 const HACCPPlanPage = () => {
   const { profile } = useAuth();
-  const { showRiskFields, canEditRiskFields, canExportFullHACCP } = usePlan();
+  const { showRiskFields, canEditRiskFields, canExportFullHACCP, loading: planLoading } = usePlan();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("HACCP Plan");
   const [loading, setLoading] = useState(true);
@@ -98,10 +98,10 @@ const HACCPPlanPage = () => {
       setLoading(false);
     };
 
-    load();
+    void load();
   }, [profile]);
 
-  if (loading) {
+  if (loading || planLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">

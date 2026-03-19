@@ -38,7 +38,7 @@ interface ModuleStatus {
 const AuditReady = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const { plan, showRiskFields, showComplianceTools, canAccessSOP, canAccessPRP } = usePlan();
+  const { plan, showRiskFields, showComplianceTools, canAccessSOP, canAccessPRP, loading: planLoading } = usePlan();
   // Print header available via usePrintHeader if needed
 
   const [modules, setModules] = useState<ModuleStatus[]>([]);
@@ -46,9 +46,9 @@ const AuditReady = () => {
   const [missingItems, setMissingItems] = useState<string[]>([]);
 
   useEffect(() => {
-    if (!profile?.organization_id || !profile?.branch_id) return;
+    if (planLoading || !profile?.organization_id || !profile?.branch_id) return;
     fetchAuditData();
-  }, [profile?.organization_id, profile?.branch_id]);
+  }, [planLoading, profile?.organization_id, profile?.branch_id]);
 
   const fetchAuditData = async () => {
     setLoading(true);
@@ -197,7 +197,7 @@ const AuditReady = () => {
     window.print();
   };
 
-  if (loading) {
+  if (loading || planLoading) {
     return (
       <DashboardLayout>
         <div className="min-h-screen flex items-center justify-center bg-background">
