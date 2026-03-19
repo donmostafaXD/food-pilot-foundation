@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
-import { usePrintHeader } from "@/hooks/usePrintHeader";
+
 import {
   ShieldCheck,
   ClipboardList,
