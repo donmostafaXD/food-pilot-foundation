@@ -188,12 +188,14 @@ const PRP = () => {
   const filteredPrograms = useMemo(() => {
     let base = programs;
 
-    // HACCP plan: restrict to specific PRP programs
+    // HACCP plan: restrict to specific PRP programs and skip activity filter for core programs
     if (plan === "professional") {
       base = base.filter((p) => {
         if (p.isCustom) return true;
         return HACCP_ALLOWED_PRP.has(p.program_name.toLowerCase());
       });
+      // For HACCP plan, always show the 4 core PRP programs regardless of activity
+      return base;
     }
 
     if (showAllLibrary || !activityName) return base;
