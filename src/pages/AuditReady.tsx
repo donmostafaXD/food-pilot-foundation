@@ -39,7 +39,7 @@ const AuditReady = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { plan, showRiskFields, showComplianceTools, canAccessSOP, canAccessPRP } = usePlan();
-  const { headerProps } = usePrintHeader();
+  // Print header available via usePrintHeader if needed
 
   const [modules, setModules] = useState<ModuleStatus[]>([]);
   const [loading, setLoading] = useState(true);
