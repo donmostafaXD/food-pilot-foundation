@@ -48,9 +48,9 @@ const HACCPPlanPage = () => {
 
       const p = plans[0];
       setPlanExists(true);
+      setPlanId(p.id);
       setActivityName(p.activity_name);
       setIsFoodService(p.business_type === "Food Service");
-      setPlanStatus(p.status);
 
       const { data: steps } = await supabase
         .from("haccp_plan_steps")
