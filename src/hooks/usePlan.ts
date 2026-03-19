@@ -33,6 +33,9 @@ interface PlanFeatures {
   canEditRiskFields: boolean;     // Can edit S & L in HACCP table
   // Export
   canExportFullHACCP: boolean;    // Full hazard analysis & CCP table export
+  // Branch & activity limits
+  maxBranches: number;            // 1 = Basic, 3 = HACCP, Infinity = Compliance
+  maxActivities: number;          // 1 = Basic, Infinity = HACCP+
   updatePlan: (newPlan: PlanTier) => Promise<{ error: Error | null }>;
 }
 
