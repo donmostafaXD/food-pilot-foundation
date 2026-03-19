@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
+import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -96,9 +97,29 @@ interface BranchEquipment {
 
 type ViewMode = "list" | "form" | "entries";
 
+/** Logs allowed on Basic plan (Food Service only) */
+const BASIC_ALLOWED_LOGS = new Set([
+  "Receiving Log",
+  "Cold Storage Log",
+  "Cooking Temperature Log",
+  "Hot Holding Log",
+  "Cleaning Log",
+  "Pest Control Log",
+  "Training Log",
+]);
+
+/** Logs explicitly hidden from Basic plan */
+const BASIC_HIDDEN_LOGS = new Set([
+  "Internal Audit Log",
+  "Corrective Action Log",
+  "CCP Monitoring Log",
+]);
+
 const Logs = () => {
   const { profile, loading: authLoading } = useAuth();
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
+  const { plan, loading: planLoading } = usePlan();
+  const isBasicPlan = plan === "basic";
   const printHeader = usePrintHeader("Monitoring Logs");
   const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -216,20 +237,30 @@ const Logs = () => {
 
   // Filter logs by activity — use planProcessNames for precise process-level matching
   const filteredLogStructures = useMemo(() => {
+    let base = logStructures;
+
+    // Plan-based restriction: Basic plan only sees allowed Food Service logs
+    if (isBasicPlan) {
+      base = base.filter((log) => {
+        if (log.isCustom) return true; // custom logs always visible
+        return BASIC_ALLOWED_LOGS.has(log.log_name) && !BASIC_HIDDEN_LOGS.has(log.log_name);
+      });
+    }
+
     if (showAllLibrary || !activityName) {
-      return logStructures;
+      return base;
     }
     const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
-    if (processNames.length === 0) return logStructures;
+    if (processNames.length === 0) return base;
 
-    return logStructures.filter((log) => {
+    return base.filter((log) => {
       if (log.isCustom) return true; // always show custom
       if (!log.related_process_step) return true; // generic logs
       return processNames.some((p) =>
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames]);
+  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan]);
 
   // Available log names
   const logNames = useMemo(() => {
@@ -239,13 +270,17 @@ const Logs = () => {
     return filteredLogStructures.map((l) => l.log_name).sort();
   }, [businessType, filteredLogStructures, mfgLogs]);
 
-  // All log names (for filter dropdowns in entries view)
+  // All log names (for filter dropdowns in entries view) — also plan-filtered
   const allLogNames = useMemo(() => {
     if (businessType === "Manufacturing") {
       return [...new Set(mfgLogs.map((l) => l.log_name))].sort();
     }
-    return logStructures.map((l) => l.log_name).sort();
-  }, [businessType, logStructures, mfgLogs]);
+    let base = logStructures;
+    if (isBasicPlan) {
+      base = base.filter((l) => l.isCustom || (BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name)));
+    }
+    return base.map((l) => l.log_name).sort();
+  }, [businessType, logStructures, mfgLogs, isBasicPlan]);
 
   // Get fields for selected log
   const selectedFields = useMemo(() => {
@@ -282,6 +317,11 @@ const Logs = () => {
   );
 
   const openForm = (logName: string) => {
+    // Block opening restricted logs on Basic plan
+    if (isBasicPlan && !BASIC_ALLOWED_LOGS.has(logName) && !logStructures.find(l => l.log_name === logName && l.isCustom)) {
+      toast.error("This log is not available on your current plan");
+      return;
+    }
     setSelectedLog(logName);
     const today = new Date().toISOString().split("T")[0];
     const now = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -370,9 +410,13 @@ const Logs = () => {
     setCustomLogName("");
     setCustomLogFields("");
     setCustomLogProcess("");
-    // Load all library logs not already shown
+    // Load all library logs not already shown — filtered by plan
     const currentNames = new Set(logNames);
-    setLibraryLogs(logStructures.filter((l) => !currentNames.has(l.log_name)));
+    let available = logStructures.filter((l) => !currentNames.has(l.log_name));
+    if (isBasicPlan) {
+      available = available.filter((l) => BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name));
+    }
+    setLibraryLogs(available);
     setAddDialogOpen(true);
   };
 
@@ -421,7 +465,7 @@ const Logs = () => {
     }
   };
 
-  if (authLoading || loading || activityLoading) {
+  if (authLoading || loading || activityLoading || planLoading) {
     return (
       <DashboardLayout>
         <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-4">
