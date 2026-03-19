@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   Building2,
   ArrowUpRight,
+  Save,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan, PLAN_CONFIG, PLAN_DISPLAY_NAMES, type PlanTier } from "@/hooks/usePlan";
@@ -31,6 +32,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import { Link } from "react-router-dom";
+import HACCPTable from "@/components/haccp/HACCPTable";
+import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 // ── HACCP Plan Edit Section ──────────────────────────────────────────
 const HACCPPlanSection = () => {
