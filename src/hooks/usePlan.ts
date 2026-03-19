@@ -89,36 +89,57 @@ export const PLAN_CONFIG: Record<PlanTier, {
   },
 };
 
+const isPlanTier = (value: string | null | undefined): value is PlanTier => {
+  return value === "basic" || value === "professional" || value === "premium";
+};
+
 export function usePlan(): PlanFeatures {
   const { profile, roles } = useAuth();
   const [dbPlan, setDbPlan] = useState<PlanTier>("basic");
   const [loading, setLoading] = useState(true);
-
   const { overridePlan } = useAdminPlanOverride();
 
   const isSuperAdmin = roles.includes("super_admin" as any);
 
-  // Use override if active, otherwise use DB plan
-  const plan = overridePlan ?? dbPlan;
-
   useEffect(() => {
-    if (!profile?.organization_id) {
-      setLoading(false);
-      return;
-    }
+    let cancelled = false;
 
     const fetchPlan = async () => {
-      const { data } = await supabase
+      if (!profile?.organization_id) {
+        if (!cancelled) {
+          setDbPlan("basic");
+          setLoading(false);
+        }
+        return;
+      }
+
+      if (!cancelled) setLoading(true);
+
+      const { data, error } = await supabase
         .from("organizations")
         .select("subscription_plan")
-        .eq("id", profile.organization_id!)
+        .eq("id", profile.organization_id)
         .maybeSingle();
 
-      setDbPlan((data?.subscription_plan as PlanTier) || "basic");
+      if (cancelled) return;
+
+      if (error) {
+        console.error("[Plan] Failed to load organization plan:", error);
+        setDbPlan("basic");
+        setLoading(false);
+        return;
+      }
+
+      const rawPlan = data?.subscription_plan;
+      setDbPlan(isPlanTier(rawPlan) ? rawPlan : "basic");
       setLoading(false);
     };
 
-    fetchPlan();
+    void fetchPlan();
+
+    return () => {
+      cancelled = true;
+    };
   }, [profile?.organization_id]);
 
   const updatePlan = async (newPlan: PlanTier) => {
@@ -135,30 +156,40 @@ export function usePlan(): PlanFeatures {
     return { error: error as Error | null };
   };
 
-  // When override is active, DON'T let super_admin bypass — simulate the real plan experience
+  // Single source of truth for current plan: admin override first, then organization plan.
+  const resolvedPlan = overridePlan ?? dbPlan;
+
+  // When override is active, DON'T let super_admin bypass — simulate a real user plan.
   const effectiveAdmin = overridePlan ? false : isSuperAdmin;
-  const isProPlus = effectiveAdmin || plan === "professional" || plan === "premium";
+  const isProPlus = effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium";
+  const resolvedLoading = overridePlan ? false : loading;
 
   // Branch & activity limits per plan
-  const maxBranches = effectiveAdmin ? Infinity : plan === "premium" ? Infinity : plan === "professional" ? 3 : 1;
-  const maxActivities = effectiveAdmin ? Infinity : plan === "basic" ? 1 : Infinity;
+  const maxBranches = effectiveAdmin
+    ? Infinity
+    : resolvedPlan === "premium"
+      ? Infinity
+      : resolvedPlan === "professional"
+        ? 3
+        : 1;
+  const maxActivities = effectiveAdmin ? Infinity : resolvedPlan === "basic" ? 1 : Infinity;
 
   return {
-    plan,
-    planDisplayName: PLAN_DISPLAY_NAMES[plan],
-    loading,
+    plan: resolvedPlan,
+    planDisplayName: PLAN_DISPLAY_NAMES[resolvedPlan],
+    loading: resolvedLoading,
     // Feature gates
     canAccessManufacturing: isProPlus,
-    canAccessMultiBranch: effectiveAdmin || plan === "professional" || plan === "premium",
-    canAccessAdvancedAnalytics: effectiveAdmin || plan === "premium",
+    canAccessMultiBranch: effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium",
+    canAccessAdvancedAnalytics: effectiveAdmin || resolvedPlan === "premium",
     canAccessFullHazardLibrary: isProPlus,
     // UI visibility
     showRiskFields: isProPlus,
-    showComplianceTools: effectiveAdmin || plan === "premium",
+    showComplianceTools: effectiveAdmin || resolvedPlan === "premium",
     // Module access
     canAccessSOP: isProPlus,
     canAccessPRP: isProPlus,
-    canAccessDocuments: effectiveAdmin || plan === "premium",
+    canAccessDocuments: effectiveAdmin || resolvedPlan === "premium",
     canAccessEquipment: isProPlus,
     // Editing
     canEditRiskFields: isProPlus,
