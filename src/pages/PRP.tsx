@@ -177,12 +177,12 @@ const PRP = () => {
   }, [planJustUpdated]);
 
   // PRP programs allowed for HACCP (professional) plan
-  const HACCP_ALLOWED_PRP = useMemo(() => new Set([
+  const HACCP_ALLOWED_PRP_KEYWORDS = useMemo(() => [
     "cleaning and sanitation",
     "pest control",
     "personal hygiene",
     "supplier control",
-  ]), []);
+  ], []);
 
   // Filtered programs by activity and plan
   const filteredPrograms = useMemo(() => {
@@ -192,7 +192,8 @@ const PRP = () => {
     if (plan === "professional") {
       base = base.filter((p) => {
         if (p.isCustom) return true;
-        return HACCP_ALLOWED_PRP.has(p.program_name.toLowerCase());
+        const lower = p.program_name.toLowerCase();
+        return HACCP_ALLOWED_PRP_KEYWORDS.some((kw) => lower.includes(kw));
       });
       // For HACCP plan, always show the 4 core PRP programs regardless of activity
       return base;
@@ -205,7 +206,7 @@ const PRP = () => {
         p.activity.toLowerCase() === "all" ||
         p.activity.toLowerCase() === "general";
     });
-  }, [programs, showAllLibrary, activityName, plan, HACCP_ALLOWED_PRP]);
+  }, [programs, showAllLibrary, activityName, plan, HACCP_ALLOWED_PRP_KEYWORDS]);
 
   const programNames = useMemo(
     () => [...new Set(programs.map((p) => p.program_name))].sort(),
