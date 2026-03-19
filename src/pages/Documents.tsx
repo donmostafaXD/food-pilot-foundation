@@ -319,6 +319,9 @@ const Documents = () => {
     "hazard analysis",
   ], []);
 
+  // Basic plan: only show HACCP + PRP docs, hide General FSMS
+  const BASIC_ALLOWED_DOC_CATEGORIES: DocCategory[] = ["haccp", "prp"];
+
   const filtered = documents.filter((d) => {
     const matchesSearch =
       !search ||
@@ -326,9 +329,15 @@ const Documents = () => {
       d.description?.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || d.category === categoryFilter;
 
+    // Basic plan: exclude general FSMS documents (audit, policy, etc.)
+    if (plan === "basic") {
+      if (!BASIC_ALLOWED_DOC_CATEGORIES.includes(d.category)) return false;
+    }
+
     // HACCP plan: whitelist only certification-essential documents
     if (plan === "professional") {
       const lower = d.document_name.toLowerCase();
+      if (d.category === "general") return false;
       if (!HACCP_ALLOWED_DOC_KEYWORDS.some((kw) => lower.includes(kw))) return false;
     }
 

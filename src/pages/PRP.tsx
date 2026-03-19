@@ -215,6 +215,15 @@ const PRP = () => {
   const filteredPrograms = useMemo(() => {
     let base = programs;
 
+    // Basic plan: only Core / System category PRPs
+    if (plan === "basic") {
+      base = base.filter((p) => {
+        if (p.isCustom) return true;
+        const cat = ((p as any)._category || "").toLowerCase();
+        return cat === "core" || cat === "system";
+      });
+    }
+
     // HACCP plan: restrict to specific PRP programs
     if (plan === "professional") {
       base = base.filter((p) => {
