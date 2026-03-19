@@ -281,7 +281,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                                 max={5}
                                 value={h.severity}
                                 onChange={(e) => updateHazard(si, hi, "severity", e.target.value)}
-                                disabled={!canEditRiskFields}
+                                disabled={!canEditRiskFields || isReadOnly}
                               />
                             </td>
                             <td className="p-2 text-center">
