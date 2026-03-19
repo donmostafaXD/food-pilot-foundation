@@ -927,7 +927,7 @@ const FoodSafetySetupWrapper = () => {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Food Safety Setup</h2>
         <p className="text-sm text-muted-foreground">
-          No HACCP plan found. Create a plan first using "Change Activity" to configure food safety setup.
+          No HACCP plan found. Create a plan first using "Manage Activities" to configure food safety setup.
         </p>
       </div>
     );
