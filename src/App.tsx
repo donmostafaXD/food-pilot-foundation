@@ -34,7 +34,7 @@ const queryClient = new QueryClient();
 
 const AppRoutes = () => {
   const { user, loading, roles } = useAuth();
-  const { overrideRole } = useAdminPlanOverride();
+  const { overrideRole, overridePlan } = useAdminPlanOverride();
 
   // Determine effective Staff restriction (real role or preview)
   const isSuperAdmin = roles.includes("super_admin" as any);

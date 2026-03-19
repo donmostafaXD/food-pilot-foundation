@@ -172,7 +172,13 @@ export function usePlan(): PlanFeatures {
       : resolvedPlan === "professional"
         ? 3
         : 1;
-  const maxActivities = effectiveAdmin ? Infinity : resolvedPlan === "basic" ? 1 : Infinity;
+  const maxActivities = effectiveAdmin
+    ? Infinity
+    : resolvedPlan === "premium"
+      ? Infinity
+      : resolvedPlan === "professional"
+        ? 3
+        : 1;
 
   return {
     plan: resolvedPlan,
@@ -189,7 +195,7 @@ export function usePlan(): PlanFeatures {
     // Module access
     canAccessSOP: isProPlus,
     canAccessPRP: isProPlus,
-    canAccessDocuments: effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium",
+    canAccessDocuments: effectiveAdmin || resolvedPlan === "premium",
     canAccessEquipment: isProPlus,
     // Editing
     canEditRiskFields: isProPlus,
