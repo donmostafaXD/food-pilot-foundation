@@ -450,6 +450,8 @@ const Logs = () => {
     let available = logStructures.filter((l) => !currentNames.has(l.log_name));
     if (isBasicPlan) {
       available = available.filter((l) => BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name));
+    } else if (isHACCPPlan) {
+      available = available.filter((l) => HACCP_ALLOWED_LOGS.has(l.log_name));
     }
     setLibraryLogs(available);
     setAddDialogOpen(true);
