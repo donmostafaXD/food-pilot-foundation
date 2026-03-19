@@ -24,6 +24,7 @@ import {
   AlertTriangle,
   Building2,
   ArrowUpRight,
+  Save,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan, PLAN_CONFIG, PLAN_DISPLAY_NAMES, type PlanTier } from "@/hooks/usePlan";
@@ -31,50 +32,201 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import { Link } from "react-router-dom";
+import HACCPTable from "@/components/haccp/HACCPTable";
+import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 // ── HACCP Plan Edit Section ──────────────────────────────────────────
 const HACCPPlanSection = () => {
-  const navigate = useNavigate();
-  const { plan } = usePlan();
+  const { profile } = useAuth();
+  const { plan, showRiskFields, canEditRiskFields } = usePlan();
   const isBasic = plan === "basic";
+
+  const [loading, setLoading] = useState(true);
+  const [planExists, setPlanExists] = useState(false);
+  const [planId, setPlanId] = useState<string | null>(null);
+  const [processSteps, setProcessSteps] = useState<ProcessStep[]>([]);
+  const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
+  const [isFoodService, setIsFoodService] = useState(false);
+  const [activityName, setActivityName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!profile?.branch_id || !profile?.organization_id) return;
+    const load = async () => {
+      const { data: plans } = await supabase
+        .from("haccp_plans")
+        .select("*")
+        .eq("branch_id", profile.branch_id!)
+        .eq("organization_id", profile.organization_id!)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (!plans || plans.length === 0) {
+        setPlanExists(false);
+        setLoading(false);
+        return;
+      }
+
+      const p = plans[0];
+      setPlanExists(true);
+      setPlanId(p.id);
+      setActivityName(p.activity_name);
+      setIsFoodService(p.business_type === "Food Service");
+
+      const { data: steps } = await supabase
+        .from("haccp_plan_steps")
+        .select("*")
+        .eq("haccp_plan_id", p.id)
+        .order("step_order");
+
+      const stepsData = steps || [];
+      const pSteps: ProcessStep[] = stepsData.map((s) => ({
+        process_name: s.process_name,
+        process_order: s.step_order,
+        process_step_id: s.process_step_id,
+      }));
+      setProcessSteps(pSteps);
+
+      const stepIds = stepsData.map((s) => s.id);
+      let allHazards: any[] = [];
+      if (stepIds.length > 0) {
+        const { data: hazards } = await supabase
+          .from("haccp_plan_hazards")
+          .select("*")
+          .in("haccp_plan_step_id", stepIds);
+        allHazards = hazards || [];
+      }
+
+      const built: PlanStep[] = stepsData.map((s) => ({
+        process_name: s.process_name,
+        step_order: s.step_order,
+        process_step_id: s.process_step_id,
+        hazards: allHazards
+          .filter((h) => h.haccp_plan_step_id === s.id)
+          .map((h) => ({
+            id: h.id,
+            hazard_name: h.hazard_name,
+            hazard_type: h.hazard_type,
+            severity: h.severity,
+            likelihood: h.likelihood,
+            risk_score: h.risk_score,
+            control_type: h.control_type,
+            critical_limit: h.critical_limit,
+            monitoring: h.monitoring,
+            corrective_action: h.corrective_action,
+          })),
+      }));
+
+      setPlanSteps(built);
+      setLoading(false);
+    };
+    void load();
+  }, [profile]);
+
+  const handleSave = async () => {
+    if (!planId) return;
+    setSaving(true);
+    try {
+      const { data: existingSteps } = await supabase
+        .from("haccp_plan_steps")
+        .select("id")
+        .eq("haccp_plan_id", planId);
+      const existingStepIds = (existingSteps || []).map(s => s.id);
+      if (existingStepIds.length > 0) {
+        await supabase.from("haccp_plan_hazards").delete().in("haccp_plan_step_id", existingStepIds);
+      }
+      await supabase.from("haccp_plan_steps").delete().eq("haccp_plan_id", planId);
+
+      for (const step of planSteps) {
+        const { data: insertedStep } = await supabase
+          .from("haccp_plan_steps")
+          .insert({
+            haccp_plan_id: planId,
+            process_name: step.process_name,
+            step_order: step.step_order,
+            process_step_id: step.process_step_id,
+          })
+          .select("id")
+          .single();
+
+        if (insertedStep && step.hazards.length > 0) {
+          await supabase.from("haccp_plan_hazards").insert(
+            step.hazards.map(h => ({
+              haccp_plan_step_id: insertedStep.id,
+              hazard_name: h.hazard_name,
+              hazard_type: h.hazard_type,
+              severity: h.severity,
+              likelihood: h.likelihood,
+              risk_score: h.risk_score,
+              control_type: h.control_type,
+              critical_limit: h.critical_limit,
+              monitoring: h.monitoring,
+              corrective_action: h.corrective_action,
+            }))
+          );
+        }
+      }
+
+      await supabase.from("haccp_plans").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", planId);
+      sonnerToast.success("HACCP Plan saved successfully");
+    } catch (err: any) {
+      sonnerToast.error("Failed to save", { description: err.message });
+    }
+    setSaving(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!planExists) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">HACCP Plan</h2>
+          <p className="text-sm text-muted-foreground mt-1">No HACCP plan found. Use "Change Activity" to create one.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">HACCP Plan</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          View and edit your current HACCP plan directly.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">HACCP Plan</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Edit your current HACCP plan. Click "Save Changes" when done.
+          </p>
+        </div>
+        <Button size="sm" onClick={handleSave} disabled={saving}>
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+          Save Changes
+        </Button>
       </div>
 
-      <Card className="shadow-industrial-sm">
-        <CardContent className="pt-6 pb-5 space-y-4">
-          <div className="flex flex-col items-center text-center gap-3">
-            <div className="p-3 rounded-full bg-primary/10">
-              <FileEdit className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Open HACCP Plan Editor</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                View your full HACCP plan and make edits. Changes save immediately.
-              </p>
-            </div>
-            <Button onClick={() => navigate("/haccp")} className="mt-2">
-              <FileEdit className="w-4 h-4 mr-2" />
-              Open HACCP Plan
-            </Button>
-          </div>
+      {isBasic && (
+        <div className="p-3 rounded-lg bg-muted/50 border border-border">
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <ArrowUpRight className="w-3 h-3 shrink-0" />
+            Upgrade to unlock detailed risk analysis (Severity, Likelihood, Risk Score)
+          </p>
+        </div>
+      )}
 
-          {isBasic && (
-            <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
-              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
-                <ArrowUpRight className="w-3 h-3 shrink-0" />
-                Upgrade to unlock detailed risk analysis (Severity, Likelihood, Risk Score)
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <HACCPTable
+        processSteps={processSteps}
+        isFoodService={isFoodService}
+        activityName={activityName}
+        planSteps={planSteps}
+        setPlanSteps={setPlanSteps}
+        showRiskFields={showRiskFields}
+        canEditRiskFields={canEditRiskFields}
+      />
     </div>
   );
 };
