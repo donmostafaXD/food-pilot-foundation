@@ -323,11 +323,10 @@ const Documents = () => {
       d.description?.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || d.category === categoryFilter;
 
-    // HACCP plan: exclude entire General FSMS category + specific compliance-only docs
+    // HACCP plan: whitelist only certification-essential documents
     if (plan === "professional") {
-      if (d.category === "general") return false;
       const lower = d.document_name.toLowerCase();
-      if (HACCP_EXCLUDED_DOCS.has(lower)) return false;
+      if (!HACCP_ALLOWED_DOC_KEYWORDS.some((kw) => lower.includes(kw))) return false;
     }
 
     return matchesSearch && matchesCategory;

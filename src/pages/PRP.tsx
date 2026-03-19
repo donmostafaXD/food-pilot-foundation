@@ -206,7 +206,7 @@ const PRP = () => {
         p.activity.toLowerCase() === "all" ||
         p.activity.toLowerCase() === "general";
     });
-  }, [programs, showAllLibrary, activityName, plan, HACCP_ALLOWED_PRP]);
+  }, [programs, showAllLibrary, activityName, plan, HACCP_ALLOWED_PRP_KEYWORDS]);
 
   const programNames = useMemo(
     () => [...new Set(programs.map((p) => p.program_name))].sort(),
