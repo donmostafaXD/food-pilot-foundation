@@ -177,12 +177,12 @@ const PRP = () => {
   }, [planJustUpdated]);
 
   // PRP programs allowed for HACCP (professional) plan
-  const HACCP_ALLOWED_PRP = useMemo(() => new Set([
+  const HACCP_ALLOWED_PRP_KEYWORDS = useMemo(() => [
     "cleaning and sanitation",
     "pest control",
     "personal hygiene",
     "supplier control",
-  ]), []);
+  ], []);
 
   // Filtered programs by activity and plan
   const filteredPrograms = useMemo(() => {
