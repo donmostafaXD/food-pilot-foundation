@@ -405,9 +405,13 @@ const Logs = () => {
     setCustomLogName("");
     setCustomLogFields("");
     setCustomLogProcess("");
-    // Load all library logs not already shown
+    // Load all library logs not already shown — filtered by plan
     const currentNames = new Set(logNames);
-    setLibraryLogs(logStructures.filter((l) => !currentNames.has(l.log_name)));
+    let available = logStructures.filter((l) => !currentNames.has(l.log_name));
+    if (isBasicPlan) {
+      available = available.filter((l) => BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name));
+    }
+    setLibraryLogs(available);
     setAddDialogOpen(true);
   };
 
