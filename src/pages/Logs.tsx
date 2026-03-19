@@ -142,6 +142,8 @@ const BASIC_HIDDEN_LOGS = new Set([
 const Logs = () => {
   const navigate = useNavigate();
   const { profile, loading: authLoading } = useAuth();
+  const { overrideRole } = useAdminPlanOverride();
+  const isStaffPreview = overrideRole === "Staff";
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const { plan, loading: planLoading } = usePlan();
   const isBasicPlan = plan === "basic";
