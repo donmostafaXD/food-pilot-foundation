@@ -388,6 +388,39 @@ export type Database = {
         }
         Relationships: []
       }
+      food_safety_setup: {
+        Row: {
+          activity: string | null
+          category: string
+          created_at: string
+          id: string
+          item_name: string
+          item_value: string | null
+          organization_id: string
+          updated_at: string
+        }
+        Insert: {
+          activity?: string | null
+          category: string
+          created_at?: string
+          id?: string
+          item_name: string
+          item_value?: string | null
+          organization_id: string
+          updated_at?: string
+        }
+        Update: {
+          activity?: string | null
+          category?: string
+          created_at?: string
+          id?: string
+          item_name?: string
+          item_value?: string | null
+          organization_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fsms_documents: {
         Row: {
           description: string | null
