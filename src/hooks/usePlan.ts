@@ -68,8 +68,8 @@ export const PLAN_CONFIG: Record<PlanTier, {
       "Editable severity & likelihood",
       "Complete hazard library",
       "SOP & log management",
-      "1 branch",
-      "Priority support",
+      "Up to 3 branches",
+      "Multiple activities",
     ],
   },
   premium: {
