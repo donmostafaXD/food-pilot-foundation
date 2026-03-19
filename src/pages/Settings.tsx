@@ -945,7 +945,7 @@ const SettingsPage = () => {
   const tabs = [
     { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: true },
     { value: "food-safety", label: "Food Safety Setup", shortLabel: "Safety", icon: ShieldCheck, visible: true },
-    { value: "manage-activities", label: "Manage Activities", shortLabel: "Activities", icon: Wand2, visible: true },
+    { value: "manage-activities", label: "Manage Activities", shortLabel: "Activities", icon: Wand2, visible: canChangeActivity },
     { value: "business", label: "Business", shortLabel: "Biz", icon: Building2, visible: true },
     { value: "subscription", label: "Subscription", shortLabel: "Plan", icon: CreditCard, visible: canManageSubscription },
     { value: "users", label: "Users", shortLabel: "Users", icon: Users, visible: canManageUsers },
