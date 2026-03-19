@@ -137,8 +137,11 @@ const PRP = () => {
     if (authLoading || activityLoading || !profile?.organization_id) return;
     const load = async () => {
       setLoading(true);
-      const [{ data: libraryData }, { data: customData }] = await Promise.all([
-        supabase.from("prp_programs").select("*").order("program_name"),
+
+      // Use new prp_master + prp_mapping tables for dynamic loading
+      const [{ data: masterData }, { data: mappingData }, { data: customData }] = await Promise.all([
+        supabase.from("prp_master" as any).select("*").order("program_name"),
+        supabase.from("prp_mapping" as any).select("*"),
         supabase
           .from("custom_prp_programs" as any)
           .select("*")
@@ -146,7 +149,31 @@ const PRP = () => {
           .eq("branch_id", profile.branch_id!),
       ]);
 
-      const items: PRPProgram[] = (libraryData || []).map((p: any) => ({ ...p }));
+      // Build activity-to-programs mapping
+      const activityMap = new Map<string, Set<string>>();
+      ((mappingData || []) as any[]).forEach((m: any) => {
+        if (!activityMap.has(m.activity)) activityMap.set(m.activity, new Set());
+        activityMap.get(m.activity)!.add(m.program_name);
+      });
+
+      // Map master programs with their activities from the mapping table
+      const items: PRPProgram[] = ((masterData || []) as any[]).map((p: any) => {
+        // Find which activities this program belongs to
+        const activities: string[] = [];
+        activityMap.forEach((programs, activity) => {
+          if (programs.has(p.program_name)) activities.push(activity);
+        });
+        return {
+          id: p.id,
+          program_name: p.program_name,
+          description: p.description,
+          frequency: p.frequency,
+          responsible: p.responsible,
+          activity: activities.length > 0 ? activities[0] : "All",
+          _activities: activities, // Store all activities for filtering
+          _category: p.category,
+        };
+      });
 
       if (customData) {
         (customData as any[]).forEach((cp: any) => {
