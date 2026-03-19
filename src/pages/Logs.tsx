@@ -1016,18 +1016,67 @@ const Logs = () => {
                     </CardContent>
                   </Card>
                 )}
-                <Card
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => setAddMode("custom")}
-                >
-                  <CardContent className="flex flex-col items-center gap-2 py-6">
-                    <PenLine className="w-6 h-6 text-primary" />
-                    <span className="text-sm font-medium">Create Custom</span>
-                    <span className="text-xs text-muted-foreground text-center">
-                      Build your own log
-                    </span>
-                  </CardContent>
-                </Card>
+                {!isBasicPlan && (
+                  <Card
+                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => setAddMode("custom")}
+                  >
+                    <CardContent className="flex flex-col items-center gap-2 py-6">
+                      <PenLine className="w-6 h-6 text-primary" />
+                      <span className="text-sm font-medium">Create Custom</span>
+                      <span className="text-xs text-muted-foreground text-center">
+                        Build your own log
+                      </span>
+                    </CardContent>
+                  </Card>
+                )}
+                {/* Basic Plan: Direct Excel upload options */}
+                {isBasicPlan && (
+                  <>
+                    <Card
+                      className="cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => {
+                        const csv = generateExcelTemplate();
+                        const blob = new Blob([csv], { type: "text/csv" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "log_template.csv";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast.success("Template downloaded — fill it and upload");
+                      }}
+                    >
+                      <CardContent className="flex items-center gap-3 py-4 px-4">
+                        <Download className="w-5 h-5 text-primary shrink-0" />
+                        <div>
+                          <span className="text-sm font-medium">Download Template</span>
+                          <p className="text-xs text-muted-foreground">
+                            CSV with: Date, Staff, Equipment, Value, Status, Notes
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                    <Card
+                      className="cursor-pointer hover:border-primary/50 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      <CardContent className="flex items-center gap-3 py-4 px-4">
+                        {uploadingExcel ? (
+                          <Loader2 className="w-5 h-5 text-primary shrink-0 animate-spin" />
+                        ) : (
+                          <Upload className="w-5 h-5 text-primary shrink-0" />
+                        )}
+                        <div>
+                          <span className="text-sm font-medium">Upload CSV File</span>
+                          <p className="text-xs text-muted-foreground">
+                            Upload filled template — log created instantly
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </>
+                )}
               </div>
             )}
 
@@ -1059,7 +1108,7 @@ const Logs = () => {
               </div>
             )}
 
-            {addMode === "custom" && (
+            {addMode === "custom" && !isBasicPlan && (
               <div className="space-y-4 py-2">
                 {/* Excel download/upload options */}
                 <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
