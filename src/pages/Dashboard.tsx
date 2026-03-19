@@ -18,11 +18,14 @@ import DashboardLayout from "@/components/DashboardLayout";
 
 const Dashboard = () => {
   const { profile, loading: authLoading, user, onboardingError, signOut } = useAuth();
+  const { canViewAllBranches } = useRoleAccess();
   const navigate = useNavigate();
   const [orgName, setOrgName] = useState<string>("");
   const [branchName, setBranchName] = useState<string>("");
   const [hasPlan, setHasPlan] = useState<boolean | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [logCount, setLogCount] = useState(0);
+  const [branchCount, setBranchCount] = useState(0);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -35,33 +38,38 @@ const Dashboard = () => {
     const load = async () => {
       setDataLoading(true);
 
-      const [orgRes, branchRes, planRes] = await Promise.all([
-        supabase
-          .from("organizations")
-          .select("name")
-          .eq("id", profile.organization_id!)
-          .maybeSingle(),
-        supabase
-          .from("branches")
-          .select("name")
-          .eq("id", profile.branch_id!)
-          .maybeSingle(),
-        supabase
-          .from("haccp_plans")
-          .select("id")
-          .eq("organization_id", profile.organization_id!)
-          .eq("branch_id", profile.branch_id!)
-          .limit(1),
+      const orgId = profile.organization_id!;
+      const branchId = profile.branch_id!;
+
+      // Owner sees all branches; Manager/Staff see only their assigned branch
+      const planQuery = canViewAllBranches
+        ? supabase.from("haccp_plans").select("id").eq("organization_id", orgId).limit(1)
+        : supabase.from("haccp_plans").select("id").eq("organization_id", orgId).eq("branch_id", branchId).limit(1);
+
+      const logQuery = canViewAllBranches
+        ? supabase.from("log_entries").select("id", { count: "exact", head: true }).eq("organization_id", orgId)
+        : supabase.from("log_entries").select("id", { count: "exact", head: true }).eq("organization_id", orgId).eq("branch_id", branchId);
+
+      const [orgRes, branchRes, planRes, logRes, branchCountRes] = await Promise.all([
+        supabase.from("organizations").select("name").eq("id", orgId).maybeSingle(),
+        supabase.from("branches").select("name").eq("id", branchId).maybeSingle(),
+        planQuery,
+        logQuery,
+        canViewAllBranches
+          ? supabase.from("branches").select("id", { count: "exact", head: true }).eq("organization_id", orgId)
+          : Promise.resolve({ count: 1 }),
       ]);
 
       setOrgName(orgRes.data?.name ?? "Unknown");
       setBranchName(branchRes.data?.name ?? "Unknown");
       setHasPlan((planRes.data?.length ?? 0) > 0);
+      setLogCount(logRes.count ?? 0);
+      setBranchCount((branchCountRes as any).count ?? 1);
       setDataLoading(false);
     };
 
     load();
-  }, [authLoading, user, profile]);
+  }, [authLoading, user, profile, canViewAllBranches]);
 
   if (authLoading) {
     return (
