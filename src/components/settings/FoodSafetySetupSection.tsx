@@ -33,7 +33,6 @@ interface CategoryConfig {
 
 const ALL_CATEGORIES: CategoryConfig[] = [
   { key: "cleaning_chemicals", label: "Cleaning Chemicals", placeholder: "e.g. Chlorine Solution" },
-  { key: "equipment", label: "Equipment List", placeholder: "e.g. Walk-in Freezer", valuePlaceholder: "Model / specs" },
   { key: "suppliers", label: "Supplier Names", placeholder: "e.g. Fresh Foods Co.", valuePlaceholder: "Contact / address" },
   { key: "storage_areas", label: "Storage Areas", placeholder: "e.g. Dry Storage Room A" },
   { key: "waste_disposal", label: "Waste Disposal Methods", placeholder: "e.g. Licensed waste contractor" },
