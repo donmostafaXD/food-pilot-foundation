@@ -58,17 +58,6 @@ const AuditReady = () => {
   const isBasicPlan = plan === "basic";
   const isOwner = effectiveRole === "Owner" || effectiveRole === "super_admin";
 
-  // Only Owner can access Audit Ready
-  if (!planLoading && !isOwner) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-full">
-          <p className="text-muted-foreground">Access restricted to Owner only.</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   const [modules, setModules] = useState<ModuleStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [missingItems, setMissingItems] = useState<string[]>([]);
@@ -78,6 +67,7 @@ const AuditReady = () => {
 
   useEffect(() => {
     if (planLoading || !profile?.organization_id || !profile?.branch_id) return;
+    if (!isOwner) return;
     fetchAuditData();
   }, [planLoading, profile?.organization_id, profile?.branch_id]);
 
