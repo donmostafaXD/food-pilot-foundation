@@ -192,7 +192,8 @@ const PRP = () => {
     if (plan === "professional") {
       base = base.filter((p) => {
         if (p.isCustom) return true;
-        return HACCP_ALLOWED_PRP.has(p.program_name.toLowerCase());
+        const lower = p.program_name.toLowerCase();
+        return HACCP_ALLOWED_PRP_KEYWORDS.some((kw) => lower.includes(kw));
       });
       // For HACCP plan, always show the 4 core PRP programs regardless of activity
       return base;
