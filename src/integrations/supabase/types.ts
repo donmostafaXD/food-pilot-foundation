@@ -313,6 +313,33 @@ export type Database = {
         }
         Relationships: []
       }
+      document_custom_content: {
+        Row: {
+          content: string | null
+          document_id: number
+          id: string
+          organization_id: string
+          section_key: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          document_id: number
+          id?: string
+          organization_id: string
+          section_key: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          document_id?: number
+          id?: string
+          organization_id?: string
+          section_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       document_library: {
         Row: {
           description: string | null
