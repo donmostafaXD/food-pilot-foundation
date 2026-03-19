@@ -62,12 +62,12 @@ const AppRoutes = () => {
       <Route path="/setup" element={<ProtectedRoute><SetupWizard /></ProtectedRoute>} />
       <Route path="/haccp" element={<ProtectedRoute><HACCPPlan /></ProtectedRoute>} />
       <Route path="/documents" element={<ProtectedRoute><PlanGate feature="canAccessDocuments"><Documents /></PlanGate></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <SettingsPage />}</ProtectedRoute>} />
       <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
-      <Route path="/prp" element={<ProtectedRoute><PlanGate feature="canAccessPRP"><PRP /></PlanGate></ProtectedRoute>} />
-      <Route path="/sop" element={<ProtectedRoute><PlanGate feature="canAccessSOP"><SOP /></PlanGate></ProtectedRoute>} />
-      <Route path="/equipment" element={<ProtectedRoute><PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate></ProtectedRoute>} />
-      <Route path="/audit" element={<ProtectedRoute><AuditReady /></ProtectedRoute>} />
+      <Route path="/prp" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessPRP"><PRP /></PlanGate>}</ProtectedRoute>} />
+      <Route path="/sop" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessSOP"><SOP /></PlanGate>}</ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate>}</ProtectedRoute>} />
+      <Route path="/audit" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <AuditReady />}</ProtectedRoute>} />
 
       {/* Redirects for removed routes */}
       <Route path="/app/pricing" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />
