@@ -139,6 +139,17 @@ const BASIC_HIDDEN_LOGS = new Set([
   "CCP Monitoring Log",
 ]);
 
+/** Logs allowed on HACCP (professional) plan */
+const HACCP_ALLOWED_LOGS = new Set([
+  "Cooking Temperature Log",
+  "Cold Storage Log",
+  "Hot Holding Log",
+  "Receiving Log",
+  "CCP Monitoring Log",
+  "Cleaning Log",
+  "Corrective Action Log",
+]);
+
 const Logs = () => {
   const navigate = useNavigate();
   const { profile, loading: authLoading } = useAuth();
