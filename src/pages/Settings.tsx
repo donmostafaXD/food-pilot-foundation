@@ -79,50 +79,67 @@ const HACCPPlanSection = () => {
   );
 };
 
-// ── HACCP Setup Section ──────────────────────────────────────────────
-const HACCPSetupSection = () => {
+// ── Change Activity Section ──────────────────────────────────────────
+const ChangeActivitySection = () => {
   const navigate = useNavigate();
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleStart = () => {
+    if (showConfirm) {
+      navigate("/setup");
+    } else {
+      setShowConfirm(true);
+    }
+  };
 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">HACCP Setup</h2>
+        <h2 className="text-lg font-semibold text-foreground">Change Activity</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Change your business activity, setup questions, and reconfigure your HACCP plan.
+          Start fresh — select a new activity type, answer setup questions, and generate a new HACCP plan.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Card className="shadow-industrial-sm hover:shadow-industrial-md transition-shadow cursor-pointer"
-          onClick={() => navigate("/setup")}>
-          <CardContent className="pt-6 pb-5 flex flex-col items-center text-center gap-3">
-            <div className="p-3 rounded-full bg-primary/10">
-              <Wand2 className="w-6 h-6 text-primary" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-foreground">Edit Activity & Questions</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Change activity selection and modify setup questions
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-industrial-sm hover:shadow-industrial-md transition-shadow cursor-pointer"
-          onClick={() => navigate("/setup")}>
-          <CardContent className="pt-6 pb-5 flex flex-col items-center text-center gap-3">
+      <Card className="shadow-industrial-sm">
+        <CardContent className="pt-6 pb-5 space-y-4">
+          <div className="flex flex-col items-center text-center gap-3">
             <div className="p-3 rounded-full bg-destructive/10">
               <AlertTriangle className="w-6 h-6 text-destructive" />
             </div>
             <div>
-              <p className="text-sm font-semibold text-foreground">Regenerate HACCP Plan</p>
-              <p className="text-xs text-destructive/80 mt-1 font-medium">
-                ⚠ Regenerating will overwrite your current HACCP plan
+              <p className="text-sm font-semibold text-foreground">Start New HACCP Setup</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                This will run the full setup wizard from the beginning and generate a new HACCP plan.
               </p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+
+            {showConfirm && (
+              <div className="w-full p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <p className="text-sm text-destructive font-medium flex items-center justify-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  This will overwrite your current HACCP plan
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  All existing plan data, hazards, and edits will be replaced.
+                </p>
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-2">
+              <Button variant="destructive" onClick={handleStart}>
+                <Wand2 className="w-4 h-4 mr-2" />
+                {showConfirm ? "Confirm & Start Setup" : "Change Activity"}
+              </Button>
+              {showConfirm && (
+                <Button variant="outline" onClick={() => setShowConfirm(false)}>
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -606,10 +623,10 @@ const SettingsPage = () => {
               <span className="hidden sm:inline">HACCP Plan</span>
               <span className="sm:hidden">Plan</span>
             </TabsTrigger>
-            <TabsTrigger value="haccp-setup" className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger value="change-activity" className="gap-1.5 text-xs sm:text-sm">
               <Wand2 className="w-4 h-4" />
-              <span className="hidden sm:inline">HACCP Setup</span>
-              <span className="sm:hidden">Setup</span>
+              <span className="hidden sm:inline">Change Activity</span>
+              <span className="sm:hidden">Activity</span>
             </TabsTrigger>
             <TabsTrigger value="business" className="gap-1.5 text-xs sm:text-sm">
               <Building2 className="w-4 h-4" />
@@ -632,8 +649,8 @@ const SettingsPage = () => {
             <HACCPPlanSection />
           </TabsContent>
 
-          <TabsContent value="haccp-setup">
-            <HACCPSetupSection />
+          <TabsContent value="change-activity">
+            <ChangeActivitySection />
           </TabsContent>
 
           <TabsContent value="business">
