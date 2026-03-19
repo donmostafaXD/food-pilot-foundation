@@ -20,12 +20,10 @@ import Register from "./pages/Register";
 
 // App pages
 import Dashboard from "./pages/Dashboard";
-import UserManagement from "./pages/UserManagement";
 import SetupWizard from "./pages/SetupWizard";
 import HACCPPlan from "./pages/HACCPPlan";
 import Documents from "./pages/Documents";
 import SettingsPage from "./pages/Settings";
-import Pricing from "./pages/Pricing";
 import Logs from "./pages/Logs";
 import PRP from "./pages/PRP";
 import SOP from "./pages/SOP";
@@ -67,9 +65,11 @@ const AppRoutes = () => {
       <Route path="/prp" element={<ProtectedRoute><PlanGate feature="canAccessPRP"><PRP /></PlanGate></ProtectedRoute>} />
       <Route path="/sop" element={<ProtectedRoute><PlanGate feature="canAccessSOP"><SOP /></PlanGate></ProtectedRoute>} />
       <Route path="/equipment" element={<ProtectedRoute><PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate></ProtectedRoute>} />
-      <Route path="/app/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
       <Route path="/audit" element={<ProtectedRoute><AuditReady /></ProtectedRoute>} />
-      <Route path="/users" element={<ProtectedRoute requiredRoles={["Owner", "Manager"]}><UserManagement /></ProtectedRoute>} />
+
+      {/* Redirects for removed routes */}
+      <Route path="/app/pricing" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />
+      <Route path="/users" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />
 
       {/* Fallback */}
       <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />

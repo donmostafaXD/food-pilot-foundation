@@ -1,21 +1,487 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Card, CardContent } from "@/components/ui/card";
-import { Settings as SettingsIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Wand2,
+  CreditCard,
+  Users,
+  UserPlus,
+  Check,
+  ArrowUpRight,
+  Crown,
+  Phone,
+  Loader2,
+  Settings as SettingsIcon,
+} from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { usePlan, PLAN_CONFIG, PLAN_DISPLAY_NAMES, type PlanTier } from "@/hooks/usePlan";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { toast as sonnerToast } from "sonner";
+import { Link } from "react-router-dom";
 
-const SettingsPage = () => (
-  <DashboardLayout>
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-      <h1 className="text-2xl font-bold text-foreground tracking-tight mb-6">Settings</h1>
-      <Card className="shadow-industrial-sm">
-        <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
-          <div className="p-4 rounded-full bg-muted">
-            <SettingsIcon className="w-8 h-8 text-muted-foreground" />
+// ── HACCP Setup Section ──────────────────────────────────────────────
+const HACCPSetupSection = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">HACCP Setup</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Manage your HACCP plan configuration, activity selection, and setup questions.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="shadow-industrial-sm hover:shadow-industrial-md transition-shadow cursor-pointer"
+          onClick={() => navigate("/setup")}>
+          <CardContent className="pt-6 pb-5 flex flex-col items-center text-center gap-3">
+            <div className="p-3 rounded-full bg-primary/10">
+              <Wand2 className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Edit Activity & Questions</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Change activity selection and modify setup questions
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-industrial-sm hover:shadow-industrial-md transition-shadow cursor-pointer"
+          onClick={() => navigate("/setup")}>
+          <CardContent className="pt-6 pb-5 flex flex-col items-center text-center gap-3">
+            <div className="p-3 rounded-full bg-primary/10">
+              <Wand2 className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Regenerate HACCP Plan</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Restart the setup wizard and create a new plan
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+// ── Subscription Section ─────────────────────────────────────────────
+const planTiers: { tier: PlanTier; features: string[] }[] = [
+  {
+    tier: "basic",
+    features: [
+      "Food Service activities",
+      "Simplified HACCP view",
+      "CCP / OPRP / PRP labels",
+      "Critical limits & monitoring",
+      "Basic logs (7 essential)",
+      "1 branch, 1 activity",
+    ],
+  },
+  {
+    tier: "professional",
+    features: [
+      "Food Service + Manufacturing",
+      "Full risk analysis (S × L)",
+      "Dynamic CCP / OPRP logic",
+      "Complete hazard library",
+      "SOP & log management",
+      "Up to 3 branches",
+    ],
+  },
+  {
+    tier: "premium",
+    features: [
+      "Everything in HACCP",
+      "Internal audit tools",
+      "Compliance tracking",
+      "Full FSMS documentation",
+      "PRP & SOP management",
+      "Unlimited branches",
+    ],
+  },
+];
+
+const SubscriptionSection = () => {
+  const { plan: currentPlan, loading, updatePlan } = usePlan();
+  const [updating, setUpdating] = useState<PlanTier | null>(null);
+  const navigate = useNavigate();
+
+  const handleSelect = async (tier: PlanTier) => {
+    if (tier === currentPlan) return;
+    setUpdating(tier);
+    const { error } = await updatePlan(tier);
+    setUpdating(null);
+    if (error) {
+      sonnerToast.error("Failed to update plan", { description: error.message });
+    } else {
+      sonnerToast.success(`Switched to ${PLAN_DISPLAY_NAMES[tier]} plan`);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Subscription</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Your current plan and available upgrades.
+        </p>
+      </div>
+
+      {/* Current plan highlight */}
+      <Card className="shadow-industrial-sm border-primary/30 bg-primary/5">
+        <CardContent className="flex items-center gap-3 pt-5 pb-4">
+          <div className="p-2 rounded-lg bg-primary/10">
+            <Crown className="w-5 h-5 text-primary" />
           </div>
-          <p className="text-sm text-muted-foreground">Settings and configuration coming soon.</p>
+          <div>
+            <p className="text-xs text-muted-foreground">Current Plan</p>
+            {loading ? (
+              <Loader2 className="w-4 h-4 animate-spin text-primary mt-1" />
+            ) : (
+              <p className="text-sm font-semibold text-foreground">
+                {PLAN_DISPLAY_NAMES[currentPlan]}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Plan cards */}
+      {!loading && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {planTiers.map((p) => {
+            const isCurrent = p.tier === currentPlan;
+            return (
+              <Card key={p.tier} className={`flex flex-col shadow-industrial-sm ${isCurrent ? "ring-2 ring-primary/20 bg-primary/5" : ""}`}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base">{PLAN_DISPLAY_NAMES[p.tier]}</CardTitle>
+                  <p className="text-xs text-muted-foreground">{PLAN_CONFIG[p.tier].description}</p>
+                </CardHeader>
+                <CardContent className="flex-1 flex flex-col gap-4">
+                  <ul className="space-y-1.5 flex-1">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2 text-xs text-foreground">
+                        <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                        <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="space-y-2 mt-auto">
+                    <Button
+                      className="w-full"
+                      size="sm"
+                      variant={isCurrent ? "outline" : "default"}
+                      disabled={isCurrent || updating !== null}
+                      onClick={() => handleSelect(p.tier)}
+                    >
+                      {updating === p.tier && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                      {isCurrent ? "Current Plan" : `Select ${PLAN_DISPLAY_NAMES[p.tier]}`}
+                    </Button>
+                    {!isCurrent && (
+                      <Button className="w-full" variant="ghost" size="sm" asChild>
+                        <Link to="/contact">
+                          <Phone className="w-3 h-3 mr-1" /> Contact Us
+                        </Link>
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Users Section ────────────────────────────────────────────────────
+type AppRole = "Owner" | "Manager" | "QA" | "Staff" | "Auditor";
+
+interface OrgUser {
+  user_id: string;
+  email: string | null;
+  full_name: string | null;
+  branch_id: string | null;
+  roles: AppRole[];
+}
+
+interface Branch {
+  id: string;
+  name: string;
+}
+
+const UsersSection = () => {
+  const { profile, hasRole } = useAuth();
+  const { plan } = usePlan();
+  const { toast } = useToast();
+
+  const [users, setUsers] = useState<OrgUser[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteFullName, setInviteFullName] = useState("");
+  const [inviteRole, setInviteRole] = useState<AppRole>("Staff");
+  const [inviteBranch, setInviteBranch] = useState<string>("");
+  const [inviting, setInviting] = useState(false);
+
+  const canManage = hasRole("Owner") || hasRole("Manager");
+  const isBasicPlan = plan === "basic";
+
+  // Basic plan: Owner = Manager, simplified role options
+  const roleOptions: AppRole[] = isBasicPlan
+    ? ["Staff"]
+    : ["Owner", "Manager", "QA", "Staff", "Auditor"];
+
+  const loadData = async () => {
+    if (!profile?.organization_id) return;
+
+    const { data: branchData } = await supabase
+      .from("branches")
+      .select("id, name")
+      .eq("organization_id", profile.organization_id);
+    setBranches(branchData || []);
+    if (branchData?.length && !inviteBranch) {
+      setInviteBranch(branchData[0].id);
+    }
+
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("user_id, email, full_name, branch_id")
+      .eq("organization_id", profile.organization_id);
+
+    const userIds = (profileData || []).map((p) => p.user_id);
+    const { data: rolesData } = await supabase
+      .from("user_roles")
+      .select("user_id, role")
+      .in("user_id", userIds);
+
+    const roleMap = new Map<string, AppRole[]>();
+    (rolesData || []).forEach((r) => {
+      const existing = roleMap.get(r.user_id) || [];
+      existing.push(r.role as AppRole);
+      roleMap.set(r.user_id, existing);
+    });
+
+    setUsers(
+      (profileData || []).map((p) => ({
+        ...p,
+        roles: roleMap.get(p.user_id) || [],
+      }))
+    );
+    setLoadingUsers(false);
+  };
+
+  // Load once when tab becomes active
+  if (!loaded) {
+    setLoaded(true);
+    loadData();
+  }
+
+  const handleInvite = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canManage) return;
+    setInviting(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "invite",
+          email: inviteEmail,
+          full_name: inviteFullName,
+          role: isBasicPlan ? "Staff" : inviteRole,
+          branch_id: inviteBranch,
+          organization_id: profile!.organization_id,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "User invited", description: `${inviteEmail} has been added.` });
+      setInviteEmail("");
+      setInviteFullName("");
+      setInviteRole("Staff");
+      await loadData();
+    } catch (err: any) {
+      toast({ title: "Failed to invite user", description: err.message, variant: "destructive" });
+    }
+    setInviting(false);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Users</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Add staff members and manage access to your organization.
+        </p>
+        {isBasicPlan && (
+          <p className="text-xs text-muted-foreground mt-1 italic">
+            On Basic plan, all staff are added with the Staff role. Owner has full management permissions.
+          </p>
+        )}
+      </div>
+
+      {/* Add User Form */}
+      {canManage && (
+        <Card className="shadow-industrial-sm">
+          <CardContent className="pt-5 pb-4 space-y-4">
+            <div className="flex items-center gap-2 text-primary">
+              <UserPlus className="w-4 h-4" />
+              <span className="text-sm font-semibold">Add Staff User</span>
+            </div>
+            <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Email</Label>
+                <Input type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required placeholder="user@company.com" />
+              </div>
+              <div className="space-y-2">
+                <Label>Full Name</Label>
+                <Input value={inviteFullName} onChange={(e) => setInviteFullName(e.target.value)} required placeholder="Jane Doe" />
+              </div>
+              {!isBasicPlan && (
+                <div className="space-y-2">
+                  <Label>Role</Label>
+                  <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {roleOptions.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              <div className="space-y-2">
+                <Label>Branch</Label>
+                <Select value={inviteBranch} onValueChange={setInviteBranch}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {branches.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="sm:col-span-2">
+                <Button type="submit" disabled={inviting} size="sm">
+                  <UserPlus className="w-4 h-4 mr-1" />
+                  {inviting ? "Adding…" : "Add User"}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* User list */}
+      <Card className="shadow-industrial-sm">
+        <CardContent className="pt-5 pb-4 space-y-4">
+          <div className="flex items-center gap-2 text-primary">
+            <Users className="w-4 h-4" />
+            <span className="text-sm font-semibold">Team Members</span>
+          </div>
+          {loadingUsers ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+            </div>
+          ) : users.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No team members yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left">
+                    <th className="py-2 pr-4 text-xs font-medium text-muted-foreground uppercase">Name</th>
+                    <th className="py-2 pr-4 text-xs font-medium text-muted-foreground uppercase">Email</th>
+                    <th className="py-2 pr-4 text-xs font-medium text-muted-foreground uppercase">Roles</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((u) => (
+                    <tr key={u.user_id} className="border-b border-border last:border-0">
+                      <td className="py-3 pr-4 text-foreground">{u.full_name || "—"}</td>
+                      <td className="py-3 pr-4 text-muted-foreground">{u.email}</td>
+                      <td className="py-3 pr-4">
+                        <div className="flex gap-1 flex-wrap">
+                          {u.roles.map((r) => (
+                            <span key={r} className="text-xs px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
+                              {r}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
-  </DashboardLayout>
-);
+  );
+};
+
+// ── Main Settings Page ───────────────────────────────────────────────
+const SettingsPage = () => {
+  return (
+    <DashboardLayout>
+      <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+        <div className="flex items-center gap-2 mb-6">
+          <SettingsIcon className="w-5 h-5 text-muted-foreground" />
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
+        </div>
+
+        <Tabs defaultValue="haccp" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="haccp" className="gap-1.5">
+              <Wand2 className="w-4 h-4" />
+              <span className="hidden sm:inline">HACCP Setup</span>
+              <span className="sm:hidden">HACCP</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscription" className="gap-1.5">
+              <CreditCard className="w-4 h-4" />
+              <span className="hidden sm:inline">Subscription</span>
+              <span className="sm:hidden">Plan</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="gap-1.5">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">Users</span>
+              <span className="sm:hidden">Users</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="haccp">
+            <HACCPSetupSection />
+          </TabsContent>
+
+          <TabsContent value="subscription">
+            <SubscriptionSection />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <UsersSection />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </DashboardLayout>
+  );
+};
 
 export default SettingsPage;
