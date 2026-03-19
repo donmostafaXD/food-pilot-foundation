@@ -237,20 +237,30 @@ const Logs = () => {
 
   // Filter logs by activity — use planProcessNames for precise process-level matching
   const filteredLogStructures = useMemo(() => {
+    let base = logStructures;
+
+    // Plan-based restriction: Basic plan only sees allowed Food Service logs
+    if (isBasicPlan) {
+      base = base.filter((log) => {
+        if (log.isCustom) return true; // custom logs always visible
+        return BASIC_ALLOWED_LOGS.has(log.log_name) && !BASIC_HIDDEN_LOGS.has(log.log_name);
+      });
+    }
+
     if (showAllLibrary || !activityName) {
-      return logStructures;
+      return base;
     }
     const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
-    if (processNames.length === 0) return logStructures;
+    if (processNames.length === 0) return base;
 
-    return logStructures.filter((log) => {
+    return base.filter((log) => {
       if (log.isCustom) return true; // always show custom
       if (!log.related_process_step) return true; // generic logs
       return processNames.some((p) =>
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames]);
+  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan]);
 
   // Available log names
   const logNames = useMemo(() => {
