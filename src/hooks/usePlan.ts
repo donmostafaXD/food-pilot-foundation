@@ -139,13 +139,17 @@ export function usePlan(): PlanFeatures {
   const effectiveAdmin = overridePlan ? false : isSuperAdmin;
   const isProPlus = effectiveAdmin || plan === "professional" || plan === "premium";
 
+  // Branch & activity limits per plan
+  const maxBranches = effectiveAdmin ? Infinity : plan === "premium" ? Infinity : plan === "professional" ? 3 : 1;
+  const maxActivities = effectiveAdmin ? Infinity : plan === "basic" ? 1 : Infinity;
+
   return {
     plan,
     planDisplayName: PLAN_DISPLAY_NAMES[plan],
     loading,
     // Feature gates
     canAccessManufacturing: isProPlus,
-    canAccessMultiBranch: effectiveAdmin || plan === "premium",
+    canAccessMultiBranch: effectiveAdmin || plan === "professional" || plan === "premium",
     canAccessAdvancedAnalytics: effectiveAdmin || plan === "premium",
     canAccessFullHazardLibrary: isProPlus,
     // UI visibility
@@ -160,6 +164,9 @@ export function usePlan(): PlanFeatures {
     canEditRiskFields: isProPlus,
     // Export
     canExportFullHACCP: isProPlus,
+    // Branch & activity limits
+    maxBranches,
+    maxActivities,
     updatePlan,
   };
 }
