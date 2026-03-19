@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -26,12 +27,16 @@ import {
   AlertTriangle,
   CheckCircle2,
   Loader2,
+  Edit2,
+  Save,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import { openPrintWindow, escapeHtml } from "@/lib/printUtils";
+import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────
 interface DocLibraryItem {
