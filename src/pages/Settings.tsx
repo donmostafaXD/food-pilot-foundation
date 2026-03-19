@@ -192,7 +192,7 @@ const HACCPPlanSection = () => {
       <div className="space-y-6">
         <div>
           <h2 className="text-lg font-semibold text-foreground">HACCP Plan</h2>
-          <p className="text-sm text-muted-foreground mt-1">No HACCP plan found. Use "Change Activity" to create one.</p>
+          <p className="text-sm text-muted-foreground mt-1">No HACCP plan found. Use "Manage Activities" to create one.</p>
         </div>
       </div>
     );
