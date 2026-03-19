@@ -1032,50 +1032,46 @@ const Logs = () => {
                 )}
                 {/* Basic Plan: Direct Excel upload options */}
                 {isBasicPlan && (
-                  <>
+                  <div className="col-span-full space-y-3">
                     <Card
-                      className="cursor-pointer hover:border-primary/50 transition-colors"
-                      onClick={() => {
-                        const csv = generateExcelTemplate();
-                        const blob = new Blob([csv], { type: "text/csv" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = "log_template.csv";
-                        a.click();
-                        URL.revokeObjectURL(url);
-                        toast.success("Template downloaded — fill it and upload");
-                      }}
-                    >
-                      <CardContent className="flex items-center gap-3 py-4 px-4">
-                        <Download className="w-5 h-5 text-primary shrink-0" />
-                        <div>
-                          <span className="text-sm font-medium">Download Template</span>
-                          <p className="text-xs text-muted-foreground">
-                            CSV with: Date, Staff, Equipment, Value, Status, Notes
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                    <Card
-                      className="cursor-pointer hover:border-primary/50 transition-colors"
+                      className="cursor-pointer hover:border-primary/50 transition-colors border-primary/30"
                       onClick={() => fileInputRef.current?.click()}
                     >
-                      <CardContent className="flex items-center gap-3 py-4 px-4">
+                      <CardContent className="flex items-center gap-3 py-5 px-4">
                         {uploadingExcel ? (
-                          <Loader2 className="w-5 h-5 text-primary shrink-0 animate-spin" />
+                          <Loader2 className="w-6 h-6 text-primary shrink-0 animate-spin" />
                         ) : (
-                          <Upload className="w-5 h-5 text-primary shrink-0" />
+                          <Upload className="w-6 h-6 text-primary shrink-0" />
                         )}
                         <div>
-                          <span className="text-sm font-medium">Upload CSV File</span>
+                          <span className="text-sm font-semibold">Upload Excel / CSV File</span>
                           <p className="text-xs text-muted-foreground">
-                            Upload filled template — log created instantly
+                            Upload your file — a new log will be created instantly
                           </p>
                         </div>
                       </CardContent>
                     </Card>
-                  </>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Use our template if your file format is not supported.{" "}
+                      <button
+                        type="button"
+                        className="text-primary underline underline-offset-2 hover:text-primary/80 font-medium"
+                        onClick={() => {
+                          const csv = generateExcelTemplate();
+                          const blob = new Blob([csv], { type: "text/csv" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "log_template.csv";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success("Template downloaded");
+                        }}
+                      >
+                        Download Template
+                      </button>
+                    </p>
+                  </div>
                 )}
               </div>
             )}
