@@ -20,16 +20,13 @@ const HACCPPlanPage = () => {
   const printHeader = usePrintHeader("HACCP Plan");
   const [loading, setLoading] = useState(true);
   const [planExists, setPlanExists] = useState(false);
+  const [planId, setPlanId] = useState<string | null>(null);
   const [processSteps, setProcessSteps] = useState<ProcessStep[]>([]);
   const [planSteps, setPlanSteps] = useState<PlanStep[]>([]);
   const [isFoodService, setIsFoodService] = useState(false);
   const [activityName, setActivityName] = useState("");
   const [printOpen, setPrintOpen] = useState(false);
-  const [planStatus, setPlanStatus] = useState<string>("draft");
-
-  const isBasic = plan === "basic";
-  // Basic plan: read-only after plan is saved (status = 'active')
-  const isReadOnly = isBasic && planStatus === "active";
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!profile?.branch_id || !profile?.organization_id) return;
