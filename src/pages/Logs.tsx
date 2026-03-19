@@ -317,6 +317,11 @@ const Logs = () => {
   );
 
   const openForm = (logName: string) => {
+    // Block opening restricted logs on Basic plan
+    if (isBasicPlan && !BASIC_ALLOWED_LOGS.has(logName) && !logStructures.find(l => l.log_name === logName && l.isCustom)) {
+      toast.error("This log is not available on your current plan");
+      return;
+    }
     setSelectedLog(logName);
     const today = new Date().toISOString().split("T")[0];
     const now = new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
