@@ -126,6 +126,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
   };
 
   const updateHazard = (stepIdx: number, hazIdx: number, field: keyof HazardRow, value: any) => {
+    if (isReadOnly) return;
     const newSteps = [...planSteps];
     const hazard = { ...newSteps[stepIdx].hazards[hazIdx] };
 
@@ -141,10 +142,11 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     }
 
     newSteps[stepIdx].hazards[hazIdx] = hazard;
-    setPlanSteps(newSteps);
+    setPlanSteps?.(newSteps);
   };
 
   const addHazard = (stepIdx: number) => {
+    if (isReadOnly) return;
     const newSteps = [...planSteps];
     const severity = 3;
     const likelihood = 3;
@@ -164,13 +166,14 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
       monitoring: null,
       corrective_action: null,
     });
-    setPlanSteps(newSteps);
+    setPlanSteps?.(newSteps);
   };
 
   const removeHazard = (stepIdx: number, hazIdx: number) => {
+    if (isReadOnly) return;
     const newSteps = [...planSteps];
     newSteps[stepIdx].hazards = newSteps[stepIdx].hazards.filter((_, i) => i !== hazIdx);
-    setPlanSteps(newSteps);
+    setPlanSteps?.(newSteps);
   };
 
   if (loading) {
