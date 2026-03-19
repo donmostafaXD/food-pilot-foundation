@@ -76,7 +76,7 @@ export function AppSidebar() {
     { title: "Logs", url: "/logs", icon: ClipboardList },
     { title: "PRP Programs", url: "/prp", icon: Shield, visible: !isStaffRestricted && !planLoading && canAccessPRP },
     { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: !isStaffRestricted && !planLoading && canAccessSOP },
-    { title: "Equipment", url: "/equipment", icon: Wrench, visible: !isStaffRestricted && !planLoading && canAccessEquipment },
+    { title: "Equipment", url: "/equipment", icon: Wrench, visible: showEquipment },
     { title: "Documents", url: "/documents", icon: FileText, visible: showDocuments },
     { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: effectiveRole === "Owner" || effectiveRole === "super_admin" },
     { title: "Settings", url: "/settings", icon: Settings, visible: canAccessSettings },

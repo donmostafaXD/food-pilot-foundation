@@ -984,11 +984,9 @@ const SettingsPage = () => {
             <FoodSafetySetupWrapper />
           </TabsContent>
 
-          {canChangeActivity && (
-            <TabsContent value="change-activity">
-              <ChangeActivitySection />
-            </TabsContent>
-          )}
+          <TabsContent value="manage-activities">
+            <ManageActivitiesSection />
+          </TabsContent>
 
           <TabsContent value="business">
             <BusinessProfileSection />
