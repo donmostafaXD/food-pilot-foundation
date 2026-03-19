@@ -54,8 +54,8 @@ export const PLAN_CONFIG: Record<PlanTier, {
       "Simplified HACCP view",
       "CCP / OPRP / PRP labels",
       "Critical limits & monitoring",
-      "Document generation",
-      "1 branch",
+      "1 branch only",
+      "1 activity only",
     ],
   },
   professional: {
