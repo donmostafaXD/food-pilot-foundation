@@ -15,20 +15,21 @@ import {
 
 const QuickActions = () => {
   const navigate = useNavigate();
-  const { effectiveRole } = useRoleAccess();
+  const { effectiveRole, canAccessSettings, canAccessAudit } = useRoleAccess();
   const { canAccessSOP, canAccessDocuments, showComplianceTools } = usePlan();
 
   const isStaff = effectiveRole === "Staff";
   const isOwnerLevel = effectiveRole === "Owner" || effectiveRole === "super_admin";
+  const isManagerLevel = isOwnerLevel || effectiveRole === "Manager";
 
   const actions: { label: string; icon: React.ElementType; onClick: () => void; visible: boolean }[] = [
     { label: "Fill Logs", icon: ClipboardList, onClick: () => navigate("/logs"), visible: true },
     { label: "View HACCP", icon: ShieldCheck, onClick: () => navigate("/haccp"), visible: !isStaff },
-    { label: "Add Corrective Action", icon: Plus, onClick: () => navigate("/logs"), visible: !isStaff },
-    { label: "SOP Procedures", icon: BookOpen, onClick: () => navigate("/sop"), visible: !isStaff && canAccessSOP },
-    { label: "Audit Ready", icon: ClipboardCheck, onClick: () => navigate("/audit"), visible: isOwnerLevel && showComplianceTools },
+    { label: "Add Corrective Action", icon: Plus, onClick: () => navigate("/logs"), visible: isManagerLevel },
+    { label: "SOP Procedures", icon: BookOpen, onClick: () => navigate("/sop"), visible: isManagerLevel && canAccessSOP },
+    { label: "Audit Ready", icon: ClipboardCheck, onClick: () => navigate("/audit"), visible: isOwnerLevel && showComplianceTools && canAccessAudit },
     { label: "Documents", icon: FileText, onClick: () => navigate("/documents"), visible: isOwnerLevel && canAccessDocuments },
-    { label: "Settings", icon: Settings, onClick: () => navigate("/settings"), visible: isOwnerLevel },
+    { label: "Settings", icon: Settings, onClick: () => navigate("/settings"), visible: canAccessSettings },
   ];
 
   const visibleActions = actions.filter((a) => a.visible);

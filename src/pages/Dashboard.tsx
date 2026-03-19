@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,11 +21,15 @@ interface Branch {
 
 const Dashboard = () => {
   const { profile, loading: authLoading, user, onboardingError, signOut } = useAuth();
-  const { canViewAllBranches } = useRoleAccess();
+  const { canViewAllBranches, effectiveRole } = useRoleAccess();
+  const { plan } = usePlan();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
+  const isStaff = effectiveRole === "Staff";
+
+  // Re-fetch branches when role changes (canViewAllBranches depends on role)
   useEffect(() => {
     if (authLoading || !user || !profile?.organization_id) return;
 
@@ -93,7 +98,10 @@ const Dashboard = () => {
         <KPICards branchId={selectedBranchId} />
         <AlertsSection branchId={selectedBranchId} />
         <QuickActions />
-        <ComplianceChart branchId={selectedBranchId} branches={branches} />
+        {/* Staff: no charts */}
+        {!isStaff && plan !== "basic" && (
+          <ComplianceChart branchId={selectedBranchId} branches={branches} />
+        )}
         <RecentActivity branchId={selectedBranchId} />
       </div>
     </DashboardLayout>

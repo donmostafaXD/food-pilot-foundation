@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,12 +21,17 @@ interface TrendPoint {
 const ComplianceChart = ({ branchId, branches }: Props) => {
   const { profile } = useAuth();
   const { plan } = usePlan();
+  const { effectiveRole } = useRoleAccess();
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [branchData, setBranchData] = useState<{ name: string; logs: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const isStaff = effectiveRole === "Staff";
+  const isOwnerLevel = effectiveRole === "Owner" || effectiveRole === "super_admin";
+
   useEffect(() => {
-    if (!profile?.organization_id || !branchId) {
+    // Staff should never see charts
+    if (isStaff || !profile?.organization_id || !branchId) {
       setLoading(false);
       return;
     }
@@ -34,7 +40,6 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
       setLoading(true);
       const orgId = profile.organization_id!;
 
-      // Generate last 7 days trend
       const days: TrendPoint[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
@@ -72,8 +77,8 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
       }
       setTrendData(days);
 
-      // Branch comparison for premium
-      if (plan === "premium" && branches.length > 1) {
+      // Branch comparison only for Owner-level on premium
+      if (plan === "premium" && isOwnerLevel && branches.length > 1) {
         const bData = await Promise.all(
           branches.map(async (b) => {
             const { count } = await supabase
@@ -85,15 +90,18 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
           })
         );
         setBranchData(bData);
+      } else {
+        setBranchData([]);
       }
 
       setLoading(false);
     };
 
     load();
-  }, [profile?.organization_id, branchId, plan, branches]);
+  }, [profile?.organization_id, branchId, plan, branches, isStaff, isOwnerLevel]);
 
-  if (plan === "basic") return null;
+  // Staff or basic plan: no charts
+  if (isStaff || plan === "basic") return null;
 
   if (loading) {
     return (
@@ -105,8 +113,7 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
   }
 
   return (
-    <div className={`grid gap-4 ${plan === "premium" && branchData.length > 0 ? "md:grid-cols-2" : "md:grid-cols-2"}`}>
-      {/* Compliance Trend */}
+    <div className="grid gap-4 md:grid-cols-2">
       <Card className="shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold">
@@ -133,7 +140,6 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
         </CardContent>
       </Card>
 
-      {/* Logs Completion / Branch Comparison */}
       <Card className="shadow-sm">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold">
