@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
+import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -100,6 +101,7 @@ const programLogMap: Record<string, string> = {
 
 const PRP = () => {
   const { profile, loading: authLoading } = useAuth();
+  const { plan } = usePlan();
   const { activityName, planProcessNames, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("PRP Programs");
@@ -174,16 +176,34 @@ const PRP = () => {
     }
   }, [planJustUpdated]);
 
-  // Filtered programs by activity
+  // PRP programs allowed for HACCP (professional) plan
+  const HACCP_ALLOWED_PRP = useMemo(() => new Set([
+    "cleaning and sanitation",
+    "pest control",
+    "personal hygiene",
+    "supplier control",
+  ]), []);
+
+  // Filtered programs by activity and plan
   const filteredPrograms = useMemo(() => {
-    if (showAllLibrary || !activityName) return programs;
-    return programs.filter((p) => {
+    let base = programs;
+
+    // HACCP plan: restrict to specific PRP programs
+    if (plan === "professional") {
+      base = base.filter((p) => {
+        if (p.isCustom) return true;
+        return HACCP_ALLOWED_PRP.has(p.program_name.toLowerCase());
+      });
+    }
+
+    if (showAllLibrary || !activityName) return base;
+    return base.filter((p) => {
       if (p.isCustom) return true;
       return p.activity.toLowerCase() === activityName.toLowerCase() ||
         p.activity.toLowerCase() === "all" ||
         p.activity.toLowerCase() === "general";
     });
-  }, [programs, showAllLibrary, activityName]);
+  }, [programs, showAllLibrary, activityName, plan, HACCP_ALLOWED_PRP]);
 
   const programNames = useMemo(
     () => [...new Set(programs.map((p) => p.program_name))].sort(),

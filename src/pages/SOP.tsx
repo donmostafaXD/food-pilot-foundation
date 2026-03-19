@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
+import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,7 @@ interface SOPItem {
 
 const SOPPage = () => {
   const { profile, roles } = useAuth();
+  const { plan } = usePlan();
   const isSuperAdmin = roles.includes("super_admin" as any);
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
@@ -151,20 +153,41 @@ const SOPPage = () => {
     setLoading(false);
   };
 
+  // SOP process steps allowed for HACCP (professional) plan
+  const HACCP_ALLOWED_SOP_STEPS = useMemo(() => new Set([
+    "receiving",
+    "storage",
+    "preparation",
+    "cooking",
+    "processing",
+    "cleaning",
+  ]), []);
+
   // Filter by activity — use planProcessNames for precise process-level matching
   const activityFiltered = useMemo(() => {
-    if (showAllLibrary || !activityName) return sops;
-    const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
-    if (processNames.length === 0) return sops;
+    let base = sops;
 
-    return sops.filter((s) => {
+    // HACCP plan: restrict to operational SOPs only
+    if (plan === "professional") {
+      base = base.filter((s) => {
+        if (s.isCustom) return true;
+        const lower = s.process_step.toLowerCase();
+        return HACCP_ALLOWED_SOP_STEPS.has(lower) ||
+          [...HACCP_ALLOWED_SOP_STEPS].some((step) => lower.includes(step));
+      });
+    }
+
+    if (showAllLibrary || !activityName) return base;
+    const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
+    if (processNames.length === 0) return base;
+
+    return base.filter((s) => {
       if (s.isCustom) return true;
-      // Match by process step name against plan processes
       return processNames.some((p) =>
         s.process_step.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames]);
+  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, HACCP_ALLOWED_SOP_STEPS]);
 
   const processSteps = [...new Set(activityFiltered.map((s) => s.process_step))].sort();
 

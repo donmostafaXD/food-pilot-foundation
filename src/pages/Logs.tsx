@@ -139,6 +139,17 @@ const BASIC_HIDDEN_LOGS = new Set([
   "CCP Monitoring Log",
 ]);
 
+/** Logs allowed on HACCP (professional) plan */
+const HACCP_ALLOWED_LOGS = new Set([
+  "Cooking Temperature Log",
+  "Cold Storage Log",
+  "Hot Holding Log",
+  "Receiving Log",
+  "CCP Monitoring Log",
+  "Cleaning Log",
+  "Corrective Action Log",
+]);
+
 const Logs = () => {
   const navigate = useNavigate();
   const { profile, loading: authLoading } = useAuth();
@@ -147,6 +158,7 @@ const Logs = () => {
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const { plan, loading: planLoading } = usePlan();
   const isBasicPlan = plan === "basic";
+  const isHACCPPlan = plan === "professional";
   const printHeader = usePrintHeader("Monitoring Logs");
   const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -266,7 +278,7 @@ const Logs = () => {
     }
   }, [planJustUpdated]);
 
-  // Filter logs by activity
+  // Filter logs by activity and plan
   const filteredLogStructures = useMemo(() => {
     let base = logStructures;
 
@@ -274,6 +286,11 @@ const Logs = () => {
       base = base.filter((log) => {
         if (log.isCustom) return true;
         return BASIC_ALLOWED_LOGS.has(log.log_name) && !BASIC_HIDDEN_LOGS.has(log.log_name);
+      });
+    } else if (isHACCPPlan) {
+      base = base.filter((log) => {
+        if (log.isCustom) return true;
+        return HACCP_ALLOWED_LOGS.has(log.log_name);
       });
     }
 
@@ -290,7 +307,7 @@ const Logs = () => {
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan]);
+  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan, isHACCPPlan]);
 
   const logNames = useMemo(() => {
     if (businessType === "Manufacturing") {
@@ -306,6 +323,8 @@ const Logs = () => {
     let base = logStructures;
     if (isBasicPlan) {
       base = base.filter((l) => l.isCustom || (BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name)));
+    } else if (isHACCPPlan) {
+      base = base.filter((l) => l.isCustom || HACCP_ALLOWED_LOGS.has(l.log_name));
     }
     return base.map((l) => l.log_name).sort();
   }, [businessType, logStructures, mfgLogs, isBasicPlan]);
@@ -431,6 +450,8 @@ const Logs = () => {
     let available = logStructures.filter((l) => !currentNames.has(l.log_name));
     if (isBasicPlan) {
       available = available.filter((l) => BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name));
+    } else if (isHACCPPlan) {
+      available = available.filter((l) => HACCP_ALLOWED_LOGS.has(l.log_name));
     }
     setLibraryLogs(available);
     setAddDialogOpen(true);

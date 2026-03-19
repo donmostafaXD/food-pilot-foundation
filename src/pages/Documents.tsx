@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { usePlan } from "@/hooks/usePlan";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -259,6 +260,7 @@ function HazardAnalysisData({ orgId }: { orgId: string }) {
 // ── Main component ──────────────────────────────────
 const Documents = () => {
   const { profile } = useAuth();
+  const { plan } = usePlan();
   const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<EnrichedDocument[]>([]);
   const [loading, setLoading] = useState(true);
@@ -288,12 +290,34 @@ const Documents = () => {
     })();
   }, []);
 
+  // Documents excluded from HACCP plan (compliance-only)
+  const HACCP_EXCLUDED_DOCS = useMemo(() => new Set([
+    "food safety policy",
+    "food safety objectives",
+    "haccp team",
+    "product description",
+    "intended use",
+    "internal audit",
+    "validation",
+    "recall procedure",
+    "traceability",
+  ]), []);
+
   const filtered = documents.filter((d) => {
     const matchesSearch =
       !search ||
       d.document_name.toLowerCase().includes(search.toLowerCase()) ||
       d.description?.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || d.category === categoryFilter;
+
+    // HACCP plan: exclude compliance-only documents
+    if (plan === "professional") {
+      const lower = d.document_name.toLowerCase();
+      if (HACCP_EXCLUDED_DOCS.has(lower) || (d.category === "general" && lower.includes("fsms"))) {
+        return false;
+      }
+    }
+
     return matchesSearch && matchesCategory;
   });
 

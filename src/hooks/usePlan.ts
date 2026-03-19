@@ -189,7 +189,7 @@ export function usePlan(): PlanFeatures {
     // Module access
     canAccessSOP: isProPlus,
     canAccessPRP: isProPlus,
-    canAccessDocuments: effectiveAdmin || resolvedPlan === "premium",
+    canAccessDocuments: effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium",
     canAccessEquipment: isProPlus,
     // Editing
     canEditRiskFields: isProPlus,
