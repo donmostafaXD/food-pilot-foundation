@@ -12,16 +12,11 @@ import {
   Activity,
   Building2,
   GitBranch,
-  FileText,
-  Wand2,
-  Pencil,
-  Table,
   Loader2,
-  ArrowUpRight,
-  Sparkles,
+  ClipboardList,
+  ClipboardCheck,
 } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { usePlan, PLAN_CONFIG } from "@/hooks/usePlan";
 
 interface PlanData {
   id: string;
@@ -38,7 +33,6 @@ interface PlanData {
 const Dashboard = () => {
   const { profile, loading: authLoading, user, onboardingError, signOut } = useAuth();
   const navigate = useNavigate();
-  const { plan: subscriptionPlan, loading: planLoading } = usePlan();
   const [plan, setPlan] = useState<PlanData | null>(null);
   const [orgName, setOrgName] = useState<string>("");
   const [branchName, setBranchName] = useState<string>("");
@@ -55,7 +49,6 @@ const Dashboard = () => {
     const load = async () => {
       setDataLoading(true);
 
-      // Fetch org + branch names in parallel
       const [orgRes, branchRes, planRes] = await Promise.all([
         supabase
           .from("organizations")
@@ -88,7 +81,6 @@ const Dashboard = () => {
 
       const p = plans[0];
 
-      // Get steps
       const { data: steps } = await supabase
         .from("haccp_plan_steps")
         .select("id")
@@ -132,7 +124,6 @@ const Dashboard = () => {
     load();
   }, [authLoading, user, profile]);
 
-  // Auth loading
   if (authLoading) {
     return (
       <DashboardLayout>
@@ -143,7 +134,6 @@ const Dashboard = () => {
     );
   }
 
-  // Onboarding error
   if (onboardingError) {
     return (
       <DashboardLayout>
@@ -203,33 +193,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Subscription Plan */}
-        <Card className="shadow-industrial-sm">
-          <CardContent className="flex items-center justify-between pt-5 pb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Sparkles className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Current Plan</p>
-                {planLoading ? (
-                  <Skeleton className="h-5 w-24 mt-0.5" />
-                ) : (
-                  <p className="text-sm font-semibold text-foreground">
-                    {PLAN_CONFIG[subscriptionPlan].name} — ${PLAN_CONFIG[subscriptionPlan].price}/mo
-                  </p>
-                )}
-              </div>
-            </div>
-            {subscriptionPlan !== "premium" && (
-              <Button size="sm" variant="outline" onClick={() => navigate("/pricing")}>
-                <ArrowUpRight className="w-4 h-4 mr-1" />
-                Upgrade Plan
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-
         {dataLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
@@ -237,7 +200,7 @@ const Dashboard = () => {
             ))}
           </div>
         ) : !plan ? (
-          /* Empty state */
+          /* Empty state — direct to Settings for setup */
           <Card className="shadow-industrial-md">
             <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
               <div className="p-4 rounded-full bg-muted">
@@ -246,18 +209,17 @@ const Dashboard = () => {
               <div className="text-center">
                 <h3 className="text-lg font-semibold text-foreground">No HACCP Plan Yet</h3>
                 <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                  Get started by running the Setup Wizard to create your first food safety plan.
+                  Go to Settings → HACCP Setup to create your first food safety plan.
                 </p>
               </div>
-              <Button onClick={() => navigate("/setup")} className="mt-2">
-                <Wand2 className="w-4 h-4 mr-2" />
-                Start Setup Wizard
+              <Button onClick={() => navigate("/settings")} className="mt-2">
+                Go to Settings
               </Button>
             </CardContent>
           </Card>
         ) : (
           <>
-            {/* Plan status card */}
+            {/* HACCP Plan overview (read-only summary) */}
             <Card className="shadow-industrial-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
@@ -330,23 +292,23 @@ const Dashboard = () => {
               </Card>
             </div>
 
-            {/* Quick Actions */}
+            {/* Quick Actions — focused on daily operations */}
             <Card className="shadow-industrial-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => navigate("/haccp")}>
-                  <Pencil className="w-4 h-4 mr-2" />
-                  Edit HACCP Plan
+                <Button variant="outline" onClick={() => navigate("/logs")}>
+                  <ClipboardList className="w-4 h-4 mr-2" />
+                  Go to Logs
                 </Button>
-                <Button variant="outline" onClick={() => navigate("/setup")}>
-                  <Wand2 className="w-4 h-4 mr-2" />
-                  Restart Setup
+                <Button variant="outline" onClick={() => navigate("/audit")}>
+                  <ClipboardCheck className="w-4 h-4 mr-2" />
+                  Audit Ready
                 </Button>
                 <Button variant="outline" onClick={() => navigate("/haccp")}>
-                  <Table className="w-4 h-4 mr-2" />
-                  View Full Table
+                  <ShieldCheck className="w-4 h-4 mr-2" />
+                  View HACCP Plan
                 </Button>
               </CardContent>
             </Card>

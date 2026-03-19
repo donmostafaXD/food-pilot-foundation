@@ -1,15 +1,13 @@
 import {
   LayoutDashboard,
   ShieldCheck,
-  Wand2,
-  FileText,
   Settings,
   LogOut,
-  CreditCard,
   ClipboardList,
   Shield,
   BookOpen,
   Wrench,
+  FileText,
   Crown,
   ClipboardCheck,
 } from "lucide-react";
@@ -36,7 +34,6 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
-  /** If provided, item is only shown when this returns true */
   visible?: boolean;
 }
 
@@ -59,14 +56,12 @@ export function AppSidebar() {
   const mainItems: NavItem[] = [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
-    { title: "Setup Wizard", url: "/setup", icon: Wand2 },
     { title: "Logs", url: "/logs", icon: ClipboardList },
     { title: "PRP Programs", url: "/prp", icon: Shield, visible: !planLoading && canAccessPRP },
     { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: !planLoading && canAccessSOP },
     { title: "Equipment", url: "/equipment", icon: Wrench, visible: !planLoading && canAccessEquipment },
     { title: "Documents", url: "/documents", icon: FileText, visible: !planLoading && canAccessDocuments },
     { title: "Audit Ready", url: "/audit", icon: ClipboardCheck },
-    { title: "Pricing", url: "/app/pricing", icon: CreditCard },
     { title: "Settings", url: "/settings", icon: Settings },
   ];
 
