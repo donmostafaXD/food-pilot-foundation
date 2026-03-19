@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
+import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -141,6 +142,8 @@ const BASIC_HIDDEN_LOGS = new Set([
 const Logs = () => {
   const navigate = useNavigate();
   const { profile, loading: authLoading } = useAuth();
+  const { overrideRole } = useAdminPlanOverride();
+  const isStaffPreview = overrideRole === "Staff";
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const { plan, loading: planLoading } = usePlan();
   const isBasicPlan = plan === "basic";
@@ -603,10 +606,12 @@ const Logs = () => {
                   </div>
                 )}
               </div>
-              <Button size="sm" onClick={openAddDialog} className="gap-1.5">
-                <Plus className="w-4 h-4" />
-                Add Item
-              </Button>
+              {!isStaffPreview && (
+                <Button size="sm" onClick={openAddDialog} className="gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  Add Item
+                </Button>
+              )}
             </div>
 
             {logNames.length === 0 ? (
