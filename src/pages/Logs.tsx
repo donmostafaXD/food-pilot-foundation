@@ -1,4 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
 import { usePlan } from "@/hooks/usePlan";
@@ -57,6 +58,9 @@ import {
   PenLine,
   Eye,
   Trash2,
+  Download,
+  Upload,
+  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
@@ -97,6 +101,25 @@ interface BranchEquipment {
 
 type ViewMode = "list" | "form" | "entries";
 
+/** Generate a simple CSV template for download */
+function generateExcelTemplate(): string {
+  const headers = ["Date", "Staff", "Equipment", "Value", "Status", "Notes"];
+  const exampleRow = [new Date().toISOString().split("T")[0], "", "", "", "OK", ""];
+  return [headers.join(","), exampleRow.join(","), ...Array(14).fill(headers.map(() => "").join(","))].join("\n");
+}
+
+/** Parse CSV text into rows of key-value objects */
+function parseCsvToEntries(csvText: string): Record<string, string>[] {
+  const lines = csvText.trim().split("\n").map(l => l.split(",").map(c => c.trim().replace(/^"|"$/g, "")));
+  if (lines.length < 2) return [];
+  const headers = lines[0];
+  return lines.slice(1).filter(row => row.some(c => c.length > 0)).map(row => {
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => { obj[h] = row[i] || ""; });
+    return obj;
+  });
+}
+
 /** Logs allowed on Basic plan (Food Service only) */
 const BASIC_ALLOWED_LOGS = new Set([
   "Receiving Log",
@@ -116,6 +139,7 @@ const BASIC_HIDDEN_LOGS = new Set([
 ]);
 
 const Logs = () => {
+  const navigate = useNavigate();
   const { profile, loading: authLoading } = useAuth();
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const { plan, loading: planLoading } = usePlan();
@@ -153,6 +177,10 @@ const Logs = () => {
 
   // Equipment for dropdowns
   const [branchEquipment, setBranchEquipment] = useState<BranchEquipment[]>([]);
+
+  // Excel upload ref
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingExcel, setUploadingExcel] = useState(false);
 
   // Detect business type from HACCP plan
   const [businessType, setBusinessType] = useState<string>("");
@@ -235,14 +263,13 @@ const Logs = () => {
     }
   }, [planJustUpdated]);
 
-  // Filter logs by activity — use planProcessNames for precise process-level matching
+  // Filter logs by activity
   const filteredLogStructures = useMemo(() => {
     let base = logStructures;
 
-    // Plan-based restriction: Basic plan only sees allowed Food Service logs
     if (isBasicPlan) {
       base = base.filter((log) => {
-        if (log.isCustom) return true; // custom logs always visible
+        if (log.isCustom) return true;
         return BASIC_ALLOWED_LOGS.has(log.log_name) && !BASIC_HIDDEN_LOGS.has(log.log_name);
       });
     }
@@ -254,15 +281,14 @@ const Logs = () => {
     if (processNames.length === 0) return base;
 
     return base.filter((log) => {
-      if (log.isCustom) return true; // always show custom
-      if (!log.related_process_step) return true; // generic logs
+      if (log.isCustom) return true;
+      if (!log.related_process_step) return true;
       return processNames.some((p) =>
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
   }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan]);
 
-  // Available log names
   const logNames = useMemo(() => {
     if (businessType === "Manufacturing") {
       return [...new Set(mfgLogs.map((l) => l.log_name))].sort();
@@ -270,7 +296,6 @@ const Logs = () => {
     return filteredLogStructures.map((l) => l.log_name).sort();
   }, [businessType, filteredLogStructures, mfgLogs]);
 
-  // All log names (for filter dropdowns in entries view) — also plan-filtered
   const allLogNames = useMemo(() => {
     if (businessType === "Manufacturing") {
       return [...new Set(mfgLogs.map((l) => l.log_name))].sort();
@@ -282,20 +307,12 @@ const Logs = () => {
     return base.map((l) => l.log_name).sort();
   }, [businessType, logStructures, mfgLogs, isBasicPlan]);
 
-  // Get fields for selected log
   const selectedFields = useMemo(() => {
     if (!selectedLog) return [];
     if (businessType === "Manufacturing") {
       const log = mfgLogs.find((l) => l.log_name === selectedLog);
       if (!log) return [];
-      return [
-        "Date",
-        "Time",
-        log.parameter || "Measurement",
-        log.unit ? `Value (${log.unit})` : "Value",
-        "Staff",
-        "Notes",
-      ];
+      return ["Date", "Time", log.parameter || "Measurement", log.unit ? `Value (${log.unit})` : "Value", "Staff", "Notes"];
     }
     const log = logStructures.find((l) => l.log_name === selectedLog);
     return log?.fields || [];
@@ -317,7 +334,6 @@ const Logs = () => {
   );
 
   const openForm = (logName: string) => {
-    // Block opening restricted logs on Basic plan
     if (isBasicPlan && !BASIC_ALLOWED_LOGS.has(logName) && !logStructures.find(l => l.log_name === logName && l.isCustom)) {
       toast.error("This log is not available on your current plan");
       return;
@@ -386,7 +402,6 @@ const Logs = () => {
     setViewMode("entries");
   };
 
-  // Delete custom log
   const handleDeleteCustomLog = async () => {
     if (!deleteTarget?.customId) return;
     const { error } = await supabase
@@ -404,13 +419,11 @@ const Logs = () => {
     setDeleteTarget(null);
   };
 
-  // Add from library
   const openAddDialog = () => {
     setAddMode(null);
     setCustomLogName("");
     setCustomLogFields("");
     setCustomLogProcess("");
-    // Load all library logs not already shown — filtered by plan
     const currentNames = new Set(logNames);
     let available = logStructures.filter((l) => !currentNames.has(l.log_name));
     if (isBasicPlan) {
@@ -574,7 +587,6 @@ const Logs = () => {
         {/* Log Selection */}
         {viewMode === "list" && (
           <>
-            {/* Activity filter toggle + Add button */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 {activityName && (
@@ -780,7 +792,6 @@ const Logs = () => {
         {/* View Entries */}
         {viewMode === "entries" && (
           <>
-            {/* Filters */}
             <Card>
               <CardContent className="pt-5">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -829,7 +840,6 @@ const Logs = () => {
               </CardContent>
             </Card>
 
-            {/* Entries Table */}
             <Card>
               <CardContent className="pt-5">
                 {entriesLoading ? (
@@ -907,28 +917,105 @@ const Logs = () => {
           </>
         )}
 
+        {/* Hidden file input for Excel upload */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv,.txt"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            if (!file || !profile?.organization_id || !profile?.branch_id) return;
+            setUploadingExcel(true);
+            try {
+              const text = await file.text();
+              const rows = parseCsvToEntries(text);
+              if (rows.length === 0) {
+                toast.error("No valid data found in the file");
+                setUploadingExcel(false);
+                return;
+              }
+              const logName = file.name.replace(/\.(csv|txt)$/i, "").replace(/[_-]/g, " ").trim() || "Uploaded Log";
+              const fields = Object.keys(rows[0]);
+              const { data: inserted, error: structError } = await supabase.from("custom_log_structures" as any).insert({
+                organization_id: profile.organization_id,
+                branch_id: profile.branch_id,
+                log_name: logName,
+                fields,
+                related_process_step: null,
+              } as any).select("id").single();
+
+              if (structError) throw structError;
+
+              const entriesToInsert = rows.map(row => ({
+                organization_id: profile.organization_id!,
+                branch_id: profile.branch_id!,
+                log_name: logName,
+                data: row,
+                status: row["Status"] || "OK",
+                recorded_by: profile.user_id,
+              }));
+              const { error: entryError } = await supabase.from("log_entries" as any).insert(entriesToInsert as any);
+              if (entryError) throw entryError;
+
+              setLogStructures((prev) => [
+                ...prev,
+                { log_name: logName, related_process_step: null, fields, isCustom: true, customId: (inserted as any)?.id },
+              ]);
+              toast.success(`Imported "${logName}" with ${rows.length} entries`);
+              setAddDialogOpen(false);
+            } catch (err: any) {
+              toast.error("Upload failed: " + (err.message || "Unknown error"));
+            }
+            setUploadingExcel(false);
+            if (fileInputRef.current) fileInputRef.current.value = "";
+          }}
+        />
+
         {/* Add Item Dialog */}
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <DialogTitle>Add Log</DialogTitle>
-              <DialogDescription>Select from the library or create a custom log.</DialogDescription>
+              <DialogDescription>
+                {isBasicPlan
+                  ? "Create a custom log or upload from Excel."
+                  : "Select from the library or create a custom log."}
+              </DialogDescription>
             </DialogHeader>
 
             {!addMode && (
-              <div className="grid grid-cols-2 gap-3 py-4">
-                <Card
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
-                  onClick={() => setAddMode("library")}
-                >
-                  <CardContent className="flex flex-col items-center gap-2 py-6">
-                    <Library className="w-6 h-6 text-primary" />
-                    <span className="text-sm font-medium">From Library</span>
-                    <span className="text-xs text-muted-foreground text-center">
-                      Select from system logs
-                    </span>
-                  </CardContent>
-                </Card>
+              <div className={`grid ${isBasicPlan ? "grid-cols-1 gap-2" : "grid-cols-2 gap-3"} py-4`}>
+                {/* Library option — blocked for Basic */}
+                {isBasicPlan ? (
+                  <Card
+                    className="cursor-pointer hover:border-primary/50 transition-colors border-dashed opacity-70"
+                    onClick={() => navigate("/app/pricing")}
+                  >
+                    <CardContent className="flex items-center gap-3 py-4 px-4">
+                      <Lock className="w-5 h-5 text-muted-foreground shrink-0" />
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">From Library</span>
+                        <p className="text-xs text-muted-foreground">
+                          Upgrade to HACCP Plan to access pre-built food safety logs
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card
+                    className="cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => setAddMode("library")}
+                  >
+                    <CardContent className="flex flex-col items-center gap-2 py-6">
+                      <Library className="w-6 h-6 text-primary" />
+                      <span className="text-sm font-medium">From Library</span>
+                      <span className="text-xs text-muted-foreground text-center">
+                        Select from system logs
+                      </span>
+                    </CardContent>
+                  </Card>
+                )}
                 <Card
                   className="cursor-pointer hover:border-primary/50 transition-colors"
                   onClick={() => setAddMode("custom")}
@@ -974,6 +1061,50 @@ const Logs = () => {
 
             {addMode === "custom" && (
               <div className="space-y-4 py-2">
+                {/* Excel download/upload options */}
+                <div className="rounded-lg border border-border bg-muted/30 p-3 space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Or use Excel</p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => {
+                        const csv = generateExcelTemplate();
+                        const blob = new Blob([csv], { type: "text/csv" });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        a.download = "log_template.csv";
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        toast.success("Template downloaded");
+                      }}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Download Template
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      disabled={uploadingExcel}
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {uploadingExcel ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+                      Upload CSV
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Fill the template then upload. Columns: Date, Staff, Equipment, Value, Status, Notes
+                  </p>
+                </div>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div>
+                  <div className="relative flex justify-center text-xs"><span className="bg-background px-2 text-muted-foreground">or create manually</span></div>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label className="text-sm">Log Name</Label>
                   <Input
