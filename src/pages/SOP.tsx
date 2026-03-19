@@ -93,7 +93,9 @@ const SOPPage = () => {
   const loadSOPs = async () => {
     setLoading(true);
 
-    const [{ data: foodService }, { data: manufacturing }] = await Promise.all([
+    // Load from new sop_master table (primary), plus legacy tables as fallback
+    const [{ data: masterData }, { data: foodService }, { data: manufacturing }] = await Promise.all([
+      supabase.from("sop_master" as any).select("*"),
       supabase.from("sop_library").select("*"),
       supabase.from("sop_library_manufacturing").select("*"),
     ]);
@@ -109,8 +111,31 @@ const SOPPage = () => {
     }
 
     const items: SOPItem[] = [];
+    const addedNames = new Set<string>();
 
+    // Prefer sop_master (richer data with Purpose, Scope, Related_PRP)
+    if (masterData && (masterData as any[]).length > 0) {
+      (masterData as any[]).forEach((s: any) => {
+        addedNames.add(s.sop_name.toLowerCase());
+        items.push({
+          id: s.id,
+          sop_name: s.sop_name,
+          process_step: s.process_step,
+          description: s.purpose || s.procedure_text,
+          procedure_text: s.procedure_text,
+          responsible: s.responsible,
+          category: "Food Service",
+          _purpose: s.purpose,
+          _scope: s.scope,
+          _frequency: s.frequency,
+          _related_prp: s.related_prp,
+        } as any);
+      });
+    }
+
+    // Add legacy Food Service SOPs not already in master
     (foodService || []).forEach((s: any) => {
+      if (addedNames.has(s.sop_title.toLowerCase())) return;
       items.push({
         id: s.id,
         sop_name: s.sop_title,

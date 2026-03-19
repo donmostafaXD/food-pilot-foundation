@@ -215,23 +215,29 @@ const PRP = () => {
   const filteredPrograms = useMemo(() => {
     let base = programs;
 
-    // HACCP plan: restrict to specific PRP programs and skip activity filter for core programs
+    // HACCP plan: restrict to specific PRP programs
     if (plan === "professional") {
       base = base.filter((p) => {
         if (p.isCustom) return true;
         const lower = p.program_name.toLowerCase();
         return HACCP_ALLOWED_PRP_KEYWORDS.some((kw) => lower.includes(kw));
       });
-      // For HACCP plan, always show the 4 core PRP programs regardless of activity
       return base;
     }
 
     if (showAllLibrary || !activityName) return base;
+
+    // Use prp_mapping data: filter by activity using the _activities array
     return base.filter((p) => {
       if (p.isCustom) return true;
+      const activities = (p as any)._activities as string[] | undefined;
+      if (activities && activities.length > 0) {
+        return activities.some((a: string) =>
+          a.toLowerCase() === activityName.toLowerCase()
+        );
+      }
       return p.activity.toLowerCase() === activityName.toLowerCase() ||
-        p.activity.toLowerCase() === "all" ||
-        p.activity.toLowerCase() === "general";
+        p.activity.toLowerCase() === "all";
     });
   }, [programs, showAllLibrary, activityName, plan, HACCP_ALLOWED_PRP_KEYWORDS]);
 
