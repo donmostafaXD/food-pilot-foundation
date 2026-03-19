@@ -159,15 +159,16 @@ const HACCPPlanPage = () => {
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
             HACCP Plan
           </h1>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
-              <Printer className="w-4 h-4 mr-1" /> Print
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={saving}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
-              Save Changes
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+            <Printer className="w-4 h-4 mr-1" /> Print
+          </Button>
+        </div>
+
+        <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground flex items-center justify-between">
+          <span>To edit your HACCP plan, go to <strong>Settings → HACCP Plan</strong></span>
+          <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+            <Settings className="w-4 h-4 mr-1" /> Go to Settings
+          </Button>
         </div>
 
         <PrintDialog
@@ -181,9 +182,9 @@ const HACCPPlanPage = () => {
           isFoodService={isFoodService}
           activityName={activityName}
           planSteps={planSteps}
-          setPlanSteps={setPlanSteps}
+          setPlanSteps={undefined}
           showRiskFields={showRiskFields}
-          canEditRiskFields={canEditRiskFields}
+          canEditRiskFields={false}
         />
       </div>
     </DashboardLayout>
