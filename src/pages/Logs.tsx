@@ -97,9 +97,29 @@ interface BranchEquipment {
 
 type ViewMode = "list" | "form" | "entries";
 
+/** Logs allowed on Basic plan (Food Service only) */
+const BASIC_ALLOWED_LOGS = new Set([
+  "Receiving Log",
+  "Cold Storage Log",
+  "Cooking Temperature Log",
+  "Hot Holding Log",
+  "Cleaning Log",
+  "Pest Control Log",
+  "Training Log",
+]);
+
+/** Logs explicitly hidden from Basic plan */
+const BASIC_HIDDEN_LOGS = new Set([
+  "Internal Audit Log",
+  "Corrective Action Log",
+  "CCP Monitoring Log",
+]);
+
 const Logs = () => {
   const { profile, loading: authLoading } = useAuth();
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
+  const { plan, loading: planLoading } = usePlan();
+  const isBasicPlan = plan === "basic";
   const printHeader = usePrintHeader("Monitoring Logs");
   const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
