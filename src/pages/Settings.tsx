@@ -623,10 +623,10 @@ const SettingsPage = () => {
               <span className="hidden sm:inline">HACCP Plan</span>
               <span className="sm:hidden">Plan</span>
             </TabsTrigger>
-            <TabsTrigger value="haccp-setup" className="gap-1.5 text-xs sm:text-sm">
+            <TabsTrigger value="change-activity" className="gap-1.5 text-xs sm:text-sm">
               <Wand2 className="w-4 h-4" />
-              <span className="hidden sm:inline">HACCP Setup</span>
-              <span className="sm:hidden">Setup</span>
+              <span className="hidden sm:inline">Change Activity</span>
+              <span className="sm:hidden">Activity</span>
             </TabsTrigger>
             <TabsTrigger value="business" className="gap-1.5 text-xs sm:text-sm">
               <Building2 className="w-4 h-4" />
