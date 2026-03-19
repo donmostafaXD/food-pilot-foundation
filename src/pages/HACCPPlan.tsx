@@ -25,7 +25,6 @@ const HACCPPlanPage = () => {
   const [isFoodService, setIsFoodService] = useState(false);
   const [activityName, setActivityName] = useState("");
   const [printOpen, setPrintOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!profile?.branch_id || !profile?.organization_id) return;
