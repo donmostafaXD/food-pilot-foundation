@@ -53,8 +53,21 @@ const AuditReady = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
   const { plan, showRiskFields, showComplianceTools, canAccessSOP, canAccessPRP, loading: planLoading } = usePlan();
+  const { effectiveRole } = useRoleAccess();
   const printHeader = usePrintHeader("Audit Ready Report");
   const isBasicPlan = plan === "basic";
+  const isOwner = effectiveRole === "Owner" || effectiveRole === "super_admin";
+
+  // Only Owner can access Audit Ready
+  if (!planLoading && !isOwner) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full">
+          <p className="text-muted-foreground">Access restricted to Owner only.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   const [modules, setModules] = useState<ModuleStatus[]>([]);
   const [loading, setLoading] = useState(true);

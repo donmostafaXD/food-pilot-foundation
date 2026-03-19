@@ -106,8 +106,8 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Business name & Branch only */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Business name, Branch, and stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="shadow-industrial-sm">
             <CardContent className="flex items-center gap-3 pt-5 pb-4">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -129,11 +129,45 @@ const Dashboard = () => {
                 <GitBranch className="w-5 h-5 text-accent" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Branch</p>
+                <p className="text-xs text-muted-foreground">
+                  {canViewAllBranches ? `Branches (${branchCount})` : "Branch"}
+                </p>
                 {dataLoading ? (
                   <Skeleton className="h-5 w-32 mt-0.5" />
                 ) : (
-                  <p className="text-sm font-semibold text-foreground truncate">{branchName}</p>
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {canViewAllBranches ? `All branches` : branchName}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-industrial-sm">
+            <CardContent className="flex items-center gap-3 pt-5 pb-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <ClipboardList className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Log Entries</p>
+                {dataLoading ? (
+                  <Skeleton className="h-5 w-16 mt-0.5" />
+                ) : (
+                  <p className="text-sm font-semibold text-foreground">{logCount}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-industrial-sm">
+            <CardContent className="flex items-center gap-3 pt-5 pb-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">HACCP Plan</p>
+                {dataLoading ? (
+                  <Skeleton className="h-5 w-16 mt-0.5" />
+                ) : (
+                  <p className="text-sm font-semibold text-foreground">{hasPlan ? "Active" : "None"}</p>
                 )}
               </div>
             </CardContent>

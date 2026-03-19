@@ -77,7 +77,7 @@ export function AppSidebar() {
     { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: !isStaffRestricted && !planLoading && canAccessSOP },
     { title: "Equipment", url: "/equipment", icon: Wrench, visible: !isStaffRestricted && !planLoading && canAccessEquipment },
     { title: "Documents", url: "/documents", icon: FileText, visible: showDocuments },
-    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: canAccessAudit && plan === "premium" },
+    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: effectiveRole === "Owner" || effectiveRole === "super_admin" },
     { title: "Settings", url: "/settings", icon: Settings, visible: canAccessSettings },
   ];
 
