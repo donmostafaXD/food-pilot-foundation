@@ -33,9 +33,13 @@ import AuditReady from "./pages/AuditReady";
 const queryClient = new QueryClient();
 
 const AppRoutes = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, roles } = useAuth();
   const { overrideRole } = useAdminPlanOverride();
-  const isStaffPreview = overrideRole === "Staff";
+
+  // Determine effective Staff restriction (real role or preview)
+  const isSuperAdmin = roles.includes("super_admin" as any);
+  const isRealStaff = !isSuperAdmin && roles.includes("Staff") && !roles.includes("Owner") && !roles.includes("Manager");
+  const isStaffRestricted = overrideRole === "Staff" || (isRealStaff && !overrideRole);
 
   if (loading) {
     return (
@@ -62,12 +66,12 @@ const AppRoutes = () => {
       <Route path="/setup" element={<ProtectedRoute><SetupWizard /></ProtectedRoute>} />
       <Route path="/haccp" element={<ProtectedRoute><HACCPPlan /></ProtectedRoute>} />
       <Route path="/documents" element={<ProtectedRoute><PlanGate feature="canAccessDocuments"><Documents /></PlanGate></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <SettingsPage />}</ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <SettingsPage />}</ProtectedRoute>} />
       <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
-      <Route path="/prp" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessPRP"><PRP /></PlanGate>}</ProtectedRoute>} />
-      <Route path="/sop" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessSOP"><SOP /></PlanGate>}</ProtectedRoute>} />
-      <Route path="/equipment" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate>}</ProtectedRoute>} />
-      <Route path="/audit" element={<ProtectedRoute>{isStaffPreview ? <Navigate to="/dashboard" replace /> : <AuditReady />}</ProtectedRoute>} />
+      <Route path="/prp" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessPRP"><PRP /></PlanGate>}</ProtectedRoute>} />
+      <Route path="/sop" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessSOP"><SOP /></PlanGate>}</ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate>}</ProtectedRoute>} />
+      <Route path="/audit" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <AuditReady />}</ProtectedRoute>} />
 
       {/* Redirects for removed routes */}
       <Route path="/app/pricing" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />

@@ -25,9 +25,11 @@ import {
   Building2,
   ArrowUpRight,
   Save,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan, PLAN_CONFIG, PLAN_DISPLAY_NAMES, type PlanTier } from "@/hooks/usePlan";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
@@ -596,6 +598,7 @@ interface Branch {
 const UsersSection = () => {
   const { profile, hasRole } = useAuth();
   const { plan } = usePlan();
+  const { maxUsers, allowedInviteRoles, canManageUsers, canInviteAnyRole } = useRoleAccess();
   const { toast } = useToast();
 
   const [users, setUsers] = useState<OrgUser[]>([]);
@@ -605,16 +608,12 @@ const UsersSection = () => {
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFullName, setInviteFullName] = useState("");
-  const [inviteRole, setInviteRole] = useState<AppRole>("Staff");
+  const [inviteRole, setInviteRole] = useState<AppRole>((allowedInviteRoles[0] as AppRole) || "Staff");
   const [inviteBranch, setInviteBranch] = useState<string>("");
   const [inviting, setInviting] = useState(false);
 
-  const canManage = hasRole("Owner") || hasRole("Manager");
   const isBasicPlan = plan === "basic";
-
-  const roleOptions: AppRole[] = isBasicPlan
-    ? ["Staff"]
-    : ["Owner", "Manager", "QA", "Staff", "Auditor"];
+  const userLimitReached = users.length >= maxUsers;
 
   const loadData = async () => {
     if (!profile?.organization_id) return;
@@ -662,7 +661,11 @@ const UsersSection = () => {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!canManage) return;
+    if (!canManageUsers) return;
+    if (userLimitReached) {
+      toast({ title: "User limit reached", description: `Your plan allows a maximum of ${maxUsers} users.`, variant: "destructive" });
+      return;
+    }
     setInviting(true);
 
     try {
@@ -705,13 +708,28 @@ const UsersSection = () => {
         )}
       </div>
 
-      {canManage && (
+      {canManageUsers && (
         <Card className="shadow-industrial-sm">
           <CardContent className="pt-5 pb-4 space-y-4">
-            <div className="flex items-center gap-2 text-primary">
-              <UserPlus className="w-4 h-4" />
-              <span className="text-sm font-semibold">Add Staff User</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-primary">
+                <UserPlus className="w-4 h-4" />
+                <span className="text-sm font-semibold">Add User</span>
+              </div>
+              {maxUsers !== Infinity && (
+                <Badge variant={userLimitReached ? "destructive" : "secondary"} className="text-[10px]">
+                  {users.length} / {maxUsers} users
+                </Badge>
+              )}
             </div>
+            {userLimitReached ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <Lock className="w-4 h-4 text-destructive shrink-0" />
+                <p className="text-xs text-destructive">
+                  User limit reached. Upgrade your plan to add more users.
+                </p>
+              </div>
+            ) : (
             <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Email</Label>
@@ -721,13 +739,13 @@ const UsersSection = () => {
                 <Label>Full Name</Label>
                 <Input value={inviteFullName} onChange={(e) => setInviteFullName(e.target.value)} required placeholder="Jane Doe" />
               </div>
-              {!isBasicPlan && (
+              {allowedInviteRoles.length > 1 && (
                 <div className="space-y-2">
                   <Label>Role</Label>
                   <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {roleOptions.map((r) => (
+                      {allowedInviteRoles.map((r) => (
                         <SelectItem key={r} value={r}>{r}</SelectItem>
                       ))}
                     </SelectContent>
@@ -752,6 +770,7 @@ const UsersSection = () => {
                 </Button>
               </div>
             </form>
+            )}
           </CardContent>
         </Card>
       )}
@@ -806,6 +825,19 @@ const UsersSection = () => {
 
 // ── Main Settings Page ───────────────────────────────────────────────
 const SettingsPage = () => {
+  const { canChangeActivity, canManageSubscription, canManageUsers, canEditHACCP } = useRoleAccess();
+
+  // Build tab list dynamically based on role
+  const tabs = [
+    { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: true },
+    { value: "change-activity", label: "Change Activity", shortLabel: "Activity", icon: Wand2, visible: canChangeActivity },
+    { value: "business", label: "Business", shortLabel: "Biz", icon: Building2, visible: true },
+    { value: "subscription", label: "Subscription", shortLabel: "Plan", icon: CreditCard, visible: canManageSubscription },
+    { value: "users", label: "Users", shortLabel: "Users", icon: Users, visible: canManageUsers },
+  ].filter((t) => t.visible);
+
+  const gridCols = tabs.length <= 3 ? "grid-cols-3" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-5";
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-6xl mx-auto">
@@ -814,54 +846,42 @@ const SettingsPage = () => {
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
         </div>
 
-        <Tabs defaultValue="haccp-plan" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="haccp-plan" className="gap-1.5 text-xs sm:text-sm">
-              <FileEdit className="w-4 h-4" />
-              <span className="hidden sm:inline">HACCP Plan</span>
-              <span className="sm:hidden">Plan</span>
-            </TabsTrigger>
-            <TabsTrigger value="change-activity" className="gap-1.5 text-xs sm:text-sm">
-              <Wand2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Change Activity</span>
-              <span className="sm:hidden">Activity</span>
-            </TabsTrigger>
-            <TabsTrigger value="business" className="gap-1.5 text-xs sm:text-sm">
-              <Building2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Business</span>
-              <span className="sm:hidden">Biz</span>
-            </TabsTrigger>
-            <TabsTrigger value="subscription" className="gap-1.5 text-xs sm:text-sm">
-              <CreditCard className="w-4 h-4" />
-              <span className="hidden sm:inline">Subscription</span>
-              <span className="sm:hidden">Plan</span>
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Users</span>
-              <span className="sm:hidden">Users</span>
-            </TabsTrigger>
+        <Tabs defaultValue={tabs[0]?.value || "haccp-plan"} className="space-y-6">
+          <TabsList className={`grid w-full ${gridCols}`}>
+            {tabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="gap-1.5 text-xs sm:text-sm">
+                <t.icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{t.label}</span>
+                <span className="sm:hidden">{t.shortLabel}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="haccp-plan">
             <HACCPPlanSection />
           </TabsContent>
 
-          <TabsContent value="change-activity">
-            <ChangeActivitySection />
-          </TabsContent>
+          {canChangeActivity && (
+            <TabsContent value="change-activity">
+              <ChangeActivitySection />
+            </TabsContent>
+          )}
 
           <TabsContent value="business">
             <BusinessProfileSection />
           </TabsContent>
 
-          <TabsContent value="subscription">
-            <SubscriptionSection />
-          </TabsContent>
+          {canManageSubscription && (
+            <TabsContent value="subscription">
+              <SubscriptionSection />
+            </TabsContent>
+          )}
 
-          <TabsContent value="users">
-            <UsersSection />
-          </TabsContent>
+          {canManageUsers && (
+            <TabsContent value="users">
+              <UsersSection />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </DashboardLayout>
