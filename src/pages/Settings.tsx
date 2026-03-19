@@ -302,6 +302,7 @@ const BusinessProfileSection = () => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [orgName, setOrgName] = useState("");
   const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
@@ -347,6 +348,7 @@ const BusinessProfileSection = () => {
       toast({ title: "Failed to save", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Business profile updated" });
+      setEditing(false);
     }
   };
 
@@ -358,45 +360,89 @@ const BusinessProfileSection = () => {
     );
   }
 
+  const hasData = orgName.trim().length > 0;
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Business Profile</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Your business details used in reports, audit documents, and printed headers.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Business Profile</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Your business details used in reports, audit documents, and printed headers.
+          </p>
+        </div>
+        {!editing && hasData && (
+          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <FileEdit className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
+        )}
       </div>
 
       <Card className="shadow-industrial-sm">
         <CardContent className="pt-5 pb-4">
-          <form onSubmit={handleSave} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Business Name</Label>
-              <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} required />
+          {!editing && hasData ? (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Business Name</p>
+                <p className="text-sm text-foreground">{orgName}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">Country</p>
+                  <p className="text-sm text-foreground">{country || "—"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-muted-foreground">City / Location</p>
+                  <p className="text-sm text-foreground">{city || "—"}</p>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Number of Employees</p>
+                <p className="text-sm text-foreground">{employeeCount || "—"}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-medium text-muted-foreground">Business Description</p>
+                <p className="text-sm text-foreground">{description || "—"}</p>
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+          ) : (
+            <form onSubmit={handleSave} className="space-y-4">
               <div className="space-y-2">
-                <Label>Country</Label>
-                <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. UAE" />
+                <Label>Business Name</Label>
+                <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} required />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. UAE" />
+                </div>
+                <div className="space-y-2">
+                  <Label>City / Location</Label>
+                  <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Dubai" />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label>City / Location</Label>
-                <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Dubai" />
+                <Label>Number of Employees</Label>
+                <Input type="number" min="1" value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder="e.g. 15" />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>Number of Employees</Label>
-              <Input type="number" min="1" value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder="e.g. 15" />
-            </div>
-            <div className="space-y-2">
-              <Label>Business Description</Label>
-              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of your business" rows={3} className="resize-none" />
-            </div>
-            <Button type="submit" disabled={saving} size="sm">
-              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
-              Save Changes
-            </Button>
-          </form>
+              <div className="space-y-2">
+                <Label>Business Description</Label>
+                <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of your business" rows={3} className="resize-none" />
+              </div>
+              <div className="flex gap-2">
+                <Button type="submit" disabled={saving} size="sm">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+                  Save Changes
+                </Button>
+                {editing && (
+                  <Button type="button" variant="outline" size="sm" onClick={() => setEditing(false)}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>
