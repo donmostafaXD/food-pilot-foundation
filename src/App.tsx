@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { AdminPlanOverrideProvider } from "@/contexts/AdminPlanOverrideContext";
+import { AdminPlanOverrideProvider, useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PlanGate from "@/components/PlanGate";
 
