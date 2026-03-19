@@ -649,8 +649,8 @@ const SettingsPage = () => {
             <HACCPPlanSection />
           </TabsContent>
 
-          <TabsContent value="haccp-setup">
-            <HACCPSetupSection />
+          <TabsContent value="change-activity">
+            <ChangeActivitySection />
           </TabsContent>
 
           <TabsContent value="business">
