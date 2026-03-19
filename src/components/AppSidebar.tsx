@@ -16,6 +16,7 @@ import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import {
   Sidebar,
@@ -52,22 +53,29 @@ export function AppSidebar() {
     canAccessEquipment,
     loading: planLoading,
   } = usePlan();
+  const {
+    canAccessSettings,
+    canAccessAudit,
+    canAccessPRPEdit,
+    canAccessSOPEdit,
+    effectiveRole,
+  } = useRoleAccess();
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Staff role override: show only Dashboard, HACCP Plan, Logs
-  const isStaffPreview = overrideRole === "Staff";
+  // Staff restriction: real Staff role OR preview Staff
+  const isStaffRestricted = effectiveRole === "Staff";
 
   const mainItems: NavItem[] = [
     { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
     { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
     { title: "Logs", url: "/logs", icon: ClipboardList },
-    { title: "PRP Programs", url: "/prp", icon: Shield, visible: !isStaffPreview && !planLoading && canAccessPRP },
-    { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: !isStaffPreview && !planLoading && canAccessSOP },
-    { title: "Equipment", url: "/equipment", icon: Wrench, visible: !isStaffPreview && !planLoading && canAccessEquipment },
-    { title: "Documents", url: "/documents", icon: FileText, visible: !isStaffPreview && !planLoading && canAccessDocuments },
-    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: !isStaffPreview },
-    { title: "Settings", url: "/settings", icon: Settings, visible: !isStaffPreview },
+    { title: "PRP Programs", url: "/prp", icon: Shield, visible: !isStaffRestricted && !planLoading && canAccessPRP },
+    { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: !isStaffRestricted && !planLoading && canAccessSOP },
+    { title: "Equipment", url: "/equipment", icon: Wrench, visible: !isStaffRestricted && !planLoading && canAccessEquipment },
+    { title: "Documents", url: "/documents", icon: FileText, visible: !isStaffRestricted && !planLoading && canAccessDocuments },
+    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: canAccessAudit },
+    { title: "Settings", url: "/settings", icon: Settings, visible: canAccessSettings },
   ];
 
   const visibleItems = mainItems.filter((item) => item.visible === undefined || item.visible);
@@ -95,6 +103,11 @@ export function AppSidebar() {
               {overrideRole && (
                 <Badge variant="secondary" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
                   Preview: {overrideRole}
+                </Badge>
+              )}
+              {!isSuperAdmin && !overrideRole && effectiveRole && (
+                <Badge variant="outline" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
+                  {effectiveRole}
                 </Badge>
               )}
             </div>
