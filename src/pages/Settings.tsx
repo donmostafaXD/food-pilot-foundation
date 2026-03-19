@@ -881,20 +881,70 @@ const UsersSection = () => {
   );
 };
 
+// ── Food Safety Setup Wrapper ────────────────────────────────────────
+const FoodSafetySetupWrapper = () => {
+  const { profile } = useAuth();
+  const [activityName, setActivityName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!profile?.branch_id || !profile?.organization_id) return;
+    const load = async () => {
+      const { data: plans } = await supabase
+        .from("haccp_plans")
+        .select("activity_name")
+        .eq("branch_id", profile.branch_id!)
+        .eq("organization_id", profile.organization_id!)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      setActivityName(plans?.[0]?.activity_name || null);
+      setLoading(false);
+    };
+    load();
+  }, [profile?.branch_id, profile?.organization_id]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!activityName) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold text-foreground">Food Safety Setup</h2>
+        <p className="text-sm text-muted-foreground">
+          No HACCP plan found. Create a plan first using "Change Activity" to configure food safety setup.
+        </p>
+      </div>
+    );
+  }
+
+  return <FoodSafetySetupSection activityName={activityName} />;
+};
+
 // ── Main Settings Page ───────────────────────────────────────────────
 const SettingsPage = () => {
   const { canChangeActivity, canManageSubscription, canManageUsers, canEditHACCP } = useRoleAccess();
+  const { plan } = usePlan();
 
-  // Build tab list dynamically based on role
+  // Build tab list dynamically based on role and plan
   const tabs = [
     { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: true },
+    { value: "food-safety", label: "Food Safety Setup", shortLabel: "Safety", icon: ShieldCheck, visible: !["Staff"].includes("") && true },
     { value: "change-activity", label: "Change Activity", shortLabel: "Activity", icon: Wand2, visible: canChangeActivity },
     { value: "business", label: "Business", shortLabel: "Biz", icon: Building2, visible: true },
     { value: "subscription", label: "Subscription", shortLabel: "Plan", icon: CreditCard, visible: canManageSubscription },
     { value: "users", label: "Users", shortLabel: "Users", icon: Users, visible: canManageUsers },
   ].filter((t) => t.visible);
 
-  const gridCols = tabs.length <= 3 ? "grid-cols-3" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-5";
+  const gridCols =
+    tabs.length <= 3 ? "grid-cols-3" :
+    tabs.length === 4 ? "grid-cols-4" :
+    tabs.length === 5 ? "grid-cols-5" :
+    "grid-cols-6";
 
   return (
     <DashboardLayout>
@@ -917,6 +967,10 @@ const SettingsPage = () => {
 
           <TabsContent value="haccp-plan">
             <HACCPPlanSection />
+          </TabsContent>
+
+          <TabsContent value="food-safety">
+            <FoodSafetySetupWrapper />
           </TabsContent>
 
           {canChangeActivity && (
