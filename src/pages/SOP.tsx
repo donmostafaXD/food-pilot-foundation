@@ -188,9 +188,24 @@ const SOPPage = () => {
     "cleaning",
   ]), []);
 
+  // Manufacturing process keywords excluded for Basic plan
+  const BASIC_EXCLUDED_SOP_STEPS = useMemo(() => [
+    "processing", "pasteurization", "fermentation", "water quality", "calibration",
+  ], []);
+
   // Filter by activity — use planProcessNames for precise process-level matching
   const activityFiltered = useMemo(() => {
     let base = sops;
+
+    // Basic plan: exclude manufacturing-related SOPs
+    if (plan === "basic") {
+      base = base.filter((s) => {
+        if (s.isCustom) return true;
+        if (s.category === "Manufacturing") return false;
+        const lower = s.process_step.toLowerCase();
+        return !BASIC_EXCLUDED_SOP_STEPS.some((kw) => lower.includes(kw));
+      });
+    }
 
     // HACCP plan: restrict to operational SOPs only
     if (plan === "professional") {
