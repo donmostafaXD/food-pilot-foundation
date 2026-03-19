@@ -770,6 +770,7 @@ const UsersSection = () => {
                 </Button>
               </div>
             </form>
+            )}
           </CardContent>
         </Card>
       )}
