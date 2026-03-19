@@ -18,7 +18,7 @@ interface Props {
   isFoodService: boolean;
   activityName: string;
   planSteps: PlanStep[];
-  setPlanSteps: (v: PlanStep[]) => void;
+  setPlanSteps?: (v: PlanStep[]) => void;
   /** When false (Basic plan), hide S, L, Risk Score columns */
   showRiskFields?: boolean;
   /** When false (Basic plan), disable editing of S & L */
@@ -30,6 +30,7 @@ const tempId = () => `temp-${++idCounter}`;
 
 const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setPlanSteps, showRiskFields = true, canEditRiskFields = true }: Props) => {
   const navigate = useNavigate();
+  const isReadOnly = !setPlanSteps;
   const [loading, setLoading] = useState(true);
 
   // Number of extra columns to span when risk fields hidden
