@@ -152,44 +152,77 @@ const HACCPPlanPage = () => {
     openPrintWindow(printHeader, html);
   };
 
+  const handleSave = async () => {
+    if (!planId) return;
+    setSaving(true);
+    try {
+      // Delete existing steps & hazards, then re-insert
+      const { data: existingSteps } = await supabase
+        .from("haccp_plan_steps")
+        .select("id")
+        .eq("haccp_plan_id", planId);
+      const existingStepIds = (existingSteps || []).map(s => s.id);
+      if (existingStepIds.length > 0) {
+        await supabase.from("haccp_plan_hazards").delete().in("haccp_plan_step_id", existingStepIds);
+      }
+      await supabase.from("haccp_plan_steps").delete().eq("haccp_plan_id", planId);
+
+      // Insert new steps and hazards
+      for (const step of planSteps) {
+        const { data: insertedStep } = await supabase
+          .from("haccp_plan_steps")
+          .insert({
+            haccp_plan_id: planId,
+            process_name: step.process_name,
+            step_order: step.step_order,
+            process_step_id: step.process_step_id,
+          })
+          .select("id")
+          .single();
+
+        if (insertedStep && step.hazards.length > 0) {
+          await supabase.from("haccp_plan_hazards").insert(
+            step.hazards.map(h => ({
+              haccp_plan_step_id: insertedStep.id,
+              hazard_name: h.hazard_name,
+              hazard_type: h.hazard_type,
+              severity: h.severity,
+              likelihood: h.likelihood,
+              risk_score: h.risk_score,
+              control_type: h.control_type,
+              critical_limit: h.critical_limit,
+              monitoring: h.monitoring,
+              corrective_action: h.corrective_action,
+            }))
+          );
+        }
+      }
+
+      await supabase.from("haccp_plans").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", planId);
+      toast.success("HACCP Plan saved successfully");
+    } catch (err: any) {
+      toast.error("Failed to save", { description: err.message });
+    }
+    setSaving(false);
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              HACCP Plan
-            </h1>
-            {isReadOnly && (
-              <Badge variant="outline" className="gap-1 text-muted-foreground">
-                <Lock className="w-3 h-3" /> Read-only
-              </Badge>
-            )}
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            HACCP Plan
+          </h1>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+              <Printer className="w-4 h-4 mr-1" /> Print
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Save className="w-4 h-4 mr-1" />}
+              Save Changes
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
-            <Printer className="w-4 h-4 mr-1" /> Print
-          </Button>
         </div>
-
-        {isReadOnly && (
-          <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
-            This plan is read-only. To make changes, go to{" "}
-            <button
-              onClick={() => navigate("/settings")}
-              className="text-primary hover:underline font-medium"
-            >
-              Settings → HACCP Plan
-            </button>{" "}
-            or{" "}
-            <button
-              onClick={() => navigate("/settings")}
-              className="text-primary hover:underline font-medium"
-            >
-              Settings → HACCP Setup
-            </button>{" "}
-            to reconfigure.
-          </div>
-        )}
 
         <PrintDialog
           open={printOpen}
@@ -202,9 +235,9 @@ const HACCPPlanPage = () => {
           isFoodService={isFoodService}
           activityName={activityName}
           planSteps={planSteps}
-          setPlanSteps={isReadOnly ? undefined : setPlanSteps}
+          setPlanSteps={setPlanSteps}
           showRiskFields={showRiskFields}
-          canEditRiskFields={isReadOnly ? false : canEditRiskFields}
+          canEditRiskFields={canEditRiskFields}
         />
       </div>
     </DashboardLayout>
