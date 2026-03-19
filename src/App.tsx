@@ -34,6 +34,8 @@ const queryClient = new QueryClient();
 
 const AppRoutes = () => {
   const { user, loading } = useAuth();
+  const { overrideRole } = useAdminPlanOverride();
+  const isStaffPreview = overrideRole === "Staff";
 
   if (loading) {
     return (
