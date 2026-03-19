@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,8 +22,11 @@ interface Props {
 
 const RecentActivity = ({ branchId }: Props) => {
   const { profile } = useAuth();
+  const { effectiveRole } = useRoleAccess();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isStaff = effectiveRole === "Staff";
 
   useEffect(() => {
     if (!profile?.organization_id || !branchId) {
@@ -38,21 +42,21 @@ const RecentActivity = ({ branchId }: Props) => {
         .eq("organization_id", profile.organization_id!)
         .eq("branch_id", branchId)
         .order("created_at", { ascending: false })
-        .limit(8);
+        .limit(isStaff ? 5 : 8);
 
       setLogs((data as LogEntry[]) ?? []);
       setLoading(false);
     };
 
     load();
-  }, [profile?.organization_id, branchId]);
+  }, [profile?.organization_id, branchId, isStaff]);
 
   return (
     <Card className="shadow-sm">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold flex items-center gap-2">
           <Clock className="h-4 w-4 text-muted-foreground" />
-          Recent Activity
+          {isStaff ? "My Recent Logs" : "Recent Activity"}
         </CardTitle>
       </CardHeader>
       <CardContent>
