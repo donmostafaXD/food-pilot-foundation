@@ -825,6 +825,19 @@ const UsersSection = () => {
 
 // ── Main Settings Page ───────────────────────────────────────────────
 const SettingsPage = () => {
+  const { canChangeActivity, canManageSubscription, canManageUsers, canEditHACCP } = useRoleAccess();
+
+  // Build tab list dynamically based on role
+  const tabs = [
+    { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: true },
+    { value: "change-activity", label: "Change Activity", shortLabel: "Activity", icon: Wand2, visible: canChangeActivity },
+    { value: "business", label: "Business", shortLabel: "Biz", icon: Building2, visible: true },
+    { value: "subscription", label: "Subscription", shortLabel: "Plan", icon: CreditCard, visible: canManageSubscription },
+    { value: "users", label: "Users", shortLabel: "Users", icon: Users, visible: canManageUsers },
+  ].filter((t) => t.visible);
+
+  const gridCols = tabs.length <= 3 ? "grid-cols-3" : tabs.length === 4 ? "grid-cols-4" : "grid-cols-5";
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-6xl mx-auto">
@@ -833,54 +846,42 @@ const SettingsPage = () => {
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
         </div>
 
-        <Tabs defaultValue="haccp-plan" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="haccp-plan" className="gap-1.5 text-xs sm:text-sm">
-              <FileEdit className="w-4 h-4" />
-              <span className="hidden sm:inline">HACCP Plan</span>
-              <span className="sm:hidden">Plan</span>
-            </TabsTrigger>
-            <TabsTrigger value="change-activity" className="gap-1.5 text-xs sm:text-sm">
-              <Wand2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Change Activity</span>
-              <span className="sm:hidden">Activity</span>
-            </TabsTrigger>
-            <TabsTrigger value="business" className="gap-1.5 text-xs sm:text-sm">
-              <Building2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Business</span>
-              <span className="sm:hidden">Biz</span>
-            </TabsTrigger>
-            <TabsTrigger value="subscription" className="gap-1.5 text-xs sm:text-sm">
-              <CreditCard className="w-4 h-4" />
-              <span className="hidden sm:inline">Subscription</span>
-              <span className="sm:hidden">Plan</span>
-            </TabsTrigger>
-            <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
-              <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">Users</span>
-              <span className="sm:hidden">Users</span>
-            </TabsTrigger>
+        <Tabs defaultValue={tabs[0]?.value || "haccp-plan"} className="space-y-6">
+          <TabsList className={`grid w-full ${gridCols}`}>
+            {tabs.map((t) => (
+              <TabsTrigger key={t.value} value={t.value} className="gap-1.5 text-xs sm:text-sm">
+                <t.icon className="w-4 h-4" />
+                <span className="hidden sm:inline">{t.label}</span>
+                <span className="sm:hidden">{t.shortLabel}</span>
+              </TabsTrigger>
+            ))}
           </TabsList>
 
           <TabsContent value="haccp-plan">
             <HACCPPlanSection />
           </TabsContent>
 
-          <TabsContent value="change-activity">
-            <ChangeActivitySection />
-          </TabsContent>
+          {canChangeActivity && (
+            <TabsContent value="change-activity">
+              <ChangeActivitySection />
+            </TabsContent>
+          )}
 
           <TabsContent value="business">
             <BusinessProfileSection />
           </TabsContent>
 
-          <TabsContent value="subscription">
-            <SubscriptionSection />
-          </TabsContent>
+          {canManageSubscription && (
+            <TabsContent value="subscription">
+              <SubscriptionSection />
+            </TabsContent>
+          )}
 
-          <TabsContent value="users">
-            <UsersSection />
-          </TabsContent>
+          {canManageUsers && (
+            <TabsContent value="users">
+              <UsersSection />
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </DashboardLayout>
