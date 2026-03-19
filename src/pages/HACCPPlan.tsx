@@ -165,12 +165,18 @@ const HACCPPlanPage = () => {
           </Button>
         </div>
 
-        <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground flex items-center justify-between">
-          <span>To edit your HACCP plan, go to <strong>Settings → HACCP Plan</strong></span>
-          <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
-            <Settings className="w-4 h-4 mr-1" /> Go to Settings
-          </Button>
-        </div>
+        {isStaffPreview ? (
+          <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
+            <span>To edit your HACCP plan, contact your manager</span>
+          </div>
+        ) : (
+          <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground flex items-center justify-between">
+            <span>To edit your HACCP plan, go to <strong>Settings → HACCP Plan</strong></span>
+            <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+              <Settings className="w-4 h-4 mr-1" /> Go to Settings
+            </Button>
+          </div>
+        )}
 
         <PrintDialog
           open={printOpen}
