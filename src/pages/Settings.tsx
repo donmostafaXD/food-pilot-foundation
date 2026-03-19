@@ -708,13 +708,28 @@ const UsersSection = () => {
         )}
       </div>
 
-      {canManage && (
+      {canManageUsers && (
         <Card className="shadow-industrial-sm">
           <CardContent className="pt-5 pb-4 space-y-4">
-            <div className="flex items-center gap-2 text-primary">
-              <UserPlus className="w-4 h-4" />
-              <span className="text-sm font-semibold">Add Staff User</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-primary">
+                <UserPlus className="w-4 h-4" />
+                <span className="text-sm font-semibold">Add User</span>
+              </div>
+              {maxUsers !== Infinity && (
+                <Badge variant={userLimitReached ? "destructive" : "secondary"} className="text-[10px]">
+                  {users.length} / {maxUsers} users
+                </Badge>
+              )}
             </div>
+            {userLimitReached ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                <Lock className="w-4 h-4 text-destructive shrink-0" />
+                <p className="text-xs text-destructive">
+                  User limit reached. Upgrade your plan to add more users.
+                </p>
+              </div>
+            ) : (
             <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Email</Label>
@@ -724,13 +739,13 @@ const UsersSection = () => {
                 <Label>Full Name</Label>
                 <Input value={inviteFullName} onChange={(e) => setInviteFullName(e.target.value)} required placeholder="Jane Doe" />
               </div>
-              {!isBasicPlan && (
+              {allowedInviteRoles.length > 1 && (
                 <div className="space-y-2">
                   <Label>Role</Label>
                   <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {roleOptions.map((r) => (
+                      {allowedInviteRoles.map((r) => (
                         <SelectItem key={r} value={r}>{r}</SelectItem>
                       ))}
                     </SelectContent>
