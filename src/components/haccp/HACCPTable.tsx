@@ -233,11 +233,13 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                     <td colSpan={emptyColSpan} className="p-2 text-muted-foreground text-xs italic">
                       No hazards identified
                     </td>
+                    {!isReadOnly && (
                     <td className="p-2">
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addHazard(si)}>
                         <Plus className="w-3.5 h-3.5" />
                       </Button>
                     </td>
+                    )}
                   </tr>
                 ) : (
                   step.hazards.map((h, hi) => {
