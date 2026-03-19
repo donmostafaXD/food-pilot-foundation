@@ -101,6 +101,7 @@ const programLogMap: Record<string, string> = {
 
 const PRP = () => {
   const { profile, loading: authLoading } = useAuth();
+  const { plan } = usePlan();
   const { activityName, planProcessNames, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("PRP Programs");
