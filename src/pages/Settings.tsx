@@ -238,7 +238,29 @@ const HACCPPlanSection = () => {
 // ── Change Activity Section ──────────────────────────────────────────
 const ChangeActivitySection = () => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const { plan, maxActivities } = usePlan();
+  const { canChangeActivity } = useRoleAccess();
   const [showConfirm, setShowConfirm] = useState(false);
+  const [activityCount, setActivityCount] = useState(0);
+  const [loadingCount, setLoadingCount] = useState(true);
+
+  const isBasic = plan === "basic";
+  const canAddActivity = !isBasic && activityCount < maxActivities;
+  const showAddActivity = !isBasic;
+
+  useEffect(() => {
+    if (!profile?.organization_id) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("haccp_plans")
+        .select("id")
+        .eq("organization_id", profile.organization_id!);
+      setActivityCount(data?.length || 0);
+      setLoadingCount(false);
+    };
+    load();
+  }, [profile?.organization_id]);
 
   const handleStart = () => {
     if (showConfirm) {
@@ -296,6 +318,40 @@ const ChangeActivitySection = () => {
           </div>
         </CardContent>
       </Card>
+
+      {showAddActivity && (
+        <Card className="shadow-industrial-sm">
+          <CardContent className="pt-6 pb-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Add New Activity</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Create an additional HACCP plan for a different activity type.
+                </p>
+              </div>
+              {maxActivities !== Infinity && !loadingCount && (
+                <Badge variant={activityCount >= maxActivities ? "destructive" : "secondary"} className="text-[10px]">
+                  {activityCount} / {maxActivities} activities
+                </Badge>
+              )}
+            </div>
+            {canAddActivity ? (
+              <Button variant="outline" size="sm" onClick={() => navigate("/setup?mode=add")}>
+                <PlusCircle className="w-4 h-4 mr-1" /> Add Activity
+              </Button>
+            ) : (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+                <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  {activityCount >= maxActivities
+                    ? "Activity limit reached. Upgrade to Compliance for unlimited activities."
+                    : "Loading..."}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
