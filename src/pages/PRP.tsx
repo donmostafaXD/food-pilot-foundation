@@ -496,10 +496,12 @@ const PRP = () => {
                   </div>
                 )}
               </div>
-              <Button size="sm" onClick={openAddDialog} className="gap-1.5">
-                <Plus className="w-4 h-4" />
-                Add Item
-              </Button>
+              {plan !== "basic" && (
+                <Button size="sm" onClick={openAddDialog} className="gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  Add Item
+                </Button>
+              )}
             </div>
 
             {filteredPrograms.length === 0 ? (
