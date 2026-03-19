@@ -11,6 +11,7 @@ import {
   BookOpen,
   Wrench,
   Crown,
+  ClipboardCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { NavLink } from "@/components/NavLink";
@@ -63,6 +64,7 @@ export function AppSidebar() {
     { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: canAccessSOP },
     { title: "Equipment", url: "/equipment", icon: Wrench, visible: canAccessEquipment },
     { title: "Documents", url: "/documents", icon: FileText, visible: canAccessDocuments },
+    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck },
     { title: "Pricing", url: "/app/pricing", icon: CreditCard },
     { title: "Settings", url: "/settings", icon: Settings },
   ];

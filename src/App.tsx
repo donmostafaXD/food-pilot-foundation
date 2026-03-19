@@ -29,6 +29,7 @@ import Logs from "./pages/Logs";
 import PRP from "./pages/PRP";
 import SOP from "./pages/SOP";
 import EquipmentPage from "./pages/Equipment";
+import AuditReady from "./pages/AuditReady";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const AppRoutes = () => {
       <Route path="/sop" element={<ProtectedRoute><PlanGate feature="canAccessSOP"><SOP /></PlanGate></ProtectedRoute>} />
       <Route path="/equipment" element={<ProtectedRoute><PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate></ProtectedRoute>} />
       <Route path="/app/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+      <Route path="/audit" element={<ProtectedRoute><AuditReady /></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute requiredRoles={["Owner", "Manager"]}><UserManagement /></ProtectedRoute>} />
 
       {/* Fallback */}
