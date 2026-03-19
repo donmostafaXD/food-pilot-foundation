@@ -4,8 +4,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Shield, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Register = () => {
   const [step, setStep] = useState<"credentials" | "organization" | "verify">("credentials");
@@ -13,8 +15,12 @@ const Register = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
+  const [employeeCount, setEmployeeCount] = useState("");
+  const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const { signUp, registerOrganization, user } = useAuth();
+  const { signUp, registerOrganization, user, profile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -40,13 +46,39 @@ const Register = () => {
     e.preventDefault();
     setSubmitting(true);
     const { error } = await registerOrganization(businessName, fullName);
-    setSubmitting(false);
     if (error) {
+      setSubmitting(false);
       toast({ title: "Setup failed", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Welcome to FoodPilot!", description: "Your organization is ready." });
-      navigate("/dashboard", { replace: true });
+      return;
     }
+
+    // Save additional business profile fields
+    try {
+      // Re-fetch profile to get org id
+      const { data: prof } = await supabase
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+
+      if (prof?.organization_id) {
+        await supabase
+          .from("organizations")
+          .update({
+            country: country || null,
+            city: city || null,
+            employee_count: employeeCount ? parseInt(employeeCount, 10) : null,
+            description: description || null,
+          } as any)
+          .eq("id", prof.organization_id);
+      }
+    } catch {
+      // Non-critical — user can update later in settings
+    }
+
+    setSubmitting(false);
+    toast({ title: "Welcome to FoodPilot!", description: "Your organization is ready." });
+    navigate("/dashboard", { replace: true });
   };
 
   // If user is logged in and has no org yet, show org step
@@ -108,6 +140,24 @@ const Register = () => {
             <div className="space-y-2">
               <Label htmlFor="businessName">Business Name</Label>
               <Input id="businessName" value={businessName} onChange={(e) => setBusinessName(e.target.value)} required placeholder="Acme Foods Ltd." />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. UAE" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="city">City / Location</Label>
+                <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Dubai" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="employees">Number of Employees</Label>
+              <Input id="employees" type="number" min="1" value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder="e.g. 15" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Business Description</Label>
+              <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of your business" rows={2} className="resize-none" />
             </div>
             <Button type="submit" className="w-full" disabled={submitting}>
               {submitting ? "Setting up…" : "Complete Setup"}

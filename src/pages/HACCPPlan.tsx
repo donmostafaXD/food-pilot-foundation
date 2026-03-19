@@ -3,8 +3,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import HACCPTable from "@/components/haccp/HACCPTable";
-import { Loader2, Printer } from "lucide-react";
+import { Loader2, Printer, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
@@ -14,7 +15,7 @@ import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 const HACCPPlanPage = () => {
   const { profile } = useAuth();
-  const { showRiskFields, canEditRiskFields, canExportFullHACCP, loading: planLoading } = usePlan();
+  const { plan, showRiskFields, canEditRiskFields, canExportFullHACCP, loading: planLoading } = usePlan();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("HACCP Plan");
   const [loading, setLoading] = useState(true);
@@ -24,6 +25,11 @@ const HACCPPlanPage = () => {
   const [isFoodService, setIsFoodService] = useState(false);
   const [activityName, setActivityName] = useState("");
   const [printOpen, setPrintOpen] = useState(false);
+  const [planStatus, setPlanStatus] = useState<string>("draft");
+
+  const isBasic = plan === "basic";
+  // Basic plan: read-only after plan is saved (status = 'active')
+  const isReadOnly = isBasic && planStatus === "active";
 
   useEffect(() => {
     if (!profile?.branch_id || !profile?.organization_id) return;
@@ -43,16 +49,16 @@ const HACCPPlanPage = () => {
         return;
       }
 
-      const plan = plans[0];
+      const p = plans[0];
       setPlanExists(true);
-      setActivityName(plan.activity_name);
-      setIsFoodService(plan.business_type === "Food Service");
+      setActivityName(p.activity_name);
+      setIsFoodService(p.business_type === "Food Service");
+      setPlanStatus(p.status);
 
-      // Load steps with hazards
       const { data: steps } = await supabase
         .from("haccp_plan_steps")
         .select("*")
-        .eq("haccp_plan_id", plan.id)
+        .eq("haccp_plan_id", p.id)
         .order("step_order");
 
       const stepsData = steps || [];
@@ -63,7 +69,6 @@ const HACCPPlanPage = () => {
       }));
       setProcessSteps(pSteps);
 
-      // Load hazards for each step
       const stepIds = stepsData.map((s) => s.id);
       let allHazards: any[] = [];
       if (stepIds.length > 0) {
@@ -130,7 +135,6 @@ const HACCPPlanPage = () => {
       openPrintWindow(printHeader, `<p class="section-title">${showRiskFields ? "Hazard Analysis Table" : "Food Safety Plan"}</p>${blankTable(cols)}`);
       return;
     }
-    // data or pdf — same output, pdf via browser print-to-pdf
     let rows = "";
     planSteps.forEach(step => {
       step.hazards.forEach((h, i) => {
@@ -155,13 +159,41 @@ const HACCPPlanPage = () => {
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            HACCP Plan
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+              HACCP Plan
+            </h1>
+            {isReadOnly && (
+              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                <Lock className="w-3 h-3" /> Read-only
+              </Badge>
+            )}
+          </div>
           <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
             <Printer className="w-4 h-4 mr-1" /> Print
           </Button>
         </div>
+
+        {isReadOnly && (
+          <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
+            This plan is read-only. To make changes, go to{" "}
+            <button
+              onClick={() => navigate("/settings")}
+              className="text-primary hover:underline font-medium"
+            >
+              Settings → HACCP Plan
+            </button>{" "}
+            or{" "}
+            <button
+              onClick={() => navigate("/settings")}
+              className="text-primary hover:underline font-medium"
+            >
+              Settings → HACCP Setup
+            </button>{" "}
+            to reconfigure.
+          </div>
+        )}
+
         <PrintDialog
           open={printOpen}
           onClose={() => setPrintOpen(false)}
@@ -173,9 +205,9 @@ const HACCPPlanPage = () => {
           isFoodService={isFoodService}
           activityName={activityName}
           planSteps={planSteps}
-          setPlanSteps={setPlanSteps}
+          setPlanSteps={isReadOnly ? undefined : setPlanSteps}
           showRiskFields={showRiskFields}
-          canEditRiskFields={canEditRiskFields}
+          canEditRiskFields={isReadOnly ? false : canEditRiskFields}
         />
       </div>
     </DashboardLayout>

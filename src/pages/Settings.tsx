@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Wand2,
@@ -15,11 +16,14 @@ import {
   Users,
   UserPlus,
   Check,
-  ArrowUpRight,
   Crown,
   Phone,
   Loader2,
   Settings as SettingsIcon,
+  FileEdit,
+  AlertTriangle,
+  Building2,
+  ArrowUpRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan, PLAN_CONFIG, PLAN_DISPLAY_NAMES, type PlanTier } from "@/hooks/usePlan";
@@ -27,6 +31,53 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import { Link } from "react-router-dom";
+
+// ── HACCP Plan Edit Section ──────────────────────────────────────────
+const HACCPPlanSection = () => {
+  const navigate = useNavigate();
+  const { plan } = usePlan();
+  const isBasic = plan === "basic";
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">HACCP Plan</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          View and edit your current HACCP plan directly.
+        </p>
+      </div>
+
+      <Card className="shadow-industrial-sm">
+        <CardContent className="pt-6 pb-5 space-y-4">
+          <div className="flex flex-col items-center text-center gap-3">
+            <div className="p-3 rounded-full bg-primary/10">
+              <FileEdit className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-foreground">Open HACCP Plan Editor</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                View your full HACCP plan and make edits. Changes save immediately.
+              </p>
+            </div>
+            <Button onClick={() => navigate("/haccp")} className="mt-2">
+              <FileEdit className="w-4 h-4 mr-2" />
+              Open HACCP Plan
+            </Button>
+          </div>
+
+          {isBasic && (
+            <div className="mt-4 p-3 rounded-lg bg-muted/50 border border-border">
+              <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                <ArrowUpRight className="w-3 h-3 shrink-0" />
+                Upgrade to unlock detailed risk analysis (Severity, Likelihood, Risk Score)
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+};
 
 // ── HACCP Setup Section ──────────────────────────────────────────────
 const HACCPSetupSection = () => {
@@ -37,11 +88,11 @@ const HACCPSetupSection = () => {
       <div>
         <h2 className="text-lg font-semibold text-foreground">HACCP Setup</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Manage your HACCP plan configuration, activity selection, and setup questions.
+          Change your business activity, setup questions, and reconfigure your HACCP plan.
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <Card className="shadow-industrial-sm hover:shadow-industrial-md transition-shadow cursor-pointer"
           onClick={() => navigate("/setup")}>
           <CardContent className="pt-6 pb-5 flex flex-col items-center text-center gap-3">
@@ -60,18 +111,125 @@ const HACCPSetupSection = () => {
         <Card className="shadow-industrial-sm hover:shadow-industrial-md transition-shadow cursor-pointer"
           onClick={() => navigate("/setup")}>
           <CardContent className="pt-6 pb-5 flex flex-col items-center text-center gap-3">
-            <div className="p-3 rounded-full bg-primary/10">
-              <Wand2 className="w-6 h-6 text-primary" />
+            <div className="p-3 rounded-full bg-destructive/10">
+              <AlertTriangle className="w-6 h-6 text-destructive" />
             </div>
             <div>
               <p className="text-sm font-semibold text-foreground">Regenerate HACCP Plan</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Restart the setup wizard and create a new plan
+              <p className="text-xs text-destructive/80 mt-1 font-medium">
+                ⚠ Regenerating will overwrite your current HACCP plan
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
+    </div>
+  );
+};
+
+// ── Business Profile Section ─────────────────────────────────────────
+const BusinessProfileSection = () => {
+  const { profile } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [orgName, setOrgName] = useState("");
+  const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
+  const [employeeCount, setEmployeeCount] = useState("");
+  const [description, setDescription] = useState("");
+
+  useEffect(() => {
+    if (!profile?.organization_id) return;
+    const load = async () => {
+      const { data } = await supabase
+        .from("organizations")
+        .select("*")
+        .eq("id", profile.organization_id!)
+        .maybeSingle();
+      if (data) {
+        setOrgName(data.name || "");
+        setCountry((data as any).country || "");
+        setCity((data as any).city || "");
+        setEmployeeCount((data as any).employee_count?.toString() || "");
+        setDescription((data as any).description || "");
+      }
+      setLoading(false);
+    };
+    load();
+  }, [profile?.organization_id]);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profile?.organization_id) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("organizations")
+      .update({
+        name: orgName,
+        country,
+        city,
+        employee_count: employeeCount ? parseInt(employeeCount, 10) : null,
+        description: description || null,
+      } as any)
+      .eq("id", profile.organization_id);
+    setSaving(false);
+    if (error) {
+      toast({ title: "Failed to save", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Business profile updated" });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="w-5 h-5 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Business Profile</h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Your business details used in reports, audit documents, and printed headers.
+        </p>
+      </div>
+
+      <Card className="shadow-industrial-sm">
+        <CardContent className="pt-5 pb-4">
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Business Name</Label>
+              <Input value={orgName} onChange={(e) => setOrgName(e.target.value)} required />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Country</Label>
+                <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="e.g. UAE" />
+              </div>
+              <div className="space-y-2">
+                <Label>City / Location</Label>
+                <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Dubai" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Number of Employees</Label>
+              <Input type="number" min="1" value={employeeCount} onChange={(e) => setEmployeeCount(e.target.value)} placeholder="e.g. 15" />
+            </div>
+            <div className="space-y-2">
+              <Label>Business Description</Label>
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of your business" rows={3} className="resize-none" />
+            </div>
+            <Button type="submit" disabled={saving} size="sm">
+              {saving ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+              Save Changes
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -116,7 +274,6 @@ const planTiers: { tier: PlanTier; features: string[] }[] = [
 const SubscriptionSection = () => {
   const { plan: currentPlan, loading, updatePlan } = usePlan();
   const [updating, setUpdating] = useState<PlanTier | null>(null);
-  const navigate = useNavigate();
 
   const handleSelect = async (tier: PlanTier) => {
     if (tier === currentPlan) return;
@@ -139,7 +296,6 @@ const SubscriptionSection = () => {
         </p>
       </div>
 
-      {/* Current plan highlight */}
       <Card className="shadow-industrial-sm border-primary/30 bg-primary/5">
         <CardContent className="flex items-center gap-3 pt-5 pb-4">
           <div className="p-2 rounded-lg bg-primary/10">
@@ -158,7 +314,6 @@ const SubscriptionSection = () => {
         </CardContent>
       </Card>
 
-      {/* Plan cards */}
       {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {planTiers.map((p) => {
@@ -242,7 +397,6 @@ const UsersSection = () => {
   const canManage = hasRole("Owner") || hasRole("Manager");
   const isBasicPlan = plan === "basic";
 
-  // Basic plan: Owner = Manager, simplified role options
   const roleOptions: AppRole[] = isBasicPlan
     ? ["Staff"]
     : ["Owner", "Manager", "QA", "Staff", "Auditor"];
@@ -286,7 +440,6 @@ const UsersSection = () => {
     setLoadingUsers(false);
   };
 
-  // Load once when tab becomes active
   if (!loaded) {
     setLoaded(true);
     loadData();
@@ -337,7 +490,6 @@ const UsersSection = () => {
         )}
       </div>
 
-      {/* Add User Form */}
       {canManage && (
         <Card className="shadow-industrial-sm">
           <CardContent className="pt-5 pb-4 space-y-4">
@@ -389,7 +541,6 @@ const UsersSection = () => {
         </Card>
       )}
 
-      {/* User list */}
       <Card className="shadow-industrial-sm">
         <CardContent className="pt-5 pb-4 space-y-4">
           <div className="flex items-center gap-2 text-primary">
@@ -448,27 +599,45 @@ const SettingsPage = () => {
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
         </div>
 
-        <Tabs defaultValue="haccp" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="haccp" className="gap-1.5">
+        <Tabs defaultValue="haccp-plan" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="haccp-plan" className="gap-1.5 text-xs sm:text-sm">
+              <FileEdit className="w-4 h-4" />
+              <span className="hidden sm:inline">HACCP Plan</span>
+              <span className="sm:hidden">Plan</span>
+            </TabsTrigger>
+            <TabsTrigger value="haccp-setup" className="gap-1.5 text-xs sm:text-sm">
               <Wand2 className="w-4 h-4" />
               <span className="hidden sm:inline">HACCP Setup</span>
-              <span className="sm:hidden">HACCP</span>
+              <span className="sm:hidden">Setup</span>
             </TabsTrigger>
-            <TabsTrigger value="subscription" className="gap-1.5">
+            <TabsTrigger value="business" className="gap-1.5 text-xs sm:text-sm">
+              <Building2 className="w-4 h-4" />
+              <span className="hidden sm:inline">Business</span>
+              <span className="sm:hidden">Biz</span>
+            </TabsTrigger>
+            <TabsTrigger value="subscription" className="gap-1.5 text-xs sm:text-sm">
               <CreditCard className="w-4 h-4" />
               <span className="hidden sm:inline">Subscription</span>
               <span className="sm:hidden">Plan</span>
             </TabsTrigger>
-            <TabsTrigger value="users" className="gap-1.5">
+            <TabsTrigger value="users" className="gap-1.5 text-xs sm:text-sm">
               <Users className="w-4 h-4" />
               <span className="hidden sm:inline">Users</span>
               <span className="sm:hidden">Users</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="haccp">
+          <TabsContent value="haccp-plan">
+            <HACCPPlanSection />
+          </TabsContent>
+
+          <TabsContent value="haccp-setup">
             <HACCPSetupSection />
+          </TabsContent>
+
+          <TabsContent value="business">
+            <BusinessProfileSection />
           </TabsContent>
 
           <TabsContent value="subscription">
