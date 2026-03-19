@@ -1,77 +1,64 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ShieldCheck,
-  Building2,
-  GitBranch,
-  Loader2,
-  ClipboardList,
-  ClipboardCheck,
-} from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import KPICards from "@/components/dashboard/KPICards";
+import AlertsSection from "@/components/dashboard/AlertsSection";
+import QuickActions from "@/components/dashboard/QuickActions";
+import ComplianceChart from "@/components/dashboard/ComplianceChart";
+import RecentActivity from "@/components/dashboard/RecentActivity";
+
+interface Branch {
+  id: string;
+  name: string;
+  activity_type: string | null;
+}
 
 const Dashboard = () => {
   const { profile, loading: authLoading, user, onboardingError, signOut } = useAuth();
   const { canViewAllBranches } = useRoleAccess();
-  const navigate = useNavigate();
-  const [orgName, setOrgName] = useState<string>("");
-  const [branchName, setBranchName] = useState<string>("");
-  const [hasPlan, setHasPlan] = useState<boolean | null>(null);
-  const [dataLoading, setDataLoading] = useState(true);
-  const [logCount, setLogCount] = useState(0);
-  const [branchCount, setBranchCount] = useState(0);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    if (authLoading || !user) return;
-
-    if (!profile?.organization_id || !profile?.branch_id) {
-      setDataLoading(false);
-      return;
-    }
+    if (authLoading || !user || !profile?.organization_id) return;
 
     const load = async () => {
-      setDataLoading(true);
-
       const orgId = profile.organization_id!;
-      const branchId = profile.branch_id!;
 
-      // Owner sees all branches; Manager/Staff see only their assigned branch
-      const planQuery = canViewAllBranches
-        ? supabase.from("haccp_plans").select("id").eq("organization_id", orgId).limit(1)
-        : supabase.from("haccp_plans").select("id").eq("organization_id", orgId).eq("branch_id", branchId).limit(1);
-
-      const logQuery = canViewAllBranches
-        ? supabase.from("log_entries").select("id", { count: "exact", head: true }).eq("organization_id", orgId)
-        : supabase.from("log_entries").select("id", { count: "exact", head: true }).eq("organization_id", orgId).eq("branch_id", branchId);
-
-      const [orgRes, branchRes, planRes, logRes, branchCountRes] = await Promise.all([
-        supabase.from("organizations").select("name").eq("id", orgId).maybeSingle(),
-        supabase.from("branches").select("name").eq("id", branchId).maybeSingle(),
-        planQuery,
-        logQuery,
-        canViewAllBranches
-          ? supabase.from("branches").select("id", { count: "exact", head: true }).eq("organization_id", orgId)
-          : Promise.resolve({ count: 1 }),
-      ]);
-
-      setOrgName(orgRes.data?.name ?? "Unknown");
-      setBranchName(branchRes.data?.name ?? "Unknown");
-      setHasPlan((planRes.data?.length ?? 0) > 0);
-      setLogCount(logRes.count ?? 0);
-      setBranchCount((branchCountRes as any).count ?? 1);
-      setDataLoading(false);
+      if (canViewAllBranches) {
+        const { data } = await supabase
+          .from("branches")
+          .select("id, name, activity_type")
+          .eq("organization_id", orgId)
+          .order("created_at");
+        const list = (data as Branch[]) ?? [];
+        setBranches(list);
+        setSelectedBranchId(profile.branch_id ?? list[0]?.id ?? null);
+      } else {
+        if (profile.branch_id) {
+          const { data } = await supabase
+            .from("branches")
+            .select("id, name, activity_type")
+            .eq("id", profile.branch_id)
+            .maybeSingle();
+          const branch = data as Branch | null;
+          setBranches(branch ? [branch] : []);
+          setSelectedBranchId(branch?.id ?? null);
+        }
+      }
+      setReady(true);
     };
 
     load();
   }, [authLoading, user, profile, canViewAllBranches]);
 
-  if (authLoading) {
+  if (authLoading || !ready) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-full">
@@ -97,128 +84,17 @@ const Dashboard = () => {
 
   return (
     <DashboardLayout>
-      <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Food safety management overview
-          </p>
-        </div>
-
-        {/* Business name, Branch, and stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="shadow-industrial-sm">
-            <CardContent className="flex items-center gap-3 pt-5 pb-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Building2 className="w-5 h-5 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Business</p>
-                {dataLoading ? (
-                  <Skeleton className="h-5 w-32 mt-0.5" />
-                ) : (
-                  <p className="text-sm font-semibold text-foreground truncate">{orgName}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-industrial-sm">
-            <CardContent className="flex items-center gap-3 pt-5 pb-4">
-              <div className="p-2 rounded-lg bg-accent/10">
-                <GitBranch className="w-5 h-5 text-accent" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">
-                  {canViewAllBranches ? `Branches (${branchCount})` : "Branch"}
-                </p>
-                {dataLoading ? (
-                  <Skeleton className="h-5 w-32 mt-0.5" />
-                ) : (
-                  <p className="text-sm font-semibold text-foreground truncate">
-                    {canViewAllBranches ? `All branches` : branchName}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-industrial-sm">
-            <CardContent className="flex items-center gap-3 pt-5 pb-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <ClipboardList className="w-5 h-5 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Log Entries</p>
-                {dataLoading ? (
-                  <Skeleton className="h-5 w-16 mt-0.5" />
-                ) : (
-                  <p className="text-sm font-semibold text-foreground">{logCount}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="shadow-industrial-sm">
-            <CardContent className="flex items-center gap-3 pt-5 pb-4">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <ShieldCheck className="w-5 h-5 text-primary" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">HACCP Plan</p>
-                {dataLoading ? (
-                  <Skeleton className="h-5 w-16 mt-0.5" />
-                ) : (
-                  <p className="text-sm font-semibold text-foreground">{hasPlan ? "Active" : "None"}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {dataLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-36 rounded-lg" />
-            ))}
-          </div>
-        ) : hasPlan === false ? (
-          <Card className="shadow-industrial-md">
-            <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
-              <div className="p-4 rounded-full bg-muted">
-                <ShieldCheck className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-foreground">No HACCP Plan Yet</h3>
-                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                  Go to Settings → HACCP Setup to create your first food safety plan.
-                </p>
-              </div>
-              <Button onClick={() => navigate("/settings")} className="mt-2">
-                Go to Settings
-              </Button>
-            </CardContent>
-          </Card>
-        ) : (
-          /* Quick Actions — focused on daily operations */
-          <Card className="shadow-industrial-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => navigate("/logs")}>
-                <ClipboardList className="w-4 h-4 mr-2" />
-                Go to Logs
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/audit")}>
-                <ClipboardCheck className="w-4 h-4 mr-2" />
-                Audit Ready
-              </Button>
-              <Button variant="outline" onClick={() => navigate("/haccp")}>
-                <ShieldCheck className="w-4 h-4 mr-2" />
-                View HACCP Plan
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+      <div className="p-4 lg:p-6 max-w-7xl mx-auto space-y-5">
+        <DashboardHeader
+          selectedBranchId={selectedBranchId}
+          onBranchChange={setSelectedBranchId}
+          branches={branches}
+        />
+        <KPICards branchId={selectedBranchId} />
+        <AlertsSection branchId={selectedBranchId} />
+        <QuickActions />
+        <ComplianceChart branchId={selectedBranchId} branches={branches} />
+        <RecentActivity branchId={selectedBranchId} />
       </div>
     </DashboardLayout>
   );
