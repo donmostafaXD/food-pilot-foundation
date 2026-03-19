@@ -628,7 +628,11 @@ export type Database = {
       }
       organizations: {
         Row: {
+          city: string | null
+          country: string | null
           created_at: string
+          description: string | null
+          employee_count: number | null
           id: string
           name: string
           owner_id: string | null
@@ -636,7 +640,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          city?: string | null
+          country?: string | null
           created_at?: string
+          description?: string | null
+          employee_count?: number | null
           id?: string
           name: string
           owner_id?: string | null
@@ -644,7 +652,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          city?: string | null
+          country?: string | null
           created_at?: string
+          description?: string | null
+          employee_count?: number | null
           id?: string
           name?: string
           owner_id?: string | null
