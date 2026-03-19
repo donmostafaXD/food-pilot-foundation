@@ -448,10 +448,12 @@ const SOPPage = () => {
             <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
               <Printer className="w-4 h-4 mr-1" /> Print
             </Button>
-            <Button size="sm" onClick={openAddDialog} className="gap-1.5">
-              <Plus className="w-4 h-4" />
-              Add Item
-            </Button>
+            {plan !== "basic" && (
+              <Button size="sm" onClick={openAddDialog} className="gap-1.5">
+                <Plus className="w-4 h-4" />
+                Add Item
+              </Button>
+            )}
           </div>
         </div>
         <PrintDialog open={printOpen} onClose={() => setPrintOpen(false)} onSelect={handlePrint} title="Print SOP Procedures" />

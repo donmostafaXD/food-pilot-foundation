@@ -482,7 +482,7 @@ const PRP = () => {
             {/* Activity filter toggle + Add button */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                {activityName && (
+                {activityName && plan !== "basic" && (
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4 text-muted-foreground" />
                     <Label htmlFor="show-all-prp" className="text-sm text-muted-foreground cursor-pointer">
@@ -496,10 +496,12 @@ const PRP = () => {
                   </div>
                 )}
               </div>
-              <Button size="sm" onClick={openAddDialog} className="gap-1.5">
-                <Plus className="w-4 h-4" />
-                Add Item
-              </Button>
+              {plan !== "basic" && (
+                <Button size="sm" onClick={openAddDialog} className="gap-1.5">
+                  <Plus className="w-4 h-4" />
+                  Add Item
+                </Button>
+              )}
             </div>
 
             {filteredPrograms.length === 0 ? (

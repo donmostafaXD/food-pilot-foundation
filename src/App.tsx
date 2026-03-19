@@ -71,7 +71,7 @@ const AppRoutes = () => {
       <Route path="/prp" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessPRP"><PRP /></PlanGate>}</ProtectedRoute>} />
       <Route path="/sop" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessSOP"><SOP /></PlanGate>}</ProtectedRoute>} />
       <Route path="/equipment" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate>}</ProtectedRoute>} />
-      <Route path="/audit" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <AuditReady />}</ProtectedRoute>} />
+      <Route path="/audit" element={<ProtectedRoute><AuditReady /></ProtectedRoute>} />
 
       {/* Redirects for removed routes */}
       <Route path="/app/pricing" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />

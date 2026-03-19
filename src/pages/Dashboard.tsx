@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,11 +18,14 @@ import DashboardLayout from "@/components/DashboardLayout";
 
 const Dashboard = () => {
   const { profile, loading: authLoading, user, onboardingError, signOut } = useAuth();
+  const { canViewAllBranches } = useRoleAccess();
   const navigate = useNavigate();
   const [orgName, setOrgName] = useState<string>("");
   const [branchName, setBranchName] = useState<string>("");
   const [hasPlan, setHasPlan] = useState<boolean | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [logCount, setLogCount] = useState(0);
+  const [branchCount, setBranchCount] = useState(0);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -34,33 +38,38 @@ const Dashboard = () => {
     const load = async () => {
       setDataLoading(true);
 
-      const [orgRes, branchRes, planRes] = await Promise.all([
-        supabase
-          .from("organizations")
-          .select("name")
-          .eq("id", profile.organization_id!)
-          .maybeSingle(),
-        supabase
-          .from("branches")
-          .select("name")
-          .eq("id", profile.branch_id!)
-          .maybeSingle(),
-        supabase
-          .from("haccp_plans")
-          .select("id")
-          .eq("organization_id", profile.organization_id!)
-          .eq("branch_id", profile.branch_id!)
-          .limit(1),
+      const orgId = profile.organization_id!;
+      const branchId = profile.branch_id!;
+
+      // Owner sees all branches; Manager/Staff see only their assigned branch
+      const planQuery = canViewAllBranches
+        ? supabase.from("haccp_plans").select("id").eq("organization_id", orgId).limit(1)
+        : supabase.from("haccp_plans").select("id").eq("organization_id", orgId).eq("branch_id", branchId).limit(1);
+
+      const logQuery = canViewAllBranches
+        ? supabase.from("log_entries").select("id", { count: "exact", head: true }).eq("organization_id", orgId)
+        : supabase.from("log_entries").select("id", { count: "exact", head: true }).eq("organization_id", orgId).eq("branch_id", branchId);
+
+      const [orgRes, branchRes, planRes, logRes, branchCountRes] = await Promise.all([
+        supabase.from("organizations").select("name").eq("id", orgId).maybeSingle(),
+        supabase.from("branches").select("name").eq("id", branchId).maybeSingle(),
+        planQuery,
+        logQuery,
+        canViewAllBranches
+          ? supabase.from("branches").select("id", { count: "exact", head: true }).eq("organization_id", orgId)
+          : Promise.resolve({ count: 1 }),
       ]);
 
       setOrgName(orgRes.data?.name ?? "Unknown");
       setBranchName(branchRes.data?.name ?? "Unknown");
       setHasPlan((planRes.data?.length ?? 0) > 0);
+      setLogCount(logRes.count ?? 0);
+      setBranchCount((branchCountRes as any).count ?? 1);
       setDataLoading(false);
     };
 
     load();
-  }, [authLoading, user, profile]);
+  }, [authLoading, user, profile, canViewAllBranches]);
 
   if (authLoading) {
     return (
@@ -97,8 +106,8 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Business name & Branch only */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Business name, Branch, and stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Card className="shadow-industrial-sm">
             <CardContent className="flex items-center gap-3 pt-5 pb-4">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -120,11 +129,45 @@ const Dashboard = () => {
                 <GitBranch className="w-5 h-5 text-accent" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">Branch</p>
+                <p className="text-xs text-muted-foreground">
+                  {canViewAllBranches ? `Branches (${branchCount})` : "Branch"}
+                </p>
                 {dataLoading ? (
                   <Skeleton className="h-5 w-32 mt-0.5" />
                 ) : (
-                  <p className="text-sm font-semibold text-foreground truncate">{branchName}</p>
+                  <p className="text-sm font-semibold text-foreground truncate">
+                    {canViewAllBranches ? `All branches` : branchName}
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-industrial-sm">
+            <CardContent className="flex items-center gap-3 pt-5 pb-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <ClipboardList className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">Log Entries</p>
+                {dataLoading ? (
+                  <Skeleton className="h-5 w-16 mt-0.5" />
+                ) : (
+                  <p className="text-sm font-semibold text-foreground">{logCount}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="shadow-industrial-sm">
+            <CardContent className="flex items-center gap-3 pt-5 pb-4">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <ShieldCheck className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs text-muted-foreground">HACCP Plan</p>
+                {dataLoading ? (
+                  <Skeleton className="h-5 w-16 mt-0.5" />
+                ) : (
+                  <p className="text-sm font-semibold text-foreground">{hasPlan ? "Active" : "None"}</p>
                 )}
               </div>
             </CardContent>
