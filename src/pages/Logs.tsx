@@ -277,7 +277,7 @@ const Logs = () => {
     }
   }, [planJustUpdated]);
 
-  // Filter logs by activity
+  // Filter logs by activity and plan
   const filteredLogStructures = useMemo(() => {
     let base = logStructures;
 
@@ -285,6 +285,11 @@ const Logs = () => {
       base = base.filter((log) => {
         if (log.isCustom) return true;
         return BASIC_ALLOWED_LOGS.has(log.log_name) && !BASIC_HIDDEN_LOGS.has(log.log_name);
+      });
+    } else if (isHACCPPlan) {
+      base = base.filter((log) => {
+        if (log.isCustom) return true;
+        return HACCP_ALLOWED_LOGS.has(log.log_name);
       });
     }
 
@@ -301,7 +306,7 @@ const Logs = () => {
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan]);
+  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan, isHACCPPlan]);
 
   const logNames = useMemo(() => {
     if (businessType === "Manufacturing") {
