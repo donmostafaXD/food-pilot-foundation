@@ -116,7 +116,7 @@ const HACCPPlanPage = () => {
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center h-64 gap-4">
           <p className="text-muted-foreground">No HACCP plan found.</p>
-          <Button onClick={() => navigate("/setup")}>Create Plan</Button>
+          <Button onClick={() => navigate("/settings")}>Go to Settings → HACCP Setup</Button>
         </div>
       </DashboardLayout>
     );
