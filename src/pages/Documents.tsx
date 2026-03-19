@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -26,12 +27,16 @@ import {
   AlertTriangle,
   CheckCircle2,
   Loader2,
+  Edit2,
+  Save,
+  X,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import { openPrintWindow, escapeHtml } from "@/lib/printUtils";
+import { toast } from "sonner";
 
 // ── Types ──────────────────────────────────────────
 interface DocLibraryItem {
@@ -414,6 +419,90 @@ const Documents = () => {
     return null;
   };
 
+  // ── Editable document sections ──────────────────────
+  const SECTION_KEYS = ["purpose", "scope", "responsibilities"] as const;
+  const DEFAULT_SECTIONS: Record<string, (doc: EnrichedDocument) => string> = {
+    purpose: (doc) =>
+      `This document defines the requirements and procedures for ${doc.document_name.toLowerCase()} within the food safety management system.`,
+    scope: () =>
+      `Applicable to all food handling operations and personnel involved in food safety activities.`,
+    responsibilities: (doc) =>
+      `• ${doc.responsible || "Food Safety Team Leader"} — Oversight and review\n• QA Team — Implementation and monitoring\n• All Staff — Compliance with procedures`,
+  };
+
+  const [editing, setEditing] = useState(false);
+  const [editContent, setEditContent] = useState<Record<string, string>>({});
+  const [savedContent, setSavedContent] = useState<Record<string, string>>({});
+  const [savingDoc, setSavingDoc] = useState(false);
+  const [loadingContent, setLoadingContent] = useState(false);
+
+  // Load custom content when doc is selected
+  useEffect(() => {
+    if (!selectedDoc || !profile?.organization_id) return;
+    setEditing(false);
+    setLoadingContent(true);
+    (async () => {
+      const { data } = await supabase
+        .from("document_custom_content" as any)
+        .select("section_key, content")
+        .eq("organization_id", profile.organization_id!)
+        .eq("document_id", selectedDoc.id);
+
+      const contentMap: Record<string, string> = {};
+      (data as any[] || []).forEach((row: any) => {
+        contentMap[row.section_key] = row.content || "";
+      });
+      setSavedContent(contentMap);
+      setEditContent({});
+      setLoadingContent(false);
+    })();
+  }, [selectedDoc?.id, profile?.organization_id]);
+
+  const getSectionContent = useCallback(
+    (key: string) => {
+      if (editing && editContent[key] !== undefined) return editContent[key];
+      if (savedContent[key] !== undefined) return savedContent[key];
+      return selectedDoc ? DEFAULT_SECTIONS[key]?.(selectedDoc) || "" : "";
+    },
+    [editing, editContent, savedContent, selectedDoc]
+  );
+
+  const startEditing = () => {
+    if (!selectedDoc) return;
+    const current: Record<string, string> = {};
+    SECTION_KEYS.forEach((key) => {
+      current[key] = getSectionContent(key);
+    });
+    setEditContent(current);
+    setEditing(true);
+  };
+
+  const handleSaveContent = async () => {
+    if (!selectedDoc || !profile?.organization_id) return;
+    setSavingDoc(true);
+    try {
+      for (const key of SECTION_KEYS) {
+        const content = editContent[key] ?? getSectionContent(key);
+        await supabase.from("document_custom_content" as any).upsert(
+          {
+            organization_id: profile.organization_id,
+            document_id: selectedDoc.id,
+            section_key: key,
+            content,
+            updated_at: new Date().toISOString(),
+          } as any,
+          { onConflict: "organization_id,document_id,section_key" }
+        );
+      }
+      setSavedContent({ ...editContent });
+      setEditing(false);
+      toast.success("Document saved");
+    } catch (err: any) {
+      toast.error("Failed to save", { description: err.message });
+    }
+    setSavingDoc(false);
+  };
+
   // ── Detail view ────────────────────────────────────
   if (selectedDoc) {
     return (
@@ -423,9 +512,28 @@ const Documents = () => {
             <Button variant="ghost" size="sm" onClick={() => setSelectedDoc(null)}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back to Documents
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
-              <Printer className="w-4 h-4 mr-1" /> Print
-            </Button>
+            <div className="flex gap-2">
+              {!editing ? (
+                <Button variant="outline" size="sm" onClick={startEditing}>
+                  <Edit2 className="w-4 h-4 mr-1" /> Edit
+                </Button>
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
+                    <X className="w-4 h-4 mr-1" /> Cancel
+                  </Button>
+                  <Button size="sm" onClick={handleSaveContent} disabled={savingDoc}>
+                    {savingDoc ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                    Save
+                  </Button>
+                </>
+              )}
+              {!editing && (
+                <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+                  <Printer className="w-4 h-4 mr-1" /> Print
+                </Button>
+              )}
+            </div>
           </div>
 
           <PrintDialog
@@ -470,30 +578,64 @@ const Documents = () => {
 
                 <Separator />
 
-                {/* Document sections */}
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Purpose</h3>
-                  <p className="text-sm text-muted-foreground">
-                    This document defines the requirements and procedures for{" "}
-                    {selectedDoc.document_name.toLowerCase()} within the food safety management system.
-                  </p>
-                </div>
+                {loadingContent ? (
+                  <div className="flex items-center gap-2 py-4 text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" /> Loading content...
+                  </div>
+                ) : (
+                  <>
+                    {/* Purpose */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Purpose</h3>
+                      {editing ? (
+                        <Textarea
+                          value={editContent.purpose ?? ""}
+                          onChange={(e) => setEditContent((prev) => ({ ...prev, purpose: e.target.value }))}
+                          rows={3}
+                          className="resize-none text-sm"
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">
+                          {getSectionContent("purpose")}
+                        </p>
+                      )}
+                    </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Scope</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Applicable to all food handling operations and personnel involved in food safety activities.
-                  </p>
-                </div>
+                    {/* Scope */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Scope</h3>
+                      {editing ? (
+                        <Textarea
+                          value={editContent.scope ?? ""}
+                          onChange={(e) => setEditContent((prev) => ({ ...prev, scope: e.target.value }))}
+                          rows={3}
+                          className="resize-none text-sm"
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">
+                          {getSectionContent("scope")}
+                        </p>
+                      )}
+                    </div>
 
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Responsibilities</h3>
-                  <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                    <li>{selectedDoc.responsible || "Food Safety Team Leader"} — Oversight and review</li>
-                    <li>QA Team — Implementation and monitoring</li>
-                    <li>All Staff — Compliance with procedures</li>
-                  </ul>
-                </div>
+                    {/* Responsibilities */}
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Responsibilities</h3>
+                      {editing ? (
+                        <Textarea
+                          value={editContent.responsibilities ?? ""}
+                          onChange={(e) => setEditContent((prev) => ({ ...prev, responsibilities: e.target.value }))}
+                          rows={4}
+                          className="resize-none text-sm"
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground whitespace-pre-line">
+                          {getSectionContent("responsibilities")}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {/* Dynamic data injection */}
                 {hasDynamicData(selectedDoc.document_name) && (

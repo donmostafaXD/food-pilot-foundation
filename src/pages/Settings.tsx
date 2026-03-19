@@ -192,7 +192,7 @@ const HACCPPlanSection = () => {
       <div className="space-y-6">
         <div>
           <h2 className="text-lg font-semibold text-foreground">HACCP Plan</h2>
-          <p className="text-sm text-muted-foreground mt-1">No HACCP plan found. Use "Change Activity" to create one.</p>
+          <p className="text-sm text-muted-foreground mt-1">No HACCP plan found. Use "Manage Activities" to create one.</p>
         </div>
       </div>
     );
@@ -235,8 +235,8 @@ const HACCPPlanSection = () => {
   );
 };
 
-// ── Change Activity Section ──────────────────────────────────────────
-const ChangeActivitySection = () => {
+// ── Manage Activities Section ─────────────────────────────────────────
+const ManageActivitiesSection = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { plan, maxActivities } = usePlan();
@@ -246,8 +246,7 @@ const ChangeActivitySection = () => {
   const [loadingCount, setLoadingCount] = useState(true);
 
   const isBasic = plan === "basic";
-  const canAddActivity = !isBasic && activityCount < maxActivities;
-  const showAddActivity = !isBasic;
+  const canAddActivity = activityCount < maxActivities;
 
   useEffect(() => {
     if (!profile?.organization_id) return;
@@ -273,82 +272,94 @@ const ChangeActivitySection = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Change Activity</h2>
+        <h2 className="text-lg font-semibold text-foreground">Manage Activities</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Start fresh — select a new activity type, answer setup questions, and generate a new HACCP plan.
+          Manage your food safety activities. Each activity has its own HACCP plan, logs, PRP, and SOP.
         </p>
       </div>
 
+      {/* Current activity count */}
       <Card className="shadow-industrial-sm">
-        <CardContent className="pt-6 pb-5 space-y-4">
-          <div className="flex flex-col items-center text-center gap-3">
-            <div className="p-3 rounded-full bg-destructive/10">
-              <AlertTriangle className="w-6 h-6 text-destructive" />
-            </div>
+        <CardContent className="pt-6 pb-5 space-y-3">
+          <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-foreground">Start New HACCP Setup</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                This will run the full setup wizard from the beginning and generate a new HACCP plan.
+              <p className="text-sm font-semibold text-foreground">Current Activities</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {loadingCount ? "Loading..." : `${activityCount} active ${activityCount === 1 ? "activity" : "activities"}`}
               </p>
             </div>
-
-            {showConfirm && (
-              <div className="w-full p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                <p className="text-sm text-destructive font-medium flex items-center justify-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 shrink-0" />
-                  This will overwrite your current HACCP plan
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  All existing plan data, hazards, and edits will be replaced.
-                </p>
-              </div>
+            {maxActivities !== Infinity && !loadingCount && (
+              <Badge variant={activityCount >= maxActivities ? "destructive" : "secondary"} className="text-[10px]">
+                {activityCount} / {maxActivities} {maxActivities === 1 ? "activity" : "activities"}
+              </Badge>
             )}
-
-            <div className="flex gap-2 mt-2">
-              <Button variant="destructive" onClick={handleStart}>
-                <Wand2 className="w-4 h-4 mr-2" />
-                {showConfirm ? "Confirm & Start Setup" : "Change Activity"}
-              </Button>
-              {showConfirm && (
-                <Button variant="outline" onClick={() => setShowConfirm(false)}>
-                  Cancel
-                </Button>
-              )}
-            </div>
           </div>
+
+          {isBasic && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+              <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                To add more activities, upgrade your plan.
+              </p>
+            </div>
+          )}
+
+          {!isBasic && canAddActivity && canChangeActivity && (
+            <Button variant="outline" size="sm" onClick={() => navigate("/setup?mode=add")}>
+              <PlusCircle className="w-4 h-4 mr-1" /> Add Activity
+            </Button>
+          )}
+
+          {!isBasic && !canAddActivity && !loadingCount && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+              <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Activity limit reached. Upgrade to Compliance for unlimited activities.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {showAddActivity && (
+      {/* Change activity (restart) - Owner only */}
+      {canChangeActivity && (
         <Card className="shadow-industrial-sm">
-          <CardContent className="pt-6 pb-5 space-y-3">
-            <div className="flex items-center justify-between">
+          <CardContent className="pt-6 pb-5 space-y-4">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="p-3 rounded-full bg-destructive/10">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
               <div>
-                <p className="text-sm font-semibold text-foreground">Add New Activity</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Create an additional HACCP plan for a different activity type.
+                <p className="text-sm font-semibold text-foreground">Restart HACCP Setup</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  This will run the full setup wizard from the beginning and generate a new HACCP plan.
                 </p>
               </div>
-              {maxActivities !== Infinity && !loadingCount && (
-                <Badge variant={activityCount >= maxActivities ? "destructive" : "secondary"} className="text-[10px]">
-                  {activityCount} / {maxActivities} activities
-                </Badge>
+
+              {showConfirm && (
+                <div className="w-full p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <p className="text-sm text-destructive font-medium flex items-center justify-center gap-1.5">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    This will overwrite your current HACCP plan
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    All existing plan data, hazards, and edits will be replaced.
+                  </p>
+                </div>
               )}
-            </div>
-            {canAddActivity ? (
-              <Button variant="outline" size="sm" onClick={() => navigate("/setup?mode=add")}>
-                <PlusCircle className="w-4 h-4 mr-1" /> Add Activity
-              </Button>
-            ) : (
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
-                <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
-                <p className="text-xs text-muted-foreground">
-                  {activityCount >= maxActivities
-                    ? "Activity limit reached. Upgrade to Compliance for unlimited activities."
-                    : "Loading..."}
-                </p>
+
+              <div className="flex gap-2 mt-2">
+                <Button variant="destructive" onClick={handleStart}>
+                  <Wand2 className="w-4 h-4 mr-2" />
+                  {showConfirm ? "Confirm & Start Setup" : "Change Activity"}
+                </Button>
+                {showConfirm && (
+                  <Button variant="outline" onClick={() => setShowConfirm(false)}>
+                    Cancel
+                  </Button>
+                )}
               </div>
-            )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -916,7 +927,7 @@ const FoodSafetySetupWrapper = () => {
       <div className="space-y-4">
         <h2 className="text-lg font-semibold text-foreground">Food Safety Setup</h2>
         <p className="text-sm text-muted-foreground">
-          No HACCP plan found. Create a plan first using "Change Activity" to configure food safety setup.
+          No HACCP plan found. Create a plan first using "Manage Activities" to configure food safety setup.
         </p>
       </div>
     );
@@ -933,8 +944,8 @@ const SettingsPage = () => {
   // Build tab list dynamically based on role and plan
   const tabs = [
     { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: true },
-    { value: "food-safety", label: "Food Safety Setup", shortLabel: "Safety", icon: ShieldCheck, visible: !["Staff"].includes("") && true },
-    { value: "change-activity", label: "Change Activity", shortLabel: "Activity", icon: Wand2, visible: canChangeActivity },
+    { value: "food-safety", label: "Food Safety Setup", shortLabel: "Safety", icon: ShieldCheck, visible: true },
+    { value: "manage-activities", label: "Manage Activities", shortLabel: "Activities", icon: Wand2, visible: true },
     { value: "business", label: "Business", shortLabel: "Biz", icon: Building2, visible: true },
     { value: "subscription", label: "Subscription", shortLabel: "Plan", icon: CreditCard, visible: canManageSubscription },
     { value: "users", label: "Users", shortLabel: "Users", icon: Users, visible: canManageUsers },
@@ -973,11 +984,9 @@ const SettingsPage = () => {
             <FoodSafetySetupWrapper />
           </TabsContent>
 
-          {canChangeActivity && (
-            <TabsContent value="change-activity">
-              <ChangeActivitySection />
-            </TabsContent>
-          )}
+          <TabsContent value="manage-activities">
+            <ManageActivitiesSection />
+          </TabsContent>
 
           <TabsContent value="business">
             <BusinessProfileSection />
