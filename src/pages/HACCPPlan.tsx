@@ -15,6 +15,8 @@ import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 const HACCPPlanPage = () => {
   const { profile } = useAuth();
+  const { overrideRole } = useAdminPlanOverride();
+  const isStaffPreview = overrideRole === "Staff";
   const { plan, showRiskFields, canEditRiskFields, canExportFullHACCP, loading: planLoading } = usePlan();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("HACCP Plan");
