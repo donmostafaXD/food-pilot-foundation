@@ -1,6 +1,20 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.99.2";
 import { corsHeaders } from "../_shared/cors.ts";
 
+/** Plan-based user limits */
+const PLAN_USER_LIMITS: Record<string, number> = {
+  basic: 2,
+  professional: 3,
+  premium: Infinity,
+};
+
+/** Roles allowed per plan */
+const PLAN_ALLOWED_ROLES: Record<string, string[]> = {
+  basic: ["Owner", "Staff"],
+  professional: ["Owner", "Manager", "Staff"],
+  premium: ["Owner", "Manager", "QA", "Staff", "Auditor"],
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -25,7 +39,9 @@ Deno.serve(async (req) => {
       .select("role")
       .eq("user_id", caller.id);
     const roles = (callerRoles || []).map((r: any) => r.role);
-    if (!roles.includes("Owner") && !roles.includes("Manager")) {
+    const isOwner = roles.includes("Owner") || roles.includes("super_admin");
+    const isManager = roles.includes("Manager");
+    if (!isOwner && !isManager) {
       throw new Error("Insufficient permissions");
     }
 
@@ -33,7 +49,37 @@ Deno.serve(async (req) => {
     const { action, email, full_name, role, branch_id, organization_id } = body;
 
     if (action === "invite") {
-      // Create auth user with a temporary password
+      // ── Enforce plan-based limits ──────────────────────
+      // Get organization's plan
+      const { data: org } = await supabaseAdmin
+        .from("organizations")
+        .select("subscription_plan")
+        .eq("id", organization_id)
+        .single();
+      const plan = org?.subscription_plan || "basic";
+      const maxUsers = PLAN_USER_LIMITS[plan] ?? 2;
+      const allowedRoles = PLAN_ALLOWED_ROLES[plan] ?? ["Owner", "Staff"];
+
+      // Check role is allowed for this plan
+      if (!allowedRoles.includes(role)) {
+        throw new Error(`Role "${role}" is not available on your current plan.`);
+      }
+
+      // Manager can only add Staff
+      if (isManager && !isOwner && role !== "Staff") {
+        throw new Error("Managers can only add Staff users.");
+      }
+
+      // Check current user count
+      const { count } = await supabaseAdmin
+        .from("profiles")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organization_id);
+      if ((count || 0) >= maxUsers) {
+        throw new Error(`User limit reached (${maxUsers}). Upgrade your plan to add more users.`);
+      }
+
+      // ── Create user ───────────────────────────────────
       const tempPassword = crypto.randomUUID().slice(0, 16) + "A1!";
       const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -64,6 +110,30 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, user_id: userId, temp_password: tempPassword }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "remove") {
+      // Only Owner can remove users
+      if (!isOwner) {
+        throw new Error("Only Owners can remove users.");
+      }
+
+      const { user_id: targetUserId } = body;
+      if (!targetUserId) throw new Error("user_id is required");
+
+      // Prevent removing yourself
+      if (targetUserId === caller.id) {
+        throw new Error("You cannot remove yourself.");
+      }
+
+      // Delete from auth (cascades to profiles and user_roles via FK)
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
+      if (deleteError) throw deleteError;
+
+      return new Response(
+        JSON.stringify({ success: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
