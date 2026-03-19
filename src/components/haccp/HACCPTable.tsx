@@ -329,6 +329,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                             className="h-7 text-xs"
                             value={h.critical_limit || ""}
                             onChange={(e) => updateHazard(si, hi, "critical_limit", e.target.value)}
+                            readOnly={isReadOnly}
                           />
                         </td>
                         <td className="p-2">
