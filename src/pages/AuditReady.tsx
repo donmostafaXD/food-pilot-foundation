@@ -307,6 +307,17 @@ const AuditReady = () => {
     openPrintWindow(printHeader, html);
   };
 
+  // Only Owner can access Audit Ready
+  if (!planLoading && !isOwner) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-full p-8">
+          <p className="text-muted-foreground">Access restricted to Owner only.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (loading || planLoading) {
     return (
       <DashboardLayout>
