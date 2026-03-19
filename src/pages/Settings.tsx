@@ -608,7 +608,7 @@ const UsersSection = () => {
 
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteFullName, setInviteFullName] = useState("");
-  const [inviteRole, setInviteRole] = useState<AppRole>(allowedInviteRoles[0] || "Staff");
+  const [inviteRole, setInviteRole] = useState<AppRole>((allowedInviteRoles[0] as AppRole) || "Staff");
   const [inviteBranch, setInviteBranch] = useState<string>("");
   const [inviting, setInviting] = useState(false);
 
