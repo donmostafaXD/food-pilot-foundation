@@ -255,7 +255,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
                                </Button>
                              </>
                            )}
-                           {hi === step.hazards.length - 1 && (
+                           {hi === step.hazards.length - 1 && !isReadOnly && (
                             <Button variant="ghost" size="sm" className="h-6 px-1 mt-1 text-xs" onClick={() => addHazard(si)}>
                               <Plus className="w-3 h-3 mr-0.5" /> Add
                             </Button>
