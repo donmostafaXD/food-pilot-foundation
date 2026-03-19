@@ -121,7 +121,7 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
       });
     }
 
-    setPlanSteps(steps);
+    setPlanSteps?.(steps);
     setLoading(false);
   };
 
