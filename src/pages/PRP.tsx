@@ -137,8 +137,11 @@ const PRP = () => {
     if (authLoading || activityLoading || !profile?.organization_id) return;
     const load = async () => {
       setLoading(true);
-      const [{ data: libraryData }, { data: customData }] = await Promise.all([
-        supabase.from("prp_programs").select("*").order("program_name"),
+
+      // Use new prp_master + prp_mapping tables for dynamic loading
+      const [{ data: masterData }, { data: mappingData }, { data: customData }] = await Promise.all([
+        supabase.from("prp_master" as any).select("*").order("program_name"),
+        supabase.from("prp_mapping" as any).select("*"),
         supabase
           .from("custom_prp_programs" as any)
           .select("*")
@@ -146,7 +149,31 @@ const PRP = () => {
           .eq("branch_id", profile.branch_id!),
       ]);
 
-      const items: PRPProgram[] = (libraryData || []).map((p: any) => ({ ...p }));
+      // Build activity-to-programs mapping
+      const activityMap = new Map<string, Set<string>>();
+      ((mappingData || []) as any[]).forEach((m: any) => {
+        if (!activityMap.has(m.activity)) activityMap.set(m.activity, new Set());
+        activityMap.get(m.activity)!.add(m.program_name);
+      });
+
+      // Map master programs with their activities from the mapping table
+      const items: PRPProgram[] = ((masterData || []) as any[]).map((p: any) => {
+        // Find which activities this program belongs to
+        const activities: string[] = [];
+        activityMap.forEach((programs, activity) => {
+          if (programs.has(p.program_name)) activities.push(activity);
+        });
+        return {
+          id: p.id,
+          program_name: p.program_name,
+          description: p.description,
+          frequency: p.frequency,
+          responsible: p.responsible,
+          activity: activities.length > 0 ? activities[0] : "All",
+          _activities: activities, // Store all activities for filtering
+          _category: p.category,
+        };
+      });
 
       if (customData) {
         (customData as any[]).forEach((cp: any) => {
@@ -188,23 +215,29 @@ const PRP = () => {
   const filteredPrograms = useMemo(() => {
     let base = programs;
 
-    // HACCP plan: restrict to specific PRP programs and skip activity filter for core programs
+    // HACCP plan: restrict to specific PRP programs
     if (plan === "professional") {
       base = base.filter((p) => {
         if (p.isCustom) return true;
         const lower = p.program_name.toLowerCase();
         return HACCP_ALLOWED_PRP_KEYWORDS.some((kw) => lower.includes(kw));
       });
-      // For HACCP plan, always show the 4 core PRP programs regardless of activity
       return base;
     }
 
     if (showAllLibrary || !activityName) return base;
+
+    // Use prp_mapping data: filter by activity using the _activities array
     return base.filter((p) => {
       if (p.isCustom) return true;
+      const activities = (p as any)._activities as string[] | undefined;
+      if (activities && activities.length > 0) {
+        return activities.some((a: string) =>
+          a.toLowerCase() === activityName.toLowerCase()
+        );
+      }
       return p.activity.toLowerCase() === activityName.toLowerCase() ||
-        p.activity.toLowerCase() === "all" ||
-        p.activity.toLowerCase() === "general";
+        p.activity.toLowerCase() === "all";
     });
   }, [programs, showAllLibrary, activityName, plan, HACCP_ALLOWED_PRP_KEYWORDS]);
 

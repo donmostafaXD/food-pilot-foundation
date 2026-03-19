@@ -388,6 +388,27 @@ export type Database = {
         }
         Relationships: []
       }
+      fsms_documents: {
+        Row: {
+          description: string | null
+          document_name: string
+          id: number
+          responsible: string | null
+        }
+        Insert: {
+          description?: string | null
+          document_name: string
+          id?: number
+          responsible?: string | null
+        }
+        Update: {
+          description?: string | null
+          document_name?: string
+          id?: number
+          responsible?: string | null
+        }
+        Relationships: []
+      }
       haccp_plan_hazards: {
         Row: {
           control_type: string | null
@@ -575,6 +596,27 @@ export type Database = {
         }
         Relationships: []
       }
+      logs_mapping: {
+        Row: {
+          activity: string
+          id: number
+          log_name: string
+          process_step: string
+        }
+        Insert: {
+          activity: string
+          id?: number
+          log_name: string
+          process_step: string
+        }
+        Update: {
+          activity?: string
+          id?: number
+          log_name?: string
+          process_step?: string
+        }
+        Relationships: []
+      }
       logs_structure: {
         Row: {
           field_name: string
@@ -622,6 +664,51 @@ export type Database = {
           parameter?: string | null
           process_step_id?: number
           record_type?: string | null
+          unit?: string | null
+        }
+        Relationships: []
+      }
+      logs_unified: {
+        Row: {
+          applicable_activities: string | null
+          field_name: string
+          field_type: string | null
+          frequency: string | null
+          id: number
+          log_category: string | null
+          log_id: number
+          log_name: string
+          parameter: string | null
+          process_step: string | null
+          required: boolean | null
+          unit: string | null
+        }
+        Insert: {
+          applicable_activities?: string | null
+          field_name: string
+          field_type?: string | null
+          frequency?: string | null
+          id?: number
+          log_category?: string | null
+          log_id: number
+          log_name: string
+          parameter?: string | null
+          process_step?: string | null
+          required?: boolean | null
+          unit?: string | null
+        }
+        Update: {
+          applicable_activities?: string | null
+          field_name?: string
+          field_type?: string | null
+          frequency?: string | null
+          id?: number
+          log_category?: string | null
+          log_id?: number
+          log_name?: string
+          parameter?: string | null
+          process_step?: string | null
+          required?: boolean | null
           unit?: string | null
         }
         Relationships: []
@@ -770,6 +857,51 @@ export type Database = {
           },
         ]
       }
+      prp_mapping: {
+        Row: {
+          activity: string
+          id: number
+          program_name: string
+        }
+        Insert: {
+          activity: string
+          id?: number
+          program_name: string
+        }
+        Update: {
+          activity?: string
+          id?: number
+          program_name?: string
+        }
+        Relationships: []
+      }
+      prp_master: {
+        Row: {
+          category: string | null
+          description: string | null
+          frequency: string | null
+          id: number
+          program_name: string
+          responsible: string | null
+        }
+        Insert: {
+          category?: string | null
+          description?: string | null
+          frequency?: string | null
+          id?: number
+          program_name: string
+          responsible?: string | null
+        }
+        Update: {
+          category?: string | null
+          description?: string | null
+          frequency?: string | null
+          id?: number
+          program_name?: string
+          responsible?: string | null
+        }
+        Relationships: []
+      }
       prp_programs: {
         Row: {
           activity: string
@@ -877,6 +1009,42 @@ export type Database = {
           description?: string | null
           id?: number
           process_step_id?: number
+          sop_name?: string
+        }
+        Relationships: []
+      }
+      sop_master: {
+        Row: {
+          frequency: string | null
+          id: number
+          procedure_text: string | null
+          process_step: string
+          purpose: string | null
+          related_prp: string | null
+          responsible: string | null
+          scope: string | null
+          sop_name: string
+        }
+        Insert: {
+          frequency?: string | null
+          id?: number
+          procedure_text?: string | null
+          process_step: string
+          purpose?: string | null
+          related_prp?: string | null
+          responsible?: string | null
+          scope?: string | null
+          sop_name: string
+        }
+        Update: {
+          frequency?: string | null
+          id?: number
+          procedure_text?: string | null
+          process_step?: string
+          purpose?: string | null
+          related_prp?: string | null
+          responsible?: string | null
+          scope?: string | null
           sop_name?: string
         }
         Relationships: []

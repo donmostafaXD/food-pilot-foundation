@@ -221,10 +221,38 @@ const Logs = () => {
           .select("*");
         setMfgLogs(data || []);
       } else {
-        const { data } = await supabase.from("logs_structure").select("*");
-        if (data) {
-          const grouped: Record<string, LogStructure> = {};
-          data.forEach((row) => {
+        // Prefer new logs_unified table, fall back to legacy logs_structure
+        const [{ data: unifiedData }, { data: mappingData }, { data: legacyData }] = await Promise.all([
+          supabase.from("logs_unified" as any).select("*"),
+          supabase.from("logs_mapping" as any).select("*"),
+          supabase.from("logs_structure").select("*"),
+        ]);
+
+        const grouped: Record<string, LogStructure> = {};
+
+        if (unifiedData && (unifiedData as any[]).length > 0) {
+          // Use logs_unified (richer field metadata)
+          (unifiedData as any[]).forEach((row: any) => {
+            // Filter by activity if applicable
+            const applicable = row.applicable_activities || "All";
+            if (applicable !== "All" && activityName &&
+              !applicable.toLowerCase().includes(activityName.toLowerCase())) {
+              return;
+            }
+            if (!grouped[row.log_name]) {
+              grouped[row.log_name] = {
+                log_name: row.log_name,
+                related_process_step: row.process_step,
+                fields: [],
+                _frequency: row.frequency,
+                _log_category: row.log_category,
+              } as any;
+            }
+            grouped[row.log_name].fields.push(row.field_name);
+          });
+        } else if (legacyData) {
+          // Fallback to legacy logs_structure
+          legacyData.forEach((row) => {
             if (!grouped[row.log_name]) {
               grouped[row.log_name] = {
                 log_name: row.log_name,
@@ -234,8 +262,20 @@ const Logs = () => {
             }
             grouped[row.log_name].fields.push(row.field_name);
           });
-          setLogStructures(Object.values(grouped));
         }
+
+        // Also apply logs_mapping for activity-based filtering
+        if (mappingData && activityName) {
+          const mappedLogNames = new Set(
+            ((mappingData as any[])
+              .filter((m: any) => m.activity.toLowerCase() === activityName.toLowerCase())
+              .map((m: any) => m.log_name))
+          );
+          // Store mapped names for use in filtering
+          (window as any).__logsMappedNames = mappedLogNames;
+        }
+
+        setLogStructures(Object.values(grouped));
       }
 
       // Load custom log structures

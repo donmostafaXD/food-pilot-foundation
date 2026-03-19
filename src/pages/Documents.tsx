@@ -273,19 +273,22 @@ const Documents = () => {
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("document_library")
-        .select("*")
-        .order("id");
+      // Load from new fsms_documents table (primary), fall back to document_library
+      const [{ data: fsmsData }, { data: legacyData }] = await Promise.all([
+        supabase.from("fsms_documents" as any).select("*").order("id"),
+        supabase.from("document_library").select("*").order("id"),
+      ]);
 
-      if (!error && data) {
-        setDocuments(
-          data.map((d) => ({
-            ...d,
-            ...classifyDocument(d.document_name),
-          }))
-        );
-      }
+      const source = (fsmsData && (fsmsData as any[]).length > 0) ? fsmsData as any[] : legacyData || [];
+      setDocuments(
+        source.map((d: any) => ({
+          id: d.id,
+          document_name: d.document_name,
+          description: d.description,
+          responsible: d.responsible,
+          ...classifyDocument(d.document_name),
+        }))
+      );
       setLoading(false);
     })();
   }, []);
