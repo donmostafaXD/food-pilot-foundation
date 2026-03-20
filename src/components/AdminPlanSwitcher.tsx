@@ -15,7 +15,7 @@ import { toast } from "@/hooks/use-toast";
 
 const PLANS: PlanTier[] = ["basic", "professional", "premium"];
 
-const ROLE_OPTIONS: Record<PlanTier, { value: PreviewRole; label: string }[]> = {
+const ROLE_OPTIONS: Partial<Record<PlanTier, { value: PreviewRole; label: string }[]>> & Record<"basic" | "professional" | "premium", { value: PreviewRole; label: string }[]> = {
   basic: [
     { value: "Owner", label: "Owner / Manager" },
     { value: "Staff", label: "Staff" },
@@ -47,14 +47,14 @@ export function AdminPlanSwitcher() {
   if (!isSuperAdmin) return null;
 
   const activePlan = overridePlan ?? "basic";
-  const roleOptions = ROLE_OPTIONS[activePlan];
+  const roleOptions = ROLE_OPTIONS[activePlan] || ROLE_OPTIONS.premium;
 
   const handlePlanChange = (v: string) => {
     const newPlan = v === "none" ? null : (v as PlanTier);
     setOverridePlan(newPlan);
     if (overrideRole) {
       const plan = newPlan ?? "basic";
-      const available = ROLE_OPTIONS[plan].map((r) => r.value);
+      const available = (ROLE_OPTIONS[plan] || ROLE_OPTIONS.premium).map((r) => r.value);
       if (!available.includes(overrideRole)) {
         setOverrideRole(null);
       }

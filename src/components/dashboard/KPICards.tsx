@@ -143,7 +143,7 @@ const KPICards = ({ branchId }: Props) => {
   }
 
   // Manager/Owner KPIs vary by plan
-  const kpiConfig: Record<PlanTier, { label: string; value: string | number; icon: React.ElementType; color: string }[]> = {
+  const kpiConfig: Partial<Record<PlanTier, { label: string; value: string | number; icon: React.ElementType; color: string }[]>> = {
     basic: [
       { label: "Logs Today", value: data.logsToday, icon: ClipboardList, color: "text-primary" },
       { label: "Missing Logs", value: data.missingLogs, icon: AlertTriangle, color: data.missingLogs > 0 ? "text-destructive" : "text-accent" },
@@ -169,7 +169,7 @@ const KPICards = ({ branchId }: Props) => {
         ],
   };
 
-  const cards = kpiConfig[plan];
+  const cards = kpiConfig[plan] || kpiConfig.premium || [];
 
   return (
     <div className={`grid gap-4 ${cards.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>

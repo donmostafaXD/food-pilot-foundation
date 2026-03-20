@@ -18,6 +18,7 @@ const PLAN_USER_LIMITS: Record<PlanTier, number> = {
   basic: 2,
   professional: 3,
   premium: Infinity,
+  demo: Infinity,
 };
 
 export interface RoleAccess {

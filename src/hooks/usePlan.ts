@@ -4,13 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import { useAdminPlanConfig, type AdminPlanDefinition } from "@/hooks/useAdminPlanConfig";
 
-export type PlanTier = "basic" | "professional" | "premium";
+export type PlanTier = "basic" | "professional" | "premium" | "demo";
 
 /** Display names mapping internal tier → user-facing name */
 export const PLAN_DISPLAY_NAMES: Record<PlanTier, string> = {
   basic: "Basic",
   professional: "HACCP",
   premium: "Compliance",
+  demo: "Demo",
 };
 
 interface PlanFeatures {
@@ -40,12 +41,12 @@ interface PlanFeatures {
   updatePlan: (newPlan: PlanTier) => Promise<{ error: Error | null }>;
 }
 
-export const PLAN_CONFIG: Record<PlanTier, {
+export const PLAN_CONFIG: Partial<Record<PlanTier, {
   name: string;
   price: number;
   description: string;
   features: string[];
-}> = {
+}>> = {
   basic: {
     name: "Basic",
     price: 29,
@@ -91,7 +92,7 @@ export const PLAN_CONFIG: Record<PlanTier, {
 };
 
 const isPlanTier = (value: string | null | undefined): value is PlanTier => {
-  return value === "basic" || value === "professional" || value === "premium";
+  return value === "basic" || value === "professional" || value === "premium" || value === "demo";
 };
 
 export function usePlan(): PlanFeatures {
@@ -160,10 +161,11 @@ export function usePlan(): PlanFeatures {
 
   // Single source of truth for current plan: admin override first, then organization plan.
   const resolvedPlan = overridePlan ?? dbPlan;
+  const isDemo = resolvedPlan === "demo";
 
   // When override is active, DON'T let super_admin bypass — simulate a real user plan.
   const effectiveAdmin = overridePlan ? false : isSuperAdmin;
-  const isProPlus = effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium";
+  const isProPlus = effectiveAdmin || isDemo || resolvedPlan === "professional" || resolvedPlan === "premium";
   const resolvedLoading = overridePlan ? false : (loading || adminLoading);
 
   // Use admin-defined limits when available, otherwise fall back to defaults
@@ -188,16 +190,16 @@ export function usePlan(): PlanFeatures {
     loading: resolvedLoading,
     // Feature gates
     canAccessManufacturing: isProPlus,
-    canAccessMultiBranch: effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium",
-    canAccessAdvancedAnalytics: effectiveAdmin || resolvedPlan === "premium",
+    canAccessMultiBranch: effectiveAdmin || isDemo || resolvedPlan === "professional" || resolvedPlan === "premium",
+    canAccessAdvancedAnalytics: effectiveAdmin || isDemo || resolvedPlan === "premium",
     canAccessFullHazardLibrary: isProPlus,
     // UI visibility
     showRiskFields: isProPlus,
-    showComplianceTools: effectiveAdmin || resolvedPlan === "premium",
+    showComplianceTools: effectiveAdmin || isDemo || resolvedPlan === "premium",
     // Module access
     canAccessSOP: isProPlus,
     canAccessPRP: isProPlus,
-    canAccessDocuments: effectiveAdmin || resolvedPlan === "premium",
+    canAccessDocuments: effectiveAdmin || isDemo || resolvedPlan === "premium",
     canAccessEquipment: isProPlus,
     // Editing
     canEditRiskFields: isProPlus,
