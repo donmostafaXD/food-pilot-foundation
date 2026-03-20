@@ -5,7 +5,7 @@ import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClipboardList, Clock } from "lucide-react";
+import { ClipboardList, Clock, Inbox } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
 interface LogEntry {
@@ -67,7 +67,19 @@ const RecentActivity = ({ branchId }: Props) => {
             ))}
           </div>
         ) : logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No recent activity</p>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="p-3 rounded-full bg-muted mb-3">
+              <Inbox className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm font-medium text-foreground">
+              {isStaff ? "No logs recorded yet" : "No recent activity"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {isStaff
+                ? "Start by filling in your first log entry"
+                : "Activity will appear here once logs are recorded"}
+            </p>
+          </div>
         ) : (
           <div className="space-y-1">
             {logs.map((log) => (
