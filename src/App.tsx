@@ -29,6 +29,7 @@ import PRP from "./pages/PRP";
 import SOP from "./pages/SOP";
 import EquipmentPage from "./pages/Equipment";
 import AuditReady from "./pages/AuditReady";
+import AdminPanel from "./pages/AdminPanel";
 
 const queryClient = new QueryClient();
 
