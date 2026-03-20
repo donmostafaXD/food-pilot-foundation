@@ -48,6 +48,16 @@ interface SOPItem {
   process_step_id?: number;
   isCustom?: boolean;
   customId?: string;
+  _purpose?: string;
+  _scope?: string;
+  _frequency?: string;
+  _related_prp?: string;
+}
+
+interface FoodSafetySetupItem {
+  category: string;
+  item_name: string;
+  item_value: string | null;
 }
 
 const SOPPage = () => {
@@ -65,6 +75,7 @@ const SOPPage = () => {
   const [printOpen, setPrintOpen] = useState(false);
   const [showAllLibrary, setShowAllLibrary] = useState(false);
   const printHeader = usePrintHeader("SOP Procedures");
+  const [setupItems, setSetupItems] = useState<FoodSafetySetupItem[]>([]);
 
   // Add Item dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -81,7 +92,21 @@ const SOPPage = () => {
   useEffect(() => {
     if (activityLoading) return;
     loadSOPs();
+    loadSetupItems();
   }, [activityLoading]);
+
+  const loadSetupItems = async () => {
+    if (!profile?.organization_id) return;
+    const { data } = await supabase
+      .from("food_safety_setup")
+      .select("category, item_name, item_value")
+      .eq("organization_id", profile.organization_id);
+    setSetupItems((data || []) as FoodSafetySetupItem[]);
+  };
+
+  const getSetupValues = (category: string) =>
+    setupItems.filter((i) => i.category === category).map((i) => i.item_name + (i.item_value ? ` (${i.item_value})` : ""));
+
 
   // Show sync notification when plan was just updated
   useEffect(() => {
@@ -360,6 +385,20 @@ const SOPPage = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Purpose & Scope from sop_master */}
+              {(selectedSOP as any)?._purpose && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Purpose</h3>
+                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._purpose}</p>
+                </div>
+              )}
+              {(selectedSOP as any)?._scope && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Scope</h3>
+                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._scope}</p>
+                </div>
+              )}
+
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Procedure</h3>
                 {procedures.length > 0 ? (
@@ -372,6 +411,71 @@ const SOPPage = () => {
                   <p className="text-sm text-muted-foreground italic">No procedure details available.</p>
                 )}
               </div>
+
+              {(selectedSOP as any)?._frequency && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Frequency</h3>
+                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._frequency}</p>
+                </div>
+              )}
+
+              {(selectedSOP as any)?._related_prp && (
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground mb-2">Related PRP</h3>
+                  <Badge variant="secondary">{(selectedSOP as any)._related_prp}</Badge>
+                </div>
+              )}
+
+              {/* Dynamic Food Safety Setup Injection */}
+              {(() => {
+                const sopName = selectedSOP.sop_name.toLowerCase();
+                const processStep = selectedSOP.process_step.toLowerCase();
+                const sections: { label: string; values: string[] }[] = [];
+
+                // Inject cleaning chemicals for cleaning-related SOPs
+                if (sopName.includes("clean") || sopName.includes("sanit") || processStep.includes("clean")) {
+                  const vals = getSetupValues("cleaning_chemicals");
+                  if (vals.length > 0) sections.push({ label: "Cleaning Chemicals", values: vals });
+                }
+                // Inject temperature standards for temperature-related SOPs
+                if (sopName.includes("temp") || sopName.includes("cook") || sopName.includes("cold") || sopName.includes("hot") || processStep.includes("cook") || processStep.includes("cold")) {
+                  const vals = getSetupValues("temperature_standards");
+                  if (vals.length > 0) sections.push({ label: "Temperature Standards", values: vals });
+                }
+                // Inject waste methods for waste-related SOPs
+                if (sopName.includes("waste") || processStep.includes("waste")) {
+                  const vals = getSetupValues("waste_disposal");
+                  if (vals.length > 0) sections.push({ label: "Waste Disposal Methods", values: vals });
+                }
+                // Inject storage areas for storage-related SOPs
+                if (sopName.includes("storage") || sopName.includes("receiv") || processStep.includes("storage") || processStep.includes("receiv")) {
+                  const vals = getSetupValues("storage_areas");
+                  if (vals.length > 0) sections.push({ label: "Storage Areas", values: vals });
+                }
+                // Inject suppliers for receiving-related SOPs
+                if (sopName.includes("supplier") || sopName.includes("receiv") || processStep.includes("receiv")) {
+                  const vals = getSetupValues("suppliers");
+                  if (vals.length > 0) sections.push({ label: "Suppliers", values: vals });
+                }
+
+                if (sections.length === 0) return null;
+
+                return (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Organization Setup Data</h3>
+                    {sections.map((sec) => (
+                      <div key={sec.label} className="rounded-md border border-border bg-muted/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">{sec.label}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {sec.values.map((v, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">{v}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Critical Instructions</h3>
@@ -435,7 +539,7 @@ const SOPPage = () => {
 
         {/* Activity toggle + Filters */}
         <div className="flex flex-col gap-4 mb-6">
-          {activityName && isSuperAdmin && (
+          {activityName && plan !== "basic" && (
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-muted-foreground" />
               <Label htmlFor="show-all-sop" className="text-sm text-muted-foreground cursor-pointer">

@@ -76,6 +76,14 @@ interface PRPProgram {
   activity: string;
   isCustom?: boolean;
   customId?: string;
+  _activities?: string[];
+  _category?: string;
+}
+
+interface FoodSafetySetupItem {
+  category: string;
+  item_name: string;
+  item_value: string | null;
 }
 
 interface PRPRecord {
@@ -115,6 +123,7 @@ const PRP = () => {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [showAllLibrary, setShowAllLibrary] = useState(false);
+  const [setupItems, setSetupItems] = useState<FoodSafetySetupItem[]>([]);
 
   // Add Item dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -132,6 +141,22 @@ const PRP = () => {
   const [filterDate, setFilterDate] = useState("");
   const [filterProgram, setFilterProgram] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+
+  // Load food safety setup items for dynamic injection
+  useEffect(() => {
+    if (!profile?.organization_id) return;
+    const loadSetup = async () => {
+      const { data } = await supabase
+        .from("food_safety_setup")
+        .select("category, item_name, item_value")
+        .eq("organization_id", profile.organization_id!);
+      setSetupItems((data || []) as FoodSafetySetupItem[]);
+    };
+    loadSetup();
+  }, [profile?.organization_id]);
+
+  const getSetupValues = (category: string) =>
+    setupItems.filter((i) => i.category === category).map((i) => i.item_name + (i.item_value ? ` (${i.item_value})` : ""));
 
   useEffect(() => {
     if (authLoading || activityLoading || !profile?.organization_id) return;
@@ -640,6 +665,53 @@ const PRP = () => {
                   </button>
                 </div>
               )}
+
+              {/* Dynamic Food Safety Setup Injection */}
+              {(() => {
+                const name = selectedProgram.program_name.toLowerCase();
+                const sections: { label: string; values: string[] }[] = [];
+
+                if (name.includes("clean") || name.includes("sanit")) {
+                  const vals = getSetupValues("cleaning_chemicals");
+                  if (vals.length > 0) sections.push({ label: "Cleaning Chemicals", values: vals });
+                }
+                if (name.includes("pest")) {
+                  const vals = getSetupValues("waste_disposal");
+                  if (vals.length > 0) sections.push({ label: "Waste Disposal Methods", values: vals });
+                }
+                if (name.includes("supplier") || name.includes("receiv")) {
+                  const vals = getSetupValues("suppliers");
+                  if (vals.length > 0) sections.push({ label: "Approved Suppliers", values: vals });
+                }
+                if (name.includes("storage") || name.includes("cold") || name.includes("temperature")) {
+                  const temps = getSetupValues("temperature_standards");
+                  const areas = getSetupValues("storage_areas");
+                  if (temps.length > 0) sections.push({ label: "Temperature Standards", values: temps });
+                  if (areas.length > 0) sections.push({ label: "Storage Areas", values: areas });
+                }
+                if (name.includes("waste")) {
+                  const vals = getSetupValues("waste_disposal");
+                  if (vals.length > 0) sections.push({ label: "Waste Disposal Methods", values: vals });
+                }
+
+                if (sections.length === 0) return null;
+
+                return (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Organization Setup Data</h3>
+                    {sections.map((sec) => (
+                      <div key={sec.label} className="rounded-md border border-border bg-muted/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">{sec.label}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {sec.values.map((v, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">{v}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               <div className="space-y-1.5">
                 <Label className="text-sm">Notes (optional)</Label>
