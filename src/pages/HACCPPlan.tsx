@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import HACCPTable from "@/components/haccp/HACCPTable";
@@ -8,6 +7,7 @@ import { Loader2, Printer, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
 import { openPrintWindow, blankTable, escapeHtml, controlBadgeClass } from "@/lib/printUtils";
@@ -15,8 +15,7 @@ import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 const HACCPPlanPage = () => {
   const { profile } = useAuth();
-  const { overrideRole } = useAdminPlanOverride();
-  const isStaffPreview = overrideRole === "Staff";
+  const guard = usePermissionGuard("haccp_plan");
   const { plan, showRiskFields, canEditRiskFields, canExportFullHACCP, loading: planLoading } = usePlan();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("HACCP Plan");
