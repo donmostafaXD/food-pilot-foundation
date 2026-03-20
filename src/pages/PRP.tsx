@@ -219,7 +219,7 @@ const PRP = () => {
       setLoading(false);
     };
     load();
-  }, [authLoading, activityLoading, profile]);
+  }, [authLoading, activityLoading, profile, activityName]);
 
   // Show sync notification when plan was just updated
   useEffect(() => {

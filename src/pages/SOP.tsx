@@ -47,6 +47,8 @@ interface SOPItem {
   category: "Food Service" | "Custom";
   isCustom?: boolean;
   customId?: string;
+  /** PRP programs related to this SOP's process step (via prp_mapping) */
+  _relatedPRPs?: string[];
 }
 
 interface FoodSafetySetupItem {
@@ -88,7 +90,7 @@ const SOPPage = () => {
     if (activityLoading) return;
     loadSOPs();
     loadSetupItems();
-  }, [activityLoading]);
+  }, [activityLoading, activityName]);
 
   const loadSetupItems = async () => {
     if (!profile?.organization_id) return;
@@ -114,7 +116,22 @@ const SOPPage = () => {
     setLoading(true);
 
     // Single source of truth: sop_library only
-    const { data: libraryData } = await supabase.from("sop_library").select("*");
+    // Also load prp_mapping to build SOP↔PRP relationships
+    const [{ data: libraryData }, { data: prpMappingData }] = await Promise.all([
+      supabase.from("sop_library").select("*"),
+      supabase.from("prp_mapping" as any).select("*"),
+    ]);
+
+    // Build process_step → PRP program names mapping from prp_mapping
+    // prp_mapping links activity→program, and we cross-reference via process steps
+    const activityPRPs = new Set<string>();
+    if (prpMappingData && activityName) {
+      ((prpMappingData as any[]) || []).forEach((m: any) => {
+        if (m.activity.toLowerCase() === activityName.toLowerCase()) {
+          activityPRPs.add(m.program_name.toLowerCase());
+        }
+      });
+    }
 
     let customData: any[] = [];
     if (profile?.organization_id && profile?.branch_id) {
@@ -130,6 +147,18 @@ const SOPPage = () => {
 
     // Load all SOPs from sop_library
     (libraryData || []).forEach((s: any) => {
+      // Build related PRPs by matching SOP process_step keywords against PRP program names
+      const relatedPRPs: string[] = [];
+      activityPRPs.forEach((prpName) => {
+        const step = (s.process_step || "").toLowerCase();
+        const title = (s.sop_title || "").toLowerCase();
+        // Match if PRP name keywords appear in SOP process_step or title
+        const prpKeywords = prpName.split(/\s+/);
+        if (prpKeywords.some((kw: string) => kw.length > 3 && (step.includes(kw) || title.includes(kw)))) {
+          relatedPRPs.push(prpName);
+        }
+      });
+
       items.push({
         id: s.id,
         sop_name: s.sop_title,
@@ -138,6 +167,7 @@ const SOPPage = () => {
         procedure_text: s.procedure_text,
         responsible: s.responsible,
         category: "Food Service",
+        _relatedPRPs: relatedPRPs,
       });
     });
 
@@ -165,7 +195,7 @@ const SOPPage = () => {
     "pasteurization", "fermentation", "calibration", "water quality",
   ]), []);
 
-  // Dynamic filtering: driven by plan, activity, and HACCP plan process steps
+  // Dynamic filtering: driven by plan, activity, HACCP process steps + PRP relevance
   const activityFiltered = useMemo(() => {
     let base = sops;
 
@@ -178,16 +208,21 @@ const SOPPage = () => {
       });
     }
 
-    // Filter by HACCP plan process steps (database-driven)
+    // Filter by HACCP plan process steps AND related PRP (dual filtering)
     if (showAllLibrary || !activityName) return base;
     const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
     if (processNames.length === 0) return base;
 
     return base.filter((s) => {
       if (s.isCustom) return true;
-      return processNames.some((p) =>
+      // Match by process_step
+      const matchesProcess = processNames.some((p) =>
         s.process_step.toLowerCase().includes(p.toLowerCase())
       );
+      // Match by related PRP (if SOP has PRP links from prp_mapping)
+      const matchesPRP = (s._relatedPRPs && s._relatedPRPs.length > 0);
+      // Include if matches process step OR has related PRP for this activity
+      return matchesProcess || matchesPRP;
     });
   }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, BASIC_HIDDEN_SOPS]);
 
