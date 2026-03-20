@@ -246,6 +246,9 @@ const Equipment = () => {
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Equipment</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Manage your branch equipment inventory
+              {activeActivity && (
+                <Badge variant="secondary" className="ml-2 text-[10px]">{activeActivity.activity_name}</Badge>
+              )}
             </p>
           </div>
           {guard.canCreate && (
