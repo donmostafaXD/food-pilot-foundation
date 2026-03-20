@@ -92,7 +92,7 @@ export const PLAN_CONFIG: Record<PlanTier, {
 };
 
 const isPlanTier = (value: string | null | undefined): value is PlanTier => {
-  return value === "basic" || value === "professional" || value === "premium";
+  return value === "basic" || value === "professional" || value === "premium" || value === "demo";
 };
 
 export function usePlan(): PlanFeatures {
