@@ -96,6 +96,7 @@ const isPlanTier = (value: string | null | undefined): value is PlanTier => {
 
 export function usePlan(): PlanFeatures {
   const { profile, roles } = useAuth();
+  const { plans: adminPlans, loading: adminLoading } = useAdminPlanConfig();
   const [dbPlan, setDbPlan] = useState<PlanTier>("basic");
   const [loading, setLoading] = useState(true);
   const { overridePlan } = useAdminPlanOverride();
