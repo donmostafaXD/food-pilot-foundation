@@ -36,53 +36,46 @@ interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
-  visible?: boolean;
+  visible: boolean;
 }
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { signOut, profile, roles } = useAuth();
+  const { signOut, profile } = useAuth();
   const { overrideRole } = useAdminPlanOverride();
-  const isSuperAdmin = roles.includes("super_admin" as any);
   const {
     canAccessSOP,
     canAccessPRP,
     canAccessDocuments,
-    canAccessEquipment,
     loading: planLoading,
   } = usePlan();
   const {
-    canAccessSettings,
-    canAccessAudit,
-    canAccessPRPEdit,
-    canAccessSOPEdit,
     effectiveRole,
+    isRealSuperAdmin,
+    isPreviewMode,
+    sidebar,
   } = useRoleAccess();
+
+  const { plan } = usePlan();
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Staff restriction: real Staff role OR preview Staff
-  const isStaffRestricted = effectiveRole === "Staff";
-
-  const { plan } = usePlan();
-  const showDocuments = !isStaffRestricted && !planLoading && canAccessDocuments && plan === "premium";
-  const showEquipment = !isStaffRestricted; // Equipment visible for ALL plans
-
+  // Sidebar items driven by permission matrix
   const mainItems: NavItem[] = [
-    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-    { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck },
-    { title: "Logs", url: "/logs", icon: ClipboardList },
-    { title: "PRP Programs", url: "/prp", icon: Shield, visible: !isStaffRestricted && !planLoading && canAccessPRP },
-    { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: !isStaffRestricted && !planLoading && canAccessSOP },
-    { title: "Equipment", url: "/equipment", icon: Wrench, visible: showEquipment },
-    { title: "Documents", url: "/documents", icon: FileText, visible: showDocuments },
-    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: effectiveRole === "Owner" || effectiveRole === "super_admin" },
-    { title: "Settings", url: "/settings", icon: Settings, visible: canAccessSettings },
+    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, visible: sidebar.dashboard },
+    { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck, visible: sidebar.haccp },
+    { title: "Logs", url: "/logs", icon: ClipboardList, visible: sidebar.logs },
+    { title: "PRP Programs", url: "/prp", icon: Shield, visible: sidebar.prp && !planLoading && canAccessPRP },
+    { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: sidebar.sop && !planLoading && canAccessSOP },
+    { title: "Equipment", url: "/equipment", icon: Wrench, visible: sidebar.equipment },
+    { title: "Documents", url: "/documents", icon: FileText, visible: sidebar.documents && !planLoading && canAccessDocuments && plan === "premium" },
+    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: sidebar.audit },
+    { title: "Settings", url: "/settings", icon: Settings, visible: sidebar.settings },
   ];
 
-  const visibleItems = mainItems.filter((item) => item.visible === undefined || item.visible);
+  const visibleItems = mainItems.filter((item) => item.visible);
 
   return (
     <Sidebar collapsible="icon">
@@ -99,17 +92,17 @@ export function AppSidebar() {
                   {profile.full_name}
                 </p>
               )}
-              {isSuperAdmin && !overrideRole && (
+              {isRealSuperAdmin && !isPreviewMode && (
                 <Badge variant="destructive" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
                   <Crown className="h-3 w-3" /> Super Admin
                 </Badge>
               )}
-              {overrideRole && (
+              {isPreviewMode && (
                 <Badge variant="secondary" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
                   Preview: {overrideRole}
                 </Badge>
               )}
-              {!isSuperAdmin && !overrideRole && effectiveRole && (
+              {!isRealSuperAdmin && !isPreviewMode && effectiveRole && (
                 <Badge variant="outline" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
                   {effectiveRole}
                 </Badge>

@@ -15,21 +15,17 @@ import {
 
 const QuickActions = () => {
   const navigate = useNavigate();
-  const { effectiveRole, canAccessSettings, canAccessAudit } = useRoleAccess();
+  const { can, canView, effectiveRole } = useRoleAccess();
   const { canAccessSOP, canAccessDocuments, showComplianceTools } = usePlan();
 
-  const isStaff = effectiveRole === "Staff";
-  const isOwnerLevel = effectiveRole === "Owner" || effectiveRole === "super_admin";
-  const isManagerLevel = isOwnerLevel || effectiveRole === "Manager";
-
   const actions: { label: string; icon: React.ElementType; onClick: () => void; visible: boolean }[] = [
-    { label: "Fill Logs", icon: ClipboardList, onClick: () => navigate("/logs"), visible: true },
-    { label: "View HACCP", icon: ShieldCheck, onClick: () => navigate("/haccp"), visible: !isStaff },
-    { label: "Add Corrective Action", icon: Plus, onClick: () => navigate("/logs"), visible: isManagerLevel },
-    { label: "SOP Procedures", icon: BookOpen, onClick: () => navigate("/sop"), visible: isManagerLevel && canAccessSOP },
-    { label: "Audit Ready", icon: ClipboardCheck, onClick: () => navigate("/audit"), visible: isOwnerLevel && showComplianceTools && canAccessAudit },
-    { label: "Documents", icon: FileText, onClick: () => navigate("/documents"), visible: isOwnerLevel && canAccessDocuments },
-    { label: "Settings", icon: Settings, onClick: () => navigate("/settings"), visible: canAccessSettings },
+    { label: "Fill Logs", icon: ClipboardList, onClick: () => navigate("/logs"), visible: can("logs", "create") },
+    { label: "View HACCP", icon: ShieldCheck, onClick: () => navigate("/haccp"), visible: canView("haccp_plan") && effectiveRole !== "Staff" },
+    { label: "Add Corrective Action", icon: Plus, onClick: () => navigate("/logs"), visible: can("logs", "edit") },
+    { label: "SOP Procedures", icon: BookOpen, onClick: () => navigate("/sop"), visible: canView("sop") && canAccessSOP },
+    { label: "Audit Ready", icon: ClipboardCheck, onClick: () => navigate("/audit"), visible: canView("audit") && showComplianceTools },
+    { label: "Documents", icon: FileText, onClick: () => navigate("/documents"), visible: canView("documents") && canAccessDocuments },
+    { label: "Settings", icon: Settings, onClick: () => navigate("/settings"), visible: canView("settings") },
   ];
 
   const visibleActions = actions.filter((a) => a.visible);
