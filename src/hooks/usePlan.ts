@@ -190,16 +190,16 @@ export function usePlan(): PlanFeatures {
     loading: resolvedLoading,
     // Feature gates
     canAccessManufacturing: isProPlus,
-    canAccessMultiBranch: effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium",
-    canAccessAdvancedAnalytics: effectiveAdmin || resolvedPlan === "premium",
+    canAccessMultiBranch: effectiveAdmin || isDemo || resolvedPlan === "professional" || resolvedPlan === "premium",
+    canAccessAdvancedAnalytics: effectiveAdmin || isDemo || resolvedPlan === "premium",
     canAccessFullHazardLibrary: isProPlus,
     // UI visibility
     showRiskFields: isProPlus,
-    showComplianceTools: effectiveAdmin || resolvedPlan === "premium",
+    showComplianceTools: effectiveAdmin || isDemo || resolvedPlan === "premium",
     // Module access
     canAccessSOP: isProPlus,
     canAccessPRP: isProPlus,
-    canAccessDocuments: effectiveAdmin || resolvedPlan === "premium",
+    canAccessDocuments: effectiveAdmin || isDemo || resolvedPlan === "premium",
     canAccessEquipment: isProPlus,
     // Editing
     canEditRiskFields: isProPlus,
