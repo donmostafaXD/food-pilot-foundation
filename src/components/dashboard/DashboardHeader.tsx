@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
-import { supabase } from "@/integrations/supabase/client";
+import { useActivity } from "@/contexts/ActivityContext";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarDays, MapPin, Utensils } from "lucide-react";
@@ -22,8 +21,9 @@ interface Props {
 
 const DashboardHeader = ({ selectedBranchId, onBranchChange, branches }: Props) => {
   const { canAccessMultiBranch } = usePlan();
-  const { canViewAllBranches } = useRoleAccess();
+  const { canViewAllBranches, effectiveRole } = useRoleAccess();
   const { plan, planDisplayName } = usePlan();
+  const { activeActivity } = useActivity();
 
   const selectedBranch = branches.find((b) => b.id === selectedBranchId);
   const showBranchSelector = canViewAllBranches && canAccessMultiBranch && branches.length > 1;
@@ -36,9 +36,20 @@ const DashboardHeader = ({ selectedBranchId, onBranchChange, branches }: Props) 
           <Badge variant="outline" className="text-xs font-medium">
             {planDisplayName}
           </Badge>
+          {effectiveRole && (
+            <Badge variant="secondary" className="text-[10px]">
+              {effectiveRole}
+            </Badge>
+          )}
         </div>
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-          {selectedBranch?.activity_type && (
+        <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+          {activeActivity && (
+            <span className="flex items-center gap-1">
+              <Utensils className="h-3.5 w-3.5" />
+              {activeActivity.activity_name}
+            </span>
+          )}
+          {selectedBranch && !activeActivity?.activity_name && selectedBranch.activity_type && (
             <span className="flex items-center gap-1">
               <Utensils className="h-3.5 w-3.5" />
               {selectedBranch.activity_type}
