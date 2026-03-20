@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
         email,
         password: tempPassword,
         email_confirm: true,
+        user_metadata: { subscription_plan: subscription_plan || "basic" },
       });
       if (createError) throw createError;
 
