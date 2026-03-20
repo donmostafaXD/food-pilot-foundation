@@ -44,14 +44,9 @@ interface SOPItem {
   description: string | null;
   procedure_text: string | null;
   responsible: string | null;
-  category: "Food Service" | "Manufacturing" | "Custom";
-  process_step_id?: number;
+  category: "Food Service" | "Custom";
   isCustom?: boolean;
   customId?: string;
-  _purpose?: string;
-  _scope?: string;
-  _frequency?: string;
-  _related_prp?: string;
 }
 
 interface FoodSafetySetupItem {
@@ -118,12 +113,8 @@ const SOPPage = () => {
   const loadSOPs = async () => {
     setLoading(true);
 
-    // Load from new sop_master table (primary), plus legacy tables as fallback
-    const [{ data: masterData }, { data: foodService }, { data: manufacturing }] = await Promise.all([
-      supabase.from("sop_master" as any).select("*"),
-      supabase.from("sop_library").select("*"),
-      supabase.from("sop_library_manufacturing").select("*"),
-    ]);
+    // Single source of truth: sop_library only
+    const { data: libraryData } = await supabase.from("sop_library").select("*");
 
     let customData: any[] = [];
     if (profile?.organization_id && profile?.branch_id) {
@@ -136,31 +127,9 @@ const SOPPage = () => {
     }
 
     const items: SOPItem[] = [];
-    const addedNames = new Set<string>();
 
-    // Prefer sop_master (richer data with Purpose, Scope, Related_PRP)
-    if (masterData && (masterData as any[]).length > 0) {
-      (masterData as any[]).forEach((s: any) => {
-        addedNames.add(s.sop_name.toLowerCase());
-        items.push({
-          id: s.id,
-          sop_name: s.sop_name,
-          process_step: s.process_step,
-          description: s.purpose || s.procedure_text,
-          procedure_text: s.procedure_text,
-          responsible: s.responsible,
-          category: "Food Service",
-          _purpose: s.purpose,
-          _scope: s.scope,
-          _frequency: s.frequency,
-          _related_prp: s.related_prp,
-        } as any);
-      });
-    }
-
-    // Add legacy Food Service SOPs not already in master
-    (foodService || []).forEach((s: any) => {
-      if (addedNames.has(s.sop_title.toLowerCase())) return;
+    // Load all SOPs from sop_library
+    (libraryData || []).forEach((s: any) => {
       items.push({
         id: s.id,
         sop_name: s.sop_title,
@@ -172,19 +141,7 @@ const SOPPage = () => {
       });
     });
 
-    (manufacturing || []).forEach((s: any) => {
-      items.push({
-        id: s.id + 10000,
-        sop_name: s.sop_name,
-        process_step: `Step #${s.process_step_id}`,
-        description: s.description,
-        procedure_text: s.description,
-        responsible: null,
-        category: "Manufacturing",
-        process_step_id: s.process_step_id,
-      });
-    });
-
+    // Load custom SOPs
     (customData as any[]).forEach((s: any) => {
       items.push({
         id: s.id,
@@ -207,13 +164,7 @@ const SOPPage = () => {
   const activityFiltered = useMemo(() => {
     let base = sops;
 
-    // Basic plan: exclude Manufacturing category SOPs
-    if (plan === "basic") {
-      base = base.filter((s) => {
-        if (s.isCustom) return true;
-        return s.category !== "Manufacturing";
-      });
-    }
+    // Filter by HACCP plan process steps (database-driven)
 
     // For all plans: filter by HACCP plan process steps (database-driven)
     if (showAllLibrary || !activityName) return base;
@@ -385,20 +336,6 @@ const SOPPage = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Purpose & Scope from sop_master */}
-              {(selectedSOP as any)?._purpose && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Purpose</h3>
-                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._purpose}</p>
-                </div>
-              )}
-              {(selectedSOP as any)?._scope && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Scope</h3>
-                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._scope}</p>
-                </div>
-              )}
-
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Procedure</h3>
                 {procedures.length > 0 ? (
@@ -411,20 +348,6 @@ const SOPPage = () => {
                   <p className="text-sm text-muted-foreground italic">No procedure details available.</p>
                 )}
               </div>
-
-              {(selectedSOP as any)?._frequency && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Frequency</h3>
-                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._frequency}</p>
-                </div>
-              )}
-
-              {(selectedSOP as any)?._related_prp && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Related PRP</h3>
-                  <Badge variant="secondary">{(selectedSOP as any)._related_prp}</Badge>
-                </div>
-              )}
 
               {/* Dynamic Food Safety Setup Injection */}
               {(() => {
