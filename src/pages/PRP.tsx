@@ -713,6 +713,7 @@ const PRP = () => {
                 );
               })()}
 
+              <div className="space-y-1.5">
                 <Label className="text-sm">Notes (optional)</Label>
                 <Textarea
                   value={notes}
