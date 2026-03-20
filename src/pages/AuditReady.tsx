@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useActivity } from "@/contexts/ActivityContext";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import { openPrintWindow, escapeHtml } from "@/lib/printUtils";
 
@@ -54,6 +55,7 @@ const AuditReady = () => {
   const navigate = useNavigate();
   const { plan, showRiskFields, showComplianceTools, canAccessSOP, canAccessPRP, loading: planLoading } = usePlan();
   const { effectiveRole } = useRoleAccess();
+  const { activeActivityId, activeActivity } = useActivity();
   const printHeader = usePrintHeader("Audit Ready Report");
   const isBasicPlan = plan === "basic";
   const isOwner = effectiveRole === "Owner" || effectiveRole === "super_admin";
@@ -69,7 +71,7 @@ const AuditReady = () => {
     if (planLoading || !profile?.organization_id || !profile?.branch_id) return;
     if (!isOwner) return;
     fetchAuditData();
-  }, [planLoading, profile?.organization_id, profile?.branch_id]);
+  }, [planLoading, profile?.organization_id, profile?.branch_id, activeActivityId]);
 
   const fetchAuditData = async () => {
     setLoading(true);
