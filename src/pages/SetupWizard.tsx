@@ -186,6 +186,9 @@ const SetupWizard = () => {
       }
 
       localStorage.setItem("haccp_plan_updated", "true");
+      // Set the newly created plan as the active activity
+      switchActivity(plan.id);
+      await refreshActivities();
       toast.success("HACCP Plan saved successfully!");
       navigate("/dashboard", { replace: true });
     } catch (err: any) {
