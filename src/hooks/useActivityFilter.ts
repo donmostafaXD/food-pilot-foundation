@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActivity } from "@/contexts/ActivityContext";
 import { supabase } from "@/integrations/supabase/client";
 
 interface ActivityFilterResult {
@@ -15,11 +16,13 @@ interface ActivityFilterResult {
 }
 
 /**
- * Hook that resolves the user's current activity (from their latest HACCP plan)
- * and fetches the related processes from activity_process_map + haccp_plan_steps.
+ * Hook that resolves the user's current activity (from the selected HACCP plan
+ * in ActivityContext) and fetches the related processes from activity_process_map
+ * + haccp_plan_steps.
  */
 export const useActivityFilter = (): ActivityFilterResult => {
   const { profile, loading: authLoading } = useAuth();
+  const { activeActivityId, activeActivity, loading: activityCtxLoading } = useActivity();
   const [activityName, setActivityName] = useState<string | null>(null);
   const [activityProcesses, setActivityProcesses] = useState<string[]>([]);
   const [planProcessNames, setPlanProcessNames] = useState<string[]>([]);
@@ -29,27 +32,19 @@ export const useActivityFilter = (): ActivityFilterResult => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading || !profile?.organization_id) return;
+    if (authLoading || activityCtxLoading || !profile?.organization_id) return;
 
     const load = async () => {
       setLoading(true);
 
-      // Get activity from latest HACCP plan
-      const { data: plans } = await supabase
-        .from("haccp_plans")
-        .select("id, activity_name, business_type")
-        .eq("organization_id", profile.organization_id!)
-        .eq("branch_id", profile.branch_id!)
-        .order("created_at", { ascending: false })
-        .limit(1);
-
-      const plan = plans?.[0];
-      const activity = plan?.activity_name || null;
-      const bType = plan?.business_type || "Food Service";
+      // Use selected activity from context instead of querying latest
+      const activity = activeActivity?.activity_name || null;
+      const bType = activeActivity?.business_type || "Food Service";
+      const currentPlanId = activeActivityId || null;
 
       setActivityName(activity);
       setBusinessType(bType);
-      setPlanId(plan?.id || null);
+      setPlanId(currentPlanId);
 
       // Check if plan was just updated (flag set by SetupWizard)
       const updatedFlag = localStorage.getItem("haccp_plan_updated");
@@ -60,7 +55,7 @@ export const useActivityFilter = (): ActivityFilterResult => {
         setPlanJustUpdated(false);
       }
 
-      if (activity && plan) {
+      if (activity && currentPlanId) {
         // Get processes linked to this activity (from template map)
         const { data: processMap } = await supabase
           .from("activity_process_map")
@@ -74,7 +69,7 @@ export const useActivityFilter = (): ActivityFilterResult => {
         const { data: planSteps } = await supabase
           .from("haccp_plan_steps")
           .select("process_name")
-          .eq("haccp_plan_id", plan.id)
+          .eq("haccp_plan_id", currentPlanId)
           .order("step_order");
 
         setPlanProcessNames((planSteps || []).map((s) => s.process_name));
@@ -87,7 +82,7 @@ export const useActivityFilter = (): ActivityFilterResult => {
     };
 
     load();
-  }, [authLoading, profile?.organization_id, profile?.branch_id]);
+  }, [authLoading, activityCtxLoading, profile?.organization_id, profile?.branch_id, activeActivityId, activeActivity]);
 
   return { activityName, activityProcesses, planProcessNames, businessType, planId, planJustUpdated, loading };
 };

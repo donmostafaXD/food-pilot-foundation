@@ -94,6 +94,7 @@ const App = () => {
               </ActivityProvider>
             </AdminPlanOverrideProvider>
           </AuthProvider>
+
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
