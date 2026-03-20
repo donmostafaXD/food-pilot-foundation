@@ -89,7 +89,9 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <AdminPlanOverrideProvider>
-              <AppRoutes />
+              <ActivityProvider>
+                <AppRoutes />
+              </ActivityProvider>
             </AdminPlanOverrideProvider>
           </AuthProvider>
         </BrowserRouter>
