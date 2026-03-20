@@ -56,6 +56,92 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_module_access: {
+        Row: {
+          access: string
+          id: string
+          limited_note: string | null
+          locked_message: string | null
+          module: string
+          plan_tier: string
+          updated_at: string | null
+        }
+        Insert: {
+          access?: string
+          id?: string
+          limited_note?: string | null
+          locked_message?: string | null
+          module: string
+          plan_tier: string
+          updated_at?: string | null
+        }
+        Update: {
+          access?: string
+          id?: string
+          limited_note?: string | null
+          locked_message?: string | null
+          module?: string
+          plan_tier?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_module_access_plan_tier_fkey"
+            columns: ["plan_tier"]
+            isOneToOne: false
+            referencedRelation: "admin_plan_definitions"
+            referencedColumns: ["plan_tier"]
+          },
+        ]
+      }
+      admin_plan_definitions: {
+        Row: {
+          description: string | null
+          display_name: string
+          features: Json | null
+          highlighted: boolean | null
+          id: string
+          max_activities: number | null
+          max_branches: number | null
+          max_users: number | null
+          plan_tier: string
+          price: number | null
+          sort_order: number | null
+          updated_at: string | null
+          visible: boolean | null
+        }
+        Insert: {
+          description?: string | null
+          display_name: string
+          features?: Json | null
+          highlighted?: boolean | null
+          id?: string
+          max_activities?: number | null
+          max_branches?: number | null
+          max_users?: number | null
+          plan_tier: string
+          price?: number | null
+          sort_order?: number | null
+          updated_at?: string | null
+          visible?: boolean | null
+        }
+        Update: {
+          description?: string | null
+          display_name?: string
+          features?: Json | null
+          highlighted?: boolean | null
+          id?: string
+          max_activities?: number | null
+          max_branches?: number | null
+          max_users?: number | null
+          plan_tier?: string
+          price?: number | null
+          sort_order?: number | null
+          updated_at?: string | null
+          visible?: boolean | null
+        }
+        Relationships: []
+      }
       branches: {
         Row: {
           activity_type: string | null
