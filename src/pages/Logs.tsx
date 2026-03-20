@@ -300,24 +300,32 @@ const Logs = () => {
   }, [planJustUpdated]);
 
   // Filter logs by activity and plan
+  // Dynamic plan-tier filtering using log_category from logs_unified
   const filteredLogStructures = useMemo(() => {
     let base = logStructures;
 
+    // Filter by plan tier using log_category (database-driven)
     if (isBasicPlan) {
       base = base.filter((log) => {
         if (log.isCustom) return true;
-        return BASIC_ALLOWED_LOGS.has(log.log_name) && !BASIC_HIDDEN_LOGS.has(log.log_name);
+        const cat = ((log as any)._log_category || "Core").toLowerCase();
+        return cat === "core";
       });
     } else if (isHACCPPlan) {
       base = base.filter((log) => {
         if (log.isCustom) return true;
-        return HACCP_ALLOWED_LOGS.has(log.log_name);
+        const cat = ((log as any)._log_category || "Core").toLowerCase();
+        return cat === "core" || cat === "ccp";
       });
     }
+    // Premium/Compliance: all categories pass through
 
     if (showAllLibrary || !activityName) {
       return base;
     }
+
+    // Activity-based filtering already applied during data load via logs_mapping
+    // Additional process step filtering for precise matching
     const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
     if (processNames.length === 0) return base;
 
