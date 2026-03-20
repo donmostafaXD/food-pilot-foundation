@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Wand2,
   CreditCard,
@@ -28,6 +29,9 @@ import {
   Lock,
   ShieldCheck,
   PlusCircle,
+  Info,
+  Eye,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan, PLAN_CONFIG, PLAN_DISPLAY_NAMES, type PlanTier } from "@/hooks/usePlan";
@@ -39,10 +43,52 @@ import { Link } from "react-router-dom";
 import HACCPTable from "@/components/haccp/HACCPTable";
 import FoodSafetySetupSection from "@/components/settings/FoodSafetySetupSection";
 import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
+import { PLAN_COMPARISON, PLAN_TIER_LABELS } from "@/lib/plan-features";
+
+// ── Locked Section Wrapper ───────────────────────────────────────────
+const LockedSection = ({ title, description, requiredRole = "Owner" }: { title: string; description: string; requiredRole?: string }) => (
+  <div className="space-y-4">
+    <div>
+      <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+      <p className="text-sm text-muted-foreground mt-1">{description}</p>
+    </div>
+    <Card className="border-dashed border-2 border-muted-foreground/20 bg-muted/20">
+      <CardContent className="flex items-center gap-4 py-8 justify-center">
+        <div className="text-center space-y-3">
+          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+            <Lock className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Restricted Access</p>
+            <p className="text-xs text-muted-foreground">
+              Only <strong>{requiredRole}s</strong> can modify this setting.
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+);
+
+// ── Tooltip Helper ───────────────────────────────────────────────────
+const HelpTip = ({ text }: { text: string }) => (
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Info className="w-3.5 h-3.5 text-muted-foreground cursor-help inline-block ml-1" />
+      </TooltipTrigger>
+      <TooltipContent side="top" className="max-w-[240px] text-xs">
+        {text}
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+);
+
 // ── HACCP Plan Edit Section ──────────────────────────────────────────
 const HACCPPlanSection = () => {
   const { profile } = useAuth();
   const { plan, showRiskFields, canEditRiskFields } = usePlan();
+  const { canEditHACCP } = useRoleAccess();
   const isBasic = plan === "basic";
 
   const [loading, setLoading] = useState(true);
@@ -198,6 +244,32 @@ const HACCPPlanSection = () => {
     );
   }
 
+  if (!canEditHACCP) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">HACCP Plan</h2>
+          <p className="text-sm text-muted-foreground mt-1">View your current HACCP plan configuration.</p>
+        </div>
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+          <Eye className="w-4 h-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            <strong>Read-only access</strong> — Only Owners and Managers can edit the HACCP plan.
+          </p>
+        </div>
+        <HACCPTable
+          processSteps={processSteps}
+          isFoodService={isFoodService}
+          activityName={activityName}
+          planSteps={planSteps}
+          setPlanSteps={setPlanSteps}
+          showRiskFields={showRiskFields}
+          canEditRiskFields={false}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -269,6 +341,16 @@ const ManageActivitiesSection = () => {
     }
   };
 
+  if (!canChangeActivity) {
+    return (
+      <LockedSection
+        title="Manage Activities"
+        description="Activity management controls which food safety workflows are active."
+        requiredRole="Owner"
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -278,7 +360,6 @@ const ManageActivitiesSection = () => {
         </p>
       </div>
 
-      {/* Current activity count */}
       <Card className="shadow-industrial-sm">
         <CardContent className="pt-6 pb-5 space-y-3">
           <div className="flex items-center justify-between">
@@ -300,6 +381,7 @@ const ManageActivitiesSection = () => {
               <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
               <p className="text-xs text-muted-foreground">
                 To add more activities, upgrade your plan.
+                <HelpTip text="Basic plan supports 1 activity. Upgrade to HACCP for up to 3, or Compliance for unlimited." />
               </p>
             </div>
           )}
@@ -321,7 +403,6 @@ const ManageActivitiesSection = () => {
         </CardContent>
       </Card>
 
-      {/* Change activity (restart) - Owner only */}
       {canChangeActivity && (
         <Card className="shadow-industrial-sm">
           <CardContent className="pt-6 pb-5 space-y-4">
@@ -371,6 +452,8 @@ const ManageActivitiesSection = () => {
 const BusinessProfileSection = () => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const { can } = useRoleAccess();
+  const canEdit = can("business_profile", "edit");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -437,12 +520,15 @@ const BusinessProfileSection = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">Business Profile</h2>
+          <h2 className="text-lg font-semibold text-foreground">
+            Business Profile
+            <HelpTip text="Your business details appear in reports, audit documents, and printed headers." />
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Your business details used in reports, audit documents, and printed headers.
+            Organization details used across the system.
           </p>
         </div>
-        {!editing && hasData && (
+        {!editing && hasData && canEdit && (
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
             <FileEdit className="w-4 h-4 mr-1" />
             Edit
@@ -450,13 +536,22 @@ const BusinessProfileSection = () => {
         )}
       </div>
 
+      {!canEdit && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+          <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            Only <strong>Owners</strong> can modify the business profile.
+          </p>
+        </div>
+      )}
+
       <Card className="shadow-industrial-sm">
         <CardContent className="pt-5 pb-4">
-          {!editing && hasData ? (
+          {!editing || !canEdit ? (
             <div className="space-y-4">
               <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">Business Name</p>
-                <p className="text-sm text-foreground">{orgName}</p>
+                <p className="text-sm text-foreground">{orgName || "—"}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
@@ -521,50 +616,14 @@ const BusinessProfileSection = () => {
 };
 
 // ── Subscription Section ─────────────────────────────────────────────
-const planTiers: { tier: PlanTier; features: string[] }[] = [
-  {
-    tier: "basic",
-    features: [
-      "Food Service activities",
-      "Simplified HACCP view",
-      "CCP / OPRP / PRP labels",
-      "Critical limits & monitoring",
-      "Basic logs (7 essential)",
-      "1 branch, 1 activity",
-    ],
-  },
-  {
-    tier: "professional",
-    features: [
-      "Food Service + Manufacturing",
-      "Full risk analysis (S × L)",
-      "Dynamic CCP / OPRP logic",
-      "Complete hazard library",
-      "SOP & PRP management",
-      "Equipment registry",
-      "Up to 3 branches & activities",
-    ],
-  },
-  {
-    tier: "premium",
-    features: [
-      "Everything in HACCP",
-      "Internal audit tools",
-      "Compliance tracking",
-      "Full FSMS documentation",
-      "Advanced analytics",
-      "Unlimited branches & activities",
-      "Unlimited users",
-    ],
-  },
-];
-
 const SubscriptionSection = () => {
   const { plan: currentPlan, loading, updatePlan, planDisplayName } = usePlan();
+  const { effectiveRole } = useRoleAccess();
+  const canUpgrade = effectiveRole === "Owner" || effectiveRole === "super_admin";
   const [updating, setUpdating] = useState<PlanTier | null>(null);
 
   const handleSelect = async (tier: PlanTier) => {
-    if (tier === currentPlan) return;
+    if (tier === currentPlan || !canUpgrade) return;
     setUpdating(tier);
     const { error } = await updatePlan(tier);
     setUpdating(null);
@@ -575,18 +634,60 @@ const SubscriptionSection = () => {
     }
   };
 
+  const planTiers: { tier: PlanTier; features: string[] }[] = [
+    {
+      tier: "basic",
+      features: [
+        "Food Service activities",
+        "Simplified HACCP view",
+        "CCP / OPRP / PRP labels",
+        "Critical limits & monitoring",
+        "Basic logs (7 essential)",
+        "1 branch, 1 activity",
+      ],
+    },
+    {
+      tier: "professional",
+      features: [
+        "Food Service + Manufacturing",
+        "Full risk analysis (S × L)",
+        "Dynamic CCP / OPRP logic",
+        "Complete hazard library",
+        "SOP & PRP management",
+        "Equipment registry",
+        "Up to 3 branches & activities",
+      ],
+    },
+    {
+      tier: "premium",
+      features: [
+        "Everything in HACCP",
+        "Internal audit tools",
+        "Compliance tracking",
+        "Full FSMS documentation",
+        "Advanced analytics",
+        "Unlimited branches & activities",
+        "Unlimited users",
+      ],
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Subscription</h2>
+        <h2 className="text-lg font-semibold text-foreground">Subscription & Billing</h2>
         <p className="text-sm text-muted-foreground mt-1">
           Your current plan and available upgrades.
+          {!canUpgrade && (
+            <span className="block mt-1 italic text-xs">Only the organization Owner can change the subscription plan.</span>
+          )}
         </p>
       </div>
 
+      {/* Current plan card */}
       <Card className="shadow-industrial-sm border-primary/30 bg-primary/5">
         <CardContent className="flex items-center gap-3 pt-5 pb-4">
-          <div className="p-2 rounded-lg bg-primary/10">
+          <div className="p-2.5 rounded-lg bg-primary/10">
             <Crown className="w-5 h-5 text-primary" />
           </div>
           <div className="flex-1">
@@ -594,9 +695,7 @@ const SubscriptionSection = () => {
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin text-primary mt-1" />
             ) : (
-              <p className="text-sm font-semibold text-foreground">
-                {planDisplayName}
-              </p>
+              <p className="text-base font-bold text-foreground">{planDisplayName}</p>
             )}
           </div>
           {!loading && currentPlan !== "premium" && (
@@ -604,9 +703,15 @@ const SubscriptionSection = () => {
               {currentPlan === "basic" ? "2 upgrades available" : "1 upgrade available"}
             </Badge>
           )}
+          {!loading && currentPlan === "premium" && (
+            <Badge className="text-[10px] bg-accent/10 text-accent border-0">
+              <Check className="w-3 h-3 mr-0.5" /> Full access
+            </Badge>
+          )}
         </CardContent>
       </Card>
 
+      {/* Plan cards */}
       {!loading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {planTiers.map((p) => {
@@ -621,6 +726,11 @@ const SubscriptionSection = () => {
                     {isCurrent && (
                       <Badge className="text-[10px] bg-primary/10 text-primary border-0">Current</Badge>
                     )}
+                    {isUpgrade && !isCurrent && (
+                      <Badge variant="outline" className="text-[10px] text-primary border-primary/30">
+                        <ArrowUpRight className="w-3 h-3 mr-0.5" /> Upgrade
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground">{PLAN_CONFIG[p.tier].description}</p>
                 </CardHeader>
@@ -634,21 +744,33 @@ const SubscriptionSection = () => {
                     ))}
                   </ul>
                   <div className="space-y-2 mt-auto">
-                    <Button
-                      className="w-full"
-                      size="sm"
-                      variant={isCurrent ? "outline" : "default"}
-                      disabled={isCurrent || updating !== null}
-                      onClick={() => handleSelect(p.tier)}
-                    >
-                      {updating === p.tier && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-                      {isCurrent ? "Current Plan" : `Upgrade to ${PLAN_DISPLAY_NAMES[p.tier]}`}
-                    </Button>
-                    {isUpgrade && !isCurrent && (
-                      <Button className="w-full" variant="ghost" size="sm" asChild>
-                        <Link to="/contact">
-                          <Phone className="w-3 h-3 mr-1" /> Contact Us
-                        </Link>
+                    {canUpgrade ? (
+                      <>
+                        <Button
+                          className="w-full"
+                          size="sm"
+                          variant={isCurrent ? "outline" : "default"}
+                          disabled={isCurrent || updating !== null}
+                          onClick={() => handleSelect(p.tier)}
+                        >
+                          {updating === p.tier && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+                          {isCurrent ? "Current Plan" : `Upgrade to ${PLAN_DISPLAY_NAMES[p.tier]}`}
+                        </Button>
+                        {isUpgrade && !isCurrent && (
+                          <Button className="w-full" variant="ghost" size="sm" asChild>
+                            <Link to="/contact">
+                              <Phone className="w-3 h-3 mr-1" /> Contact Us
+                            </Link>
+                          </Button>
+                        )}
+                      </>
+                    ) : (
+                      <Button className="w-full" size="sm" variant="outline" disabled>
+                        {isCurrent ? "Current Plan" : (
+                          <span className="flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> Owner only
+                          </span>
+                        )}
                       </Button>
                     )}
                   </div>
@@ -659,11 +781,12 @@ const SubscriptionSection = () => {
         </div>
       )}
 
-      {/* Feature comparison table */}
-      {!loading && currentPlan !== "premium" && (
+      {/* Feature comparison */}
+      {!loading && (
         <Card className="shadow-industrial-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">Feature Comparison</CardTitle>
+            <p className="text-xs text-muted-foreground">See what each plan includes across all modules.</p>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -673,26 +796,16 @@ const SubscriptionSection = () => {
                     <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Feature</th>
                     <th className={`text-center py-2 px-3 font-medium ${currentPlan === "basic" ? "text-primary" : "text-muted-foreground"}`}>Basic</th>
                     <th className={`text-center py-2 px-3 font-medium ${currentPlan === "professional" ? "text-primary" : "text-muted-foreground"}`}>HACCP</th>
-                    <th className="text-center py-2 px-3 font-medium text-muted-foreground">Compliance</th>
+                    <th className={`text-center py-2 px-3 font-medium ${currentPlan === "premium" ? "text-primary" : "text-muted-foreground"}`}>Compliance</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { feature: "HACCP Plan",      basic: "Simplified",  haccp: "Full Risk Analysis", compliance: "Full Risk Analysis" },
-                    { feature: "Monitoring Logs",  basic: "7 Essential", haccp: "All Logs",           compliance: "All Logs" },
-                    { feature: "PRP Programs",    basic: "—",           haccp: "✓",                  compliance: "✓" },
-                    { feature: "SOP Procedures",  basic: "—",           haccp: "✓",                  compliance: "✓" },
-                    { feature: "Equipment",       basic: "—",           haccp: "✓",                  compliance: "✓" },
-                    { feature: "Audit Ready",     basic: "—",           haccp: "—",                  compliance: "✓" },
-                    { feature: "FSMS Documents",  basic: "—",           haccp: "—",                  compliance: "✓" },
-                    { feature: "Branches",        basic: "1",           haccp: "Up to 3",            compliance: "Unlimited" },
-                    { feature: "Users",           basic: "2",           haccp: "3",                  compliance: "Unlimited" },
-                  ].map((row) => (
-                    <tr key={row.feature} className="border-b border-border last:border-0">
-                      <td className="py-2 pr-4 text-foreground font-medium">{row.feature}</td>
-                      <td className="py-2 px-3 text-center text-muted-foreground">{row.basic}</td>
-                      <td className="py-2 px-3 text-center text-muted-foreground">{row.haccp}</td>
-                      <td className="py-2 px-3 text-center text-muted-foreground">{row.compliance}</td>
+                  {PLAN_COMPARISON.map((row) => (
+                    <tr key={row.module} className="border-b border-border last:border-0">
+                      <td className="py-2 pr-4 text-foreground font-medium">{row.module}</td>
+                      <td className={`py-2 px-3 text-center ${currentPlan === "basic" ? "text-foreground font-medium" : "text-muted-foreground"}`}>{row.basic}</td>
+                      <td className={`py-2 px-3 text-center ${currentPlan === "professional" ? "text-foreground font-medium" : "text-muted-foreground"}`}>{row.haccp}</td>
+                      <td className={`py-2 px-3 text-center ${currentPlan === "premium" ? "text-foreground font-medium" : "text-muted-foreground"}`}>{row.compliance}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -724,8 +837,10 @@ interface Branch {
 const UsersSection = () => {
   const { profile, hasRole } = useAuth();
   const { plan } = usePlan();
-  const { maxUsers, allowedInviteRoles, canManageUsers, canInviteAnyRole } = useRoleAccess();
+  const { maxUsers, allowedInviteRoles, canManageUsers, canInviteAnyRole, effectiveRole } = useRoleAccess();
   const { toast } = useToast();
+
+  const isOwner = effectiveRole === "Owner" || effectiveRole === "super_admin";
 
   const [users, setUsers] = useState<OrgUser[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
@@ -810,6 +925,7 @@ const UsersSection = () => {
       if (data?.error) throw new Error(data.error);
 
       toast({ title: "User invited", description: `${inviteEmail} has been added.` });
+      sonnerToast.success(`${inviteFullName || inviteEmail} added as ${isBasicPlan ? "Staff" : inviteRole}`);
       setInviteEmail("");
       setInviteFullName("");
       setInviteRole("Staff");
@@ -823,16 +939,30 @@ const UsersSection = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Users</h2>
+        <h2 className="text-lg font-semibold text-foreground">Team Management</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Add staff members and manage access to your organization.
+          {isOwner
+            ? "Add, manage, and assign roles to your team members."
+            : "View your team members. Only Owners can manage users."
+          }
         </p>
         {isBasicPlan && (
-          <p className="text-xs text-muted-foreground mt-1 italic">
-            On Basic plan, all staff are added with the Staff role. Owner has full management permissions.
+          <p className="text-xs text-muted-foreground mt-1 italic flex items-center gap-1">
+            <Info className="w-3 h-3" />
+            Basic plan: all staff are added with the Staff role.
           </p>
         )}
       </div>
+
+      {/* Access control banner for non-owners */}
+      {!isOwner && canManageUsers && (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
+          <Info className="w-4 h-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            As a <strong>Manager</strong>, you can invite Staff members. Role assignment and user removal require <strong>Owner</strong> access.
+          </p>
+        </div>
+      )}
 
       {canManageUsers && (
         <Card className="shadow-industrial-sm">
@@ -851,9 +981,17 @@ const UsersSection = () => {
             {userLimitReached ? (
               <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
                 <Lock className="w-4 h-4 text-destructive shrink-0" />
-                <p className="text-xs text-destructive">
-                  User limit reached. Upgrade your plan to add more users.
-                </p>
+                <div className="flex-1">
+                  <p className="text-xs text-destructive font-medium">User limit reached</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">
+                    Upgrade your plan to add more users.
+                    {isOwner && (
+                      <a href="/settings?tab=subscription" className="text-primary hover:underline ml-1">
+                        View plans <ArrowUpRight className="w-3 h-3 inline" />
+                      </a>
+                    )}
+                  </p>
+                </div>
               </div>
             ) : (
             <form onSubmit={handleInvite} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -867,7 +1005,10 @@ const UsersSection = () => {
               </div>
               {allowedInviteRoles.length > 1 && (
                 <div className="space-y-2">
-                  <Label>Role</Label>
+                  <Label>
+                    Role
+                    <HelpTip text="Staff can fill logs. Managers can manage operations. Owners have full control." />
+                  </Label>
                   <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -912,7 +1053,11 @@ const UsersSection = () => {
               <Loader2 className="w-5 h-5 animate-spin text-primary" />
             </div>
           ) : users.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No team members yet.</p>
+            <div className="text-center py-8 space-y-2">
+              <Users className="w-8 h-8 text-muted-foreground/40 mx-auto" />
+              <p className="text-sm text-muted-foreground">No team members yet.</p>
+              <p className="text-xs text-muted-foreground">Use the form above to invite your first team member.</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -931,9 +1076,9 @@ const UsersSection = () => {
                       <td className="py-3 pr-4">
                         <div className="flex gap-1 flex-wrap">
                           {u.roles.map((r) => (
-                            <span key={r} className="text-xs px-2 py-0.5 rounded bg-secondary text-secondary-foreground">
+                            <Badge key={r} variant="secondary" className="text-[10px]">
                               {r}
-                            </span>
+                            </Badge>
                           ))}
                         </div>
                       </td>
@@ -993,6 +1138,21 @@ const FoodSafetySetupWrapper = () => {
   return <FoodSafetySetupSection activityName={activityName} />;
 };
 
+// ── Section Group Component ──────────────────────────────────────────
+interface SettingsGroup {
+  label: string;
+  description: string;
+  tabs: {
+    value: string;
+    label: string;
+    shortLabel: string;
+    icon: React.ComponentType<{ className?: string }>;
+    visible: boolean;
+    locked?: boolean;
+    lockMessage?: string;
+  }[];
+}
+
 // ── Main Settings Page ───────────────────────────────────────────────
 const SettingsPage = () => {
   const { can, canView, effectiveRole } = useRoleAccess();
@@ -1002,15 +1162,19 @@ const SettingsPage = () => {
   const canManageSubscription = can("subscription", "manage_settings");
   const canManageUsers = canView("users");
   const canEditBusiness = can("business_profile", "edit");
+  const isOwnerLevel = effectiveRole === "Owner" || effectiveRole === "super_admin";
 
   // Build tab list dynamically based on role permissions
   const tabs = [
-    { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: can("haccp_plan", "view") },
-    { value: "food-safety", label: "Food Safety Setup", shortLabel: "Safety", icon: ShieldCheck, visible: can("food_safety_setup", "view") },
-    { value: "manage-activities", label: "Manage Activities", shortLabel: "Activities", icon: Wand2, visible: canChangeActivity },
-    { value: "business", label: "Business", shortLabel: "Biz", icon: Building2, visible: can("business_profile", "view") },
-    { value: "subscription", label: "Subscription", shortLabel: "Plan", icon: CreditCard, visible: canManageSubscription },
-    { value: "users", label: "Users", shortLabel: "Users", icon: Users, visible: canManageUsers },
+    // HACCP Configuration group
+    { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: can("haccp_plan", "view"), group: "config" },
+    { value: "food-safety", label: "Food Safety Setup", shortLabel: "Safety", icon: ShieldCheck, visible: can("food_safety_setup", "view"), group: "config" },
+    { value: "manage-activities", label: "Activities", shortLabel: "Activities", icon: Wand2, visible: canChangeActivity, group: "config" },
+    // Organization group
+    { value: "business", label: "Business Profile", shortLabel: "Business", icon: Building2, visible: can("business_profile", "view"), group: "org" },
+    { value: "users", label: "Team", shortLabel: "Team", icon: Users, visible: canManageUsers, group: "org" },
+    // Billing group
+    { value: "subscription", label: "Subscription", shortLabel: "Plan", icon: CreditCard, visible: canManageSubscription, group: "billing" },
   ].filter((t) => t.visible);
 
   const gridCols =
@@ -1019,13 +1183,43 @@ const SettingsPage = () => {
     tabs.length === 5 ? "grid-cols-5" :
     "grid-cols-6";
 
+  // Role context banner
+  const getRoleBanner = () => {
+    if (effectiveRole === "Staff") return null; // Staff shouldn't reach here
+    if (effectiveRole === "Manager") {
+      return (
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border mb-4">
+          <Info className="w-4 h-4 text-muted-foreground shrink-0" />
+          <p className="text-xs text-muted-foreground">
+            You have <strong>operational access</strong> to settings. Billing, team management, and activity changes require <strong>Owner</strong> permissions.
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-        <div className="flex items-center gap-2 mb-6">
-          <SettingsIcon className="w-5 h-5 text-muted-foreground" />
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
+        {/* Header */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <SettingsIcon className="w-5 h-5 text-muted-foreground" />
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">Settings</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-[10px]">
+              <Crown className="w-3 h-3 mr-0.5" /> {PLAN_DISPLAY_NAMES[plan]}
+            </Badge>
+            <Badge variant="secondary" className="text-[10px]">{effectiveRole}</Badge>
+          </div>
         </div>
+        <p className="text-sm text-muted-foreground mb-6">
+          Manage your organization, HACCP configuration, team, and subscription.
+        </p>
+
+        {getRoleBanner()}
 
         <Tabs defaultValue={tabs[0]?.value || "haccp-plan"} className="space-y-6">
           <TabsList className={`grid w-full ${gridCols}`}>
