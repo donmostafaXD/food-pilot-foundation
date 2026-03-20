@@ -71,7 +71,7 @@ const AuditReady = () => {
     if (planLoading || !profile?.organization_id || !profile?.branch_id) return;
     if (!isOwner) return;
     fetchAuditData();
-  }, [planLoading, profile?.organization_id, profile?.branch_id]);
+  }, [planLoading, profile?.organization_id, profile?.branch_id, activeActivityId]);
 
   const fetchAuditData = async () => {
     setLoading(true);
