@@ -164,13 +164,7 @@ const SOPPage = () => {
   const activityFiltered = useMemo(() => {
     let base = sops;
 
-    // Basic plan: exclude Manufacturing category SOPs
-    if (plan === "basic") {
-      base = base.filter((s) => {
-        if (s.isCustom) return true;
-        return s.category !== "Manufacturing";
-      });
-    }
+    // Filter by HACCP plan process steps (database-driven)
 
     // For all plans: filter by HACCP plan process steps (database-driven)
     if (showAllLibrary || !activityName) return base;
