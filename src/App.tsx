@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AdminPlanOverrideProvider } from "@/contexts/AdminPlanOverrideContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import PlanGate from "@/components/PlanGate";
+
 
 // Public pages
 import Home from "./pages/Home";
