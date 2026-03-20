@@ -301,6 +301,12 @@ const Logs = () => {
 
   // Filter logs by activity and plan
   // Dynamic plan-tier filtering using log_category from logs_unified
+  // Basic plan also excludes manufacturing-specific parameters as safety net
+  const BASIC_EXCLUDED_PARAMS = useMemo(() => new Set([
+    "ph", "brix", "tds", "pressure", "chemical concentration",
+    "microbiological", "residue", "turbidity", "chlorine",
+  ]), []);
+
   const filteredLogStructures = useMemo(() => {
     let base = logStructures;
 
@@ -309,7 +315,12 @@ const Logs = () => {
       base = base.filter((log) => {
         if (log.isCustom) return true;
         const cat = ((log as any)._log_category || "Core").toLowerCase();
-        return cat === "core";
+        if (cat !== "core") return false;
+        // Safety: also exclude logs with manufacturing-specific field names
+        const hasExcludedField = log.fields.some((f) =>
+          BASIC_EXCLUDED_PARAMS.has(f.toLowerCase())
+        );
+        return !hasExcludedField;
       });
     } else if (isHACCPPlan) {
       base = base.filter((log) => {
