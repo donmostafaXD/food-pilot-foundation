@@ -147,29 +147,22 @@ function HACCPPlanData({ orgId, planId }: { orgId: string; planId: string | null
   );
 }
 
-function FlowDiagramData({ orgId }: { orgId: string }) {
+function FlowDiagramData({ orgId, planId }: { orgId: string; planId: string | null }) {
   const [steps, setSteps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: plans } = await supabase
-        .from("haccp_plans")
-        .select("id")
-        .eq("organization_id", orgId)
-        .limit(1);
-
-      if (plans && plans.length > 0) {
-        const { data } = await supabase
-          .from("haccp_plan_steps")
-          .select("process_name, step_order")
-          .eq("haccp_plan_id", plans[0].id)
-          .order("step_order");
-        setSteps(data || []);
-      }
+      if (!planId) { setLoading(false); return; }
+      const { data } = await supabase
+        .from("haccp_plan_steps")
+        .select("process_name, step_order")
+        .eq("haccp_plan_id", planId)
+        .order("step_order");
+      setSteps(data || []);
       setLoading(false);
     })();
-  }, [orgId]);
+  }, [orgId, planId]);
 
   if (loading) return <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading flow data...</div>;
   if (!steps.length) return <p className="text-sm text-muted-foreground italic py-2">No process flow data available.</p>;
