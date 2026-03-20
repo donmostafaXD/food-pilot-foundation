@@ -90,8 +90,7 @@ export function isModuleLimited(plan: PlanTier, module: PlanModule): boolean {
 export function getUpgradeMessage(plan: PlanTier, module: PlanModule): string {
   const config = getModuleAccess(plan, module);
   if (config.lockedMessage) return config.lockedMessage;
-  const { PLAN_DISPLAY_NAMES } = require("@/hooks/usePlan");
-  return `Upgrade to ${PLAN_DISPLAY_NAMES[config.requiredPlan]} to access ${config.label}`;
+  return `Upgrade to ${PLAN_TIER_LABELS[config.requiredPlan]} to access ${config.label}`;
 }
 
 /** Get all modules and their access status for a given plan */
