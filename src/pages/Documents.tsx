@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useActivity } from "@/contexts/ActivityContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
