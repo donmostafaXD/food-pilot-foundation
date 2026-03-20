@@ -92,7 +92,7 @@ const AppRoutes = () => {
       <Route path="/users" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to={user ? "/dashboard" : "/"} replace />} />
+      <Route path="*" element={<Navigate to={user ? "/haccp" : "/"} replace />} />
     </Routes>
   );
 };
