@@ -37,12 +37,12 @@ const PLAN_FEATURES: Partial<Record<PlanTier, Record<PlanModule, PlanModuleConfi
   basic: {
     dashboard:   { access: "full",    label: "Dashboard",      requiredPlan: "basic" },
     haccp_plan:  { access: "limited", label: "HACCP Plan",     requiredPlan: "basic",        limitedNote: "Simplified view — risk analysis hidden" },
-    logs:        { access: "limited", label: "Logs",           requiredPlan: "basic",        limitedNote: "7 essential logs only" },
-    prp:         { access: "locked",  label: "PRP Programs",   requiredPlan: "professional", lockedMessage: "Available in HACCP plan and above" },
-    sop:         { access: "locked",  label: "SOP Procedures", requiredPlan: "professional", lockedMessage: "Available in HACCP plan and above" },
-    equipment:   { access: "locked",  label: "Equipment",      requiredPlan: "professional", lockedMessage: "Available in HACCP plan and above" },
-    audit:       { access: "locked",  label: "Audit Ready",    requiredPlan: "premium",      lockedMessage: "Available in Compliance plan" },
-    documents:   { access: "locked",  label: "Documents",      requiredPlan: "premium",      lockedMessage: "Available in Compliance plan" },
+    logs:        { access: "limited", label: "Logs",           requiredPlan: "basic",        limitedNote: "Core logs only — Food Service" },
+    prp:         { access: "limited", label: "PRP Programs",   requiredPlan: "basic",        limitedNote: "Core & System programs only" },
+    sop:         { access: "limited", label: "SOP Procedures", requiredPlan: "basic",        limitedNote: "Food Service SOPs only" },
+    equipment:   { access: "hidden",  label: "Equipment",      requiredPlan: "professional", lockedMessage: "Available in HACCP plan and above" },
+    audit:       { access: "hidden",  label: "Audit Ready",    requiredPlan: "premium",      lockedMessage: "Available in Compliance plan" },
+    documents:   { access: "hidden",  label: "Documents",      requiredPlan: "premium",      lockedMessage: "Available in Compliance plan" },
     settings:    { access: "full",    label: "Settings",       requiredPlan: "basic" },
   },
   professional: {
@@ -52,8 +52,8 @@ const PLAN_FEATURES: Partial<Record<PlanTier, Record<PlanModule, PlanModuleConfi
     prp:         { access: "full",    label: "PRP Programs",   requiredPlan: "professional" },
     sop:         { access: "full",    label: "SOP Procedures", requiredPlan: "professional" },
     equipment:   { access: "full",    label: "Equipment",      requiredPlan: "professional" },
-    audit:       { access: "locked",  label: "Audit Ready",    requiredPlan: "premium",      lockedMessage: "Upgrade to Compliance for audit tools" },
-    documents:   { access: "locked",  label: "Documents",      requiredPlan: "premium",      lockedMessage: "Upgrade to Compliance for document management" },
+    audit:       { access: "hidden",  label: "Audit Ready",    requiredPlan: "premium",      lockedMessage: "Upgrade to Compliance for audit tools" },
+    documents:   { access: "hidden",  label: "Documents",      requiredPlan: "premium",      lockedMessage: "Upgrade to Compliance for document management" },
     settings:    { access: "full",    label: "Settings",       requiredPlan: "basic" },
   },
   premium: {
@@ -91,11 +91,16 @@ export function getModuleAccess(plan: PlanTier, module: PlanModule): PlanModuleC
 }
 
 export function isModuleLocked(plan: PlanTier, module: PlanModule): boolean {
-  return getModuleAccess(plan, module).access === "locked";
+  const access = getModuleAccess(plan, module).access;
+  return access === "locked" || access === "hidden";
 }
 
 export function isModuleLimited(plan: PlanTier, module: PlanModule): boolean {
   return getModuleAccess(plan, module).access === "limited";
+}
+
+export function isModuleHidden(plan: PlanTier, module: PlanModule): boolean {
+  return getModuleAccess(plan, module).access === "hidden";
 }
 
 export function getUpgradeMessage(plan: PlanTier, module: PlanModule): string {
@@ -106,7 +111,7 @@ export function getUpgradeMessage(plan: PlanTier, module: PlanModule): string {
 
 /** Get all modules and their access status for a given plan */
 export function getPlanModuleMap(plan: PlanTier): Record<PlanModule, PlanModuleConfig> {
-  return PLAN_FEATURES[plan];
+  return PLAN_FEATURES[plan]!;
 }
 
 /** Human-readable plan tier labels */
@@ -121,9 +126,9 @@ export const PLAN_TIER_LABELS: Record<PlanTier, string> = {
 export const PLAN_COMPARISON = [
   { module: "Dashboard",      basic: "✓", haccp: "✓", compliance: "✓" },
   { module: "HACCP Plan",     basic: "Simplified", haccp: "Full Risk Analysis", compliance: "Full Risk Analysis" },
-  { module: "Logs",           basic: "7 Essential", haccp: "All Logs", compliance: "All Logs" },
-  { module: "PRP Programs",   basic: "—", haccp: "✓", compliance: "✓" },
-  { module: "SOP Procedures", basic: "—", haccp: "✓", compliance: "✓" },
+  { module: "Logs",           basic: "Core Only", haccp: "All Logs", compliance: "All Logs" },
+  { module: "PRP Programs",   basic: "Core + System", haccp: "✓", compliance: "✓" },
+  { module: "SOP Procedures", basic: "Food Service", haccp: "✓", compliance: "✓" },
   { module: "Equipment",      basic: "—", haccp: "✓", compliance: "✓" },
   { module: "Audit Ready",    basic: "—", haccp: "—", compliance: "✓" },
   { module: "Documents",      basic: "—", haccp: "—", compliance: "✓" },
