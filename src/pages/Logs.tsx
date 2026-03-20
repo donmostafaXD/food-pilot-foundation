@@ -121,34 +121,11 @@ function parseCsvToEntries(csvText: string): Record<string, string>[] {
   });
 }
 
-/** Logs allowed on Basic plan (Food Service only) */
-const BASIC_ALLOWED_LOGS = new Set([
-  "Receiving Log",
-  "Cold Storage Log",
-  "Cooking Temperature Log",
-  "Hot Holding Log",
-  "Cleaning Log",
-  "Pest Control Log",
-  "Training Log",
-]);
-
-/** Logs explicitly hidden from Basic plan */
-const BASIC_HIDDEN_LOGS = new Set([
-  "Internal Audit Log",
-  "Corrective Action Log",
-  "CCP Monitoring Log",
-]);
-
-/** Logs allowed on HACCP (professional) plan */
-const HACCP_ALLOWED_LOGS = new Set([
-  "Cooking Temperature Log",
-  "Cold Storage Log",
-  "Hot Holding Log",
-  "Receiving Log",
-  "CCP Monitoring Log",
-  "Cleaning Log",
-  "Corrective Action Log",
-]);
+/* Plan-tier log categories (driven by log_category from logs_unified):
+ * Basic: "Core" only
+ * HACCP (Professional): "Core" + "CCP"
+ * Premium/Compliance: All categories
+ * This replaces all hardcoded log name sets. */
 
 const Logs = () => {
   const navigate = useNavigate();
@@ -230,10 +207,26 @@ const Logs = () => {
 
         const grouped: Record<string, LogStructure> = {};
 
+        // Build activity-mapped log names for filtering
+        const mappedLogNames = new Set<string>();
+        const mappedProcessSteps = new Map<string, Set<string>>();
+        if (mappingData && activityName) {
+          ((mappingData as any[]) || []).forEach((m: any) => {
+            if (m.activity.toLowerCase() === activityName.toLowerCase()) {
+              mappedLogNames.add(m.log_name);
+              if (!mappedProcessSteps.has(m.log_name)) mappedProcessSteps.set(m.log_name, new Set());
+              mappedProcessSteps.get(m.log_name)!.add(m.process_step);
+            }
+          });
+        }
+
         if (unifiedData && (unifiedData as any[]).length > 0) {
-          // Use logs_unified (richer field metadata)
           (unifiedData as any[]).forEach((row: any) => {
-            // Filter by activity if applicable
+            // If we have activity mapping, only include mapped logs
+            if (activityName && mappedLogNames.size > 0 && !mappedLogNames.has(row.log_name)) {
+              return;
+            }
+            // Also check applicable_activities field
             const applicable = row.applicable_activities || "All";
             if (applicable !== "All" && activityName &&
               !applicable.toLowerCase().includes(activityName.toLowerCase())) {
@@ -251,7 +244,6 @@ const Logs = () => {
             grouped[row.log_name].fields.push(row.field_name);
           });
         } else if (legacyData) {
-          // Fallback to legacy logs_structure
           legacyData.forEach((row) => {
             if (!grouped[row.log_name]) {
               grouped[row.log_name] = {
@@ -262,17 +254,6 @@ const Logs = () => {
             }
             grouped[row.log_name].fields.push(row.field_name);
           });
-        }
-
-        // Also apply logs_mapping for activity-based filtering
-        let mappedLogNames: Set<string> | null = null;
-        if (mappingData && activityName) {
-          mappedLogNames = new Set(
-            ((mappingData as any[])
-              .filter((m: any) => m.activity.toLowerCase() === activityName.toLowerCase())
-              .map((m: any) => m.log_name))
-          );
-          // mappedLogNames available for future filtering
         }
 
         setLogStructures(Object.values(grouped));
@@ -319,24 +300,32 @@ const Logs = () => {
   }, [planJustUpdated]);
 
   // Filter logs by activity and plan
+  // Dynamic plan-tier filtering using log_category from logs_unified
   const filteredLogStructures = useMemo(() => {
     let base = logStructures;
 
+    // Filter by plan tier using log_category (database-driven)
     if (isBasicPlan) {
       base = base.filter((log) => {
         if (log.isCustom) return true;
-        return BASIC_ALLOWED_LOGS.has(log.log_name) && !BASIC_HIDDEN_LOGS.has(log.log_name);
+        const cat = ((log as any)._log_category || "Core").toLowerCase();
+        return cat === "core";
       });
     } else if (isHACCPPlan) {
       base = base.filter((log) => {
         if (log.isCustom) return true;
-        return HACCP_ALLOWED_LOGS.has(log.log_name);
+        const cat = ((log as any)._log_category || "Core").toLowerCase();
+        return cat === "core" || cat === "ccp";
       });
     }
+    // Premium/Compliance: all categories pass through
 
     if (showAllLibrary || !activityName) {
       return base;
     }
+
+    // Activity-based filtering already applied during data load via logs_mapping
+    // Additional process step filtering for precise matching
     const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
     if (processNames.length === 0) return base;
 
@@ -362,12 +351,13 @@ const Logs = () => {
     }
     let base = logStructures;
     if (isBasicPlan) {
-      base = base.filter((l) => l.isCustom || (BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name)));
+      base = base.filter((l) => l.isCustom || ((l as any)._log_category || "Core").toLowerCase() === "core");
     } else if (isHACCPPlan) {
-      base = base.filter((l) => l.isCustom || HACCP_ALLOWED_LOGS.has(l.log_name));
+      const allowed = new Set(["core", "ccp"]);
+      base = base.filter((l) => l.isCustom || allowed.has(((l as any)._log_category || "Core").toLowerCase()));
     }
     return base.map((l) => l.log_name).sort();
-  }, [businessType, logStructures, mfgLogs, isBasicPlan]);
+  }, [businessType, logStructures, mfgLogs, isBasicPlan, isHACCPPlan]);
 
   const selectedFields = useMemo(() => {
     if (!selectedLog) return [];
@@ -396,9 +386,14 @@ const Logs = () => {
   );
 
   const openForm = (logName: string) => {
-    if (isBasicPlan && !BASIC_ALLOWED_LOGS.has(logName) && !logStructures.find(l => l.log_name === logName && l.isCustom)) {
-      toast.error("This log is not available on your current plan");
-      return;
+    // Plan-tier access check using dynamic log_category
+    if (isBasicPlan) {
+      const log = logStructures.find(l => l.log_name === logName);
+      const cat = ((log as any)?._log_category || "Core").toLowerCase();
+      if (cat !== "core" && !log?.isCustom) {
+        toast.error("This log is not available on your current plan");
+        return;
+      }
     }
     setSelectedLog(logName);
     const today = new Date().toISOString().split("T")[0];
@@ -489,9 +484,10 @@ const Logs = () => {
     const currentNames = new Set(logNames);
     let available = logStructures.filter((l) => !currentNames.has(l.log_name));
     if (isBasicPlan) {
-      available = available.filter((l) => BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name));
+      available = available.filter((l) => ((l as any)._log_category || "Core").toLowerCase() === "core");
     } else if (isHACCPPlan) {
-      available = available.filter((l) => HACCP_ALLOWED_LOGS.has(l.log_name));
+      const allowed = new Set(["core", "ccp"]);
+      available = available.filter((l) => allowed.has(((l as any)._log_category || "Core").toLowerCase()));
     }
     setLibraryLogs(available);
     setAddDialogOpen(true);

@@ -178,56 +178,31 @@ const SOPPage = () => {
     setLoading(false);
   };
 
-  // SOP process steps allowed for HACCP (professional) plan
-  const HACCP_ALLOWED_SOP_STEPS = useMemo(() => new Set([
-    "receiving",
-    "storage",
-    "preparation",
-    "cooking",
-    "processing",
-    "cleaning",
-  ]), []);
-
-  // Manufacturing process keywords excluded for Basic plan
-  const BASIC_EXCLUDED_SOP_STEPS = useMemo(() => [
-    "processing", "pasteurization", "fermentation", "water quality", "calibration",
-  ], []);
-
-  // Filter by activity — use planProcessNames for precise process-level matching
+  // Dynamic filtering: driven entirely by HACCP plan process steps and sop_master data
   const activityFiltered = useMemo(() => {
     let base = sops;
 
-    // Basic plan: exclude manufacturing-related SOPs
+    // Basic plan: exclude Manufacturing category SOPs
     if (plan === "basic") {
       base = base.filter((s) => {
         if (s.isCustom) return true;
-        if (s.category === "Manufacturing") return false;
-        const lower = s.process_step.toLowerCase();
-        return !BASIC_EXCLUDED_SOP_STEPS.some((kw) => lower.includes(kw));
+        return s.category !== "Manufacturing";
       });
     }
 
-    // HACCP plan: restrict to operational SOPs only
-    if (plan === "professional") {
-      base = base.filter((s) => {
-        if (s.isCustom) return true;
-        const lower = s.process_step.toLowerCase();
-        return HACCP_ALLOWED_SOP_STEPS.has(lower) ||
-          [...HACCP_ALLOWED_SOP_STEPS].some((step) => lower.includes(step));
-      });
-    }
-
+    // For all plans: filter by HACCP plan process steps (database-driven)
     if (showAllLibrary || !activityName) return base;
     const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
     if (processNames.length === 0) return base;
 
     return base.filter((s) => {
       if (s.isCustom) return true;
+      // Match SOP process_step against HACCP plan process names
       return processNames.some((p) =>
         s.process_step.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, HACCP_ALLOWED_SOP_STEPS]);
+  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan]);
 
   const processSteps = [...new Set(activityFiltered.map((s) => s.process_step))].sort();
 
