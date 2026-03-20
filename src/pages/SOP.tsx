@@ -215,14 +215,12 @@ const SOPPage = () => {
 
     return base.filter((s) => {
       if (s.isCustom) return true;
-      // Match by process_step
+      // Primary condition: process_step MUST match (required)
       const matchesProcess = processNames.some((p) =>
         s.process_step.toLowerCase().includes(p.toLowerCase())
       );
-      // Match by related PRP (if SOP has PRP links from prp_mapping)
-      const matchesPRP = (s._relatedPRPs && s._relatedPRPs.length > 0);
-      // Include if matches process step OR has related PRP for this activity
-      return matchesProcess || matchesPRP;
+      // If process_step doesn't match, exclude — even if PRP matches
+      return matchesProcess;
     });
   }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, BASIC_HIDDEN_SOPS]);
 
