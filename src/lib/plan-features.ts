@@ -33,7 +33,7 @@ export interface PlanModuleConfig {
 }
 
 // ── Plan Feature Matrix ──────────────────────────────────────────────
-const PLAN_FEATURES: Record<PlanTier, Record<PlanModule, PlanModuleConfig>> = {
+const PLAN_FEATURES: Partial<Record<PlanTier, Record<PlanModule, PlanModuleConfig>>> = {
   basic: {
     dashboard:   { access: "full",    label: "Dashboard",      requiredPlan: "basic" },
     haccp_plan:  { access: "limited", label: "HACCP Plan",     requiredPlan: "basic",        limitedNote: "Simplified view — risk analysis hidden" },
@@ -65,6 +65,17 @@ const PLAN_FEATURES: Record<PlanTier, Record<PlanModule, PlanModuleConfig>> = {
     equipment:   { access: "full",    label: "Equipment",      requiredPlan: "professional" },
     audit:       { access: "full",    label: "Audit Ready",    requiredPlan: "premium" },
     documents:   { access: "full",    label: "Documents",      requiredPlan: "premium" },
+    settings:    { access: "full",    label: "Settings",       requiredPlan: "basic" },
+  },
+  demo: {
+    dashboard:   { access: "full",    label: "Dashboard",      requiredPlan: "basic" },
+    haccp_plan:  { access: "full",    label: "HACCP Plan",     requiredPlan: "basic" },
+    logs:        { access: "full",    label: "Logs",           requiredPlan: "basic" },
+    prp:         { access: "full",    label: "PRP Programs",   requiredPlan: "basic" },
+    sop:         { access: "full",    label: "SOP Procedures", requiredPlan: "basic" },
+    equipment:   { access: "full",    label: "Equipment",      requiredPlan: "basic" },
+    audit:       { access: "full",    label: "Audit Ready",    requiredPlan: "basic" },
+    documents:   { access: "full",    label: "Documents",      requiredPlan: "basic" },
     settings:    { access: "full",    label: "Settings",       requiredPlan: "basic" },
   },
 };
