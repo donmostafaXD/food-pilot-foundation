@@ -65,17 +65,18 @@ const AppRoutes = () => {
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
 
-      {/* Protected app routes */}
-      <Route path="/dashboard" element={<ProtectedRoute module="dashboard"><Dashboard /></ProtectedRoute>} />
+      {/* Protected app routes — core modules only (stabilization phase) */}
+      <Route path="/dashboard" element={<ProtectedRoute module="haccp_plan"><Navigate to="/haccp" replace /></ProtectedRoute>} />
       <Route path="/setup" element={<ProtectedRoute module="activities"><SetupWizard /></ProtectedRoute>} />
       <Route path="/haccp" element={<ProtectedRoute module="haccp_plan"><HACCPPlan /></ProtectedRoute>} />
-      <Route path="/documents" element={<ProtectedRoute module="documents"><Documents /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute module="settings"><SettingsPage /></ProtectedRoute>} />
       <Route path="/logs" element={<ProtectedRoute module="logs"><Logs /></ProtectedRoute>} />
       <Route path="/prp" element={<ProtectedRoute module="prp"><PRP /></ProtectedRoute>} />
       <Route path="/sop" element={<ProtectedRoute module="sop"><SOP /></ProtectedRoute>} />
-      <Route path="/equipment" element={<ProtectedRoute module="equipment"><EquipmentPage /></ProtectedRoute>} />
-      <Route path="/audit" element={<ProtectedRoute module="audit"><AuditReady /></ProtectedRoute>} />
+      {/* Temporarily disabled modules — redirect to HACCP */}
+      <Route path="/documents" element={<ProtectedRoute module="haccp_plan"><Navigate to="/haccp" replace /></ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute module="haccp_plan"><Navigate to="/haccp" replace /></ProtectedRoute>} />
+      <Route path="/audit" element={<ProtectedRoute module="haccp_plan"><Navigate to="/haccp" replace /></ProtectedRoute>} />
 
       {/* ─── Super Admin Panel (completely separate system) ─── */}
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
