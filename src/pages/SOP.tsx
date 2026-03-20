@@ -160,25 +160,36 @@ const SOPPage = () => {
     setLoading(false);
   };
 
-  // Dynamic filtering: driven entirely by HACCP plan process steps and sop_master data
+  // Basic plan: SOPs to hide (Manufacturing-specific)
+  const BASIC_HIDDEN_SOPS = useMemo(() => new Set([
+    "pasteurization", "fermentation", "calibration", "water quality",
+  ]), []);
+
+  // Dynamic filtering: driven by plan, activity, and HACCP plan process steps
   const activityFiltered = useMemo(() => {
     let base = sops;
 
-    // Filter by HACCP plan process steps (database-driven)
+    // Basic plan: hide Manufacturing-specific SOPs
+    if (plan === "basic") {
+      base = base.filter((s) => {
+        if (s.isCustom) return true;
+        const name = s.sop_name.toLowerCase();
+        return !Array.from(BASIC_HIDDEN_SOPS).some((hidden) => name.includes(hidden));
+      });
+    }
 
-    // For all plans: filter by HACCP plan process steps (database-driven)
+    // Filter by HACCP plan process steps (database-driven)
     if (showAllLibrary || !activityName) return base;
     const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
     if (processNames.length === 0) return base;
 
     return base.filter((s) => {
       if (s.isCustom) return true;
-      // Match SOP process_step against HACCP plan process names
       return processNames.some((p) =>
         s.process_step.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan]);
+  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, BASIC_HIDDEN_SOPS]);
 
   const processSteps = [...new Set(activityFiltered.map((s) => s.process_step))].sort();
 
