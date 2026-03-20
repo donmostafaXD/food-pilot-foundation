@@ -75,7 +75,7 @@ export default function AdminUsers() {
   const [addEmail, setAddEmail] = useState("");
   const [addName, setAddName] = useState("");
   const [addRole, setAddRole] = useState("Staff");
-  const [addOrgId, setAddOrgId] = useState("");
+  const [addPlan, setAddPlan] = useState("basic");
   const [adding, setAdding] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
