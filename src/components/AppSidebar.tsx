@@ -10,14 +10,16 @@ import {
   FileText,
   Crown,
   ClipboardCheck,
+  Lock,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { NavLink } from "@/components/NavLink";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
+import { isModuleLocked, type PlanModule } from "@/lib/plan-features";
 import {
   Sidebar,
   SidebarContent,
@@ -31,24 +33,36 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { toast } from "sonner";
 
 interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Role-based visibility */
   visible: boolean;
+  /** Plan-based lock (shown but disabled) */
+  locked: boolean;
+  /** Tooltip when locked */
+  lockReason?: string;
+  /** Plan module key for gating */
+  planModule?: PlanModule;
 }
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
+  const navigate = useNavigate();
   const { signOut, profile } = useAuth();
   const { overrideRole } = useAdminPlanOverride();
   const {
-    canAccessSOP,
-    canAccessPRP,
-    canAccessDocuments,
+    plan,
     loading: planLoading,
   } = usePlan();
   const {
@@ -58,24 +72,38 @@ export function AppSidebar() {
     sidebar,
   } = useRoleAccess();
 
-  const { plan } = usePlan();
-
   const isActive = (path: string) => location.pathname === path;
 
-  // Sidebar items driven by permission matrix
+  // Determine if module is locked by plan
+  const planLocked = (mod: PlanModule) => {
+    if (isRealSuperAdmin && !isPreviewMode) return false;
+    if (planLoading) return false;
+    return isModuleLocked(plan, mod);
+  };
+
+  // Sidebar items — role controls visibility, plan controls lock state
   const mainItems: NavItem[] = [
-    { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, visible: sidebar.dashboard },
-    { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck, visible: sidebar.haccp },
-    { title: "Logs", url: "/logs", icon: ClipboardList, visible: sidebar.logs },
-    { title: "PRP Programs", url: "/prp", icon: Shield, visible: sidebar.prp && !planLoading && canAccessPRP },
-    { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: sidebar.sop && !planLoading && canAccessSOP },
-    { title: "Equipment", url: "/equipment", icon: Wrench, visible: sidebar.equipment },
-    { title: "Documents", url: "/documents", icon: FileText, visible: sidebar.documents && !planLoading && canAccessDocuments && plan === "premium" },
-    { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: sidebar.audit },
-    { title: "Settings", url: "/settings", icon: Settings, visible: sidebar.settings },
+    { title: "Dashboard",      url: "/dashboard",  icon: LayoutDashboard, visible: sidebar.dashboard, locked: false },
+    { title: "HACCP Plan",     url: "/haccp",       icon: ShieldCheck,     visible: sidebar.haccp,     locked: false },
+    { title: "Logs",           url: "/logs",        icon: ClipboardList,   visible: sidebar.logs,      locked: false },
+    { title: "PRP Programs",   url: "/prp",         icon: Shield,          visible: sidebar.prp || planLocked("prp"),   locked: planLocked("prp"),   lockReason: "Available in HACCP plan", planModule: "prp" },
+    { title: "SOP Procedures", url: "/sop",         icon: BookOpen,        visible: sidebar.sop || planLocked("sop"),   locked: planLocked("sop"),   lockReason: "Available in HACCP plan", planModule: "sop" },
+    { title: "Equipment",      url: "/equipment",   icon: Wrench,          visible: sidebar.equipment || planLocked("equipment"), locked: planLocked("equipment"), lockReason: "Available in HACCP plan", planModule: "equipment" },
+    { title: "Audit Ready",    url: "/audit",       icon: ClipboardCheck,  visible: sidebar.audit || planLocked("audit"),     locked: planLocked("audit"),     lockReason: "Available in Compliance plan", planModule: "audit" },
+    { title: "Documents",      url: "/documents",   icon: FileText,        visible: sidebar.documents || planLocked("documents"), locked: planLocked("documents"), lockReason: "Available in Compliance plan", planModule: "documents" },
+    { title: "Settings",       url: "/settings",    icon: Settings,        visible: sidebar.settings, locked: false },
   ];
 
   const visibleItems = mainItems.filter((item) => item.visible);
+
+  const handleLockedClick = (item: NavItem) => {
+    toast.info(item.lockReason || "This feature requires a plan upgrade", {
+      action: {
+        label: "Upgrade",
+        onClick: () => navigate("/settings"),
+      },
+    });
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -119,24 +147,62 @@ export function AppSidebar() {
           <SidebarGroupLabel>Navigation</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {visibleItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={isActive(item.url)}
-                  >
-                    <NavLink
-                      to={item.url}
-                      end
-                      className="flex items-center gap-2"
-                      activeClassName="bg-sidebar-accent text-primary font-medium"
+              {visibleItems.map((item) => {
+                if (item.locked) {
+                  // Locked item — show with lock icon, tooltip, click shows upgrade toast
+                  const content = (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        onClick={() => handleLockedClick(item)}
+                        className="opacity-50 cursor-not-allowed"
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                          <item.icon className="h-4 w-4 shrink-0" />
+                          {!collapsed && (
+                            <>
+                              <span className="flex-1">{item.title}</span>
+                              <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
+                            </>
+                          )}
+                        </div>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+
+                  if (collapsed) {
+                    return (
+                      <Tooltip key={item.title}>
+                        <TooltipTrigger asChild>{content}</TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p className="text-xs">{item.lockReason}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  }
+
+                  return content;
+                }
+
+                // Normal unlocked item
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive(item.url)}
                     >
-                      <item.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                      <NavLink
+                        to={item.url}
+                        end
+                        className="flex items-center gap-2"
+                        activeClassName="bg-sidebar-accent text-primary font-medium"
+                      >
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

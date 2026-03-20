@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { usePlan } from "@/hooks/usePlan";
+import { isModuleLimited } from "@/lib/plan-features";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/DashboardLayout";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import KPICards from "@/components/dashboard/KPICards";
@@ -12,6 +14,7 @@ import AlertsSection from "@/components/dashboard/AlertsSection";
 import QuickActions from "@/components/dashboard/QuickActions";
 import ComplianceChart from "@/components/dashboard/ComplianceChart";
 import RecentActivity from "@/components/dashboard/RecentActivity";
+import { UpgradePrompt } from "@/components/UpgradePrompt";
 
 interface Branch {
   id: string;
@@ -95,13 +98,35 @@ const Dashboard = () => {
           onBranchChange={setSelectedBranchId}
           branches={branches}
         />
+
+        {/* Plan context badge for Basic */}
+        {plan === "basic" && (
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+            <Badge variant="secondary" className="text-[10px]">Basic Plan</Badge>
+            <p className="text-xs text-muted-foreground">
+              You're on the Basic plan with essential food safety tools.
+              <a href="/settings" className="text-primary hover:underline ml-1">See upgrade options →</a>
+            </p>
+          </div>
+        )}
+
         <KPICards branchId={selectedBranchId} />
         <AlertsSection branchId={selectedBranchId} />
         <QuickActions />
-        {/* Staff: no charts */}
+
+        {/* Staff: no charts; Basic: no compliance chart */}
         {!isStaff && plan !== "basic" && (
           <ComplianceChart branchId={selectedBranchId} branches={branches} />
         )}
+        {!isStaff && plan === "basic" && (
+          <UpgradePrompt
+            featureName="Compliance Charts"
+            requiredPlan="professional"
+            description="Upgrade to HACCP plan to unlock compliance trend charts and analytics."
+            variant="card"
+          />
+        )}
+
         <RecentActivity branchId={selectedBranchId} />
       </div>
     </DashboardLayout>

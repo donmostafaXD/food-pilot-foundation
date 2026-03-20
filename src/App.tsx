@@ -64,7 +64,7 @@ const AppRoutes = () => {
       <Route path="/logs" element={<ProtectedRoute module="logs"><Logs /></ProtectedRoute>} />
       <Route path="/prp" element={<ProtectedRoute module="prp"><PlanGate feature="canAccessPRP"><PRP /></PlanGate></ProtectedRoute>} />
       <Route path="/sop" element={<ProtectedRoute module="sop"><PlanGate feature="canAccessSOP"><SOP /></PlanGate></ProtectedRoute>} />
-      <Route path="/equipment" element={<ProtectedRoute module="equipment"><EquipmentPage /></ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute module="equipment"><PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate></ProtectedRoute>} />
       <Route path="/audit" element={<ProtectedRoute module="audit"><AuditReady /></ProtectedRoute>} />
 
       {/* Redirects for removed routes */}

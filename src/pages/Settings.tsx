@@ -540,8 +540,9 @@ const planTiers: { tier: PlanTier; features: string[] }[] = [
       "Full risk analysis (S × L)",
       "Dynamic CCP / OPRP logic",
       "Complete hazard library",
-      "SOP & log management",
-      "Up to 3 branches",
+      "SOP & PRP management",
+      "Equipment registry",
+      "Up to 3 branches & activities",
     ],
   },
   {
@@ -551,14 +552,15 @@ const planTiers: { tier: PlanTier; features: string[] }[] = [
       "Internal audit tools",
       "Compliance tracking",
       "Full FSMS documentation",
-      "PRP & SOP management",
-      "Unlimited branches",
+      "Advanced analytics",
+      "Unlimited branches & activities",
+      "Unlimited users",
     ],
   },
 ];
 
 const SubscriptionSection = () => {
-  const { plan: currentPlan, loading, updatePlan } = usePlan();
+  const { plan: currentPlan, loading, updatePlan, planDisplayName } = usePlan();
   const [updating, setUpdating] = useState<PlanTier | null>(null);
 
   const handleSelect = async (tier: PlanTier) => {
@@ -587,16 +589,21 @@ const SubscriptionSection = () => {
           <div className="p-2 rounded-lg bg-primary/10">
             <Crown className="w-5 h-5 text-primary" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-xs text-muted-foreground">Current Plan</p>
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin text-primary mt-1" />
             ) : (
               <p className="text-sm font-semibold text-foreground">
-                {PLAN_DISPLAY_NAMES[currentPlan]}
+                {planDisplayName}
               </p>
             )}
           </div>
+          {!loading && currentPlan !== "premium" && (
+            <Badge variant="secondary" className="text-[10px]">
+              {currentPlan === "basic" ? "2 upgrades available" : "1 upgrade available"}
+            </Badge>
+          )}
         </CardContent>
       </Card>
 
@@ -604,10 +611,17 @@ const SubscriptionSection = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {planTiers.map((p) => {
             const isCurrent = p.tier === currentPlan;
+            const isUpgrade = (p.tier === "professional" && currentPlan === "basic") ||
+                              (p.tier === "premium" && currentPlan !== "premium");
             return (
-              <Card key={p.tier} className={`flex flex-col shadow-industrial-sm ${isCurrent ? "ring-2 ring-primary/20 bg-primary/5" : ""}`}>
+              <Card key={p.tier} className={`flex flex-col shadow-industrial-sm transition-all ${isCurrent ? "ring-2 ring-primary/30 bg-primary/5" : isUpgrade ? "hover:border-primary/30" : "opacity-60"}`}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">{PLAN_DISPLAY_NAMES[p.tier]}</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{PLAN_DISPLAY_NAMES[p.tier]}</CardTitle>
+                    {isCurrent && (
+                      <Badge className="text-[10px] bg-primary/10 text-primary border-0">Current</Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">{PLAN_CONFIG[p.tier].description}</p>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col gap-4">
@@ -628,9 +642,9 @@ const SubscriptionSection = () => {
                       onClick={() => handleSelect(p.tier)}
                     >
                       {updating === p.tier && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-                      {isCurrent ? "Current Plan" : `Select ${PLAN_DISPLAY_NAMES[p.tier]}`}
+                      {isCurrent ? "Current Plan" : `Upgrade to ${PLAN_DISPLAY_NAMES[p.tier]}`}
                     </Button>
-                    {!isCurrent && (
+                    {isUpgrade && !isCurrent && (
                       <Button className="w-full" variant="ghost" size="sm" asChild>
                         <Link to="/contact">
                           <Phone className="w-3 h-3 mr-1" /> Contact Us
@@ -643,6 +657,49 @@ const SubscriptionSection = () => {
             );
           })}
         </div>
+      )}
+
+      {/* Feature comparison table */}
+      {!loading && currentPlan !== "premium" && (
+        <Card className="shadow-industrial-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold">Feature Comparison</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2 pr-4 text-muted-foreground font-medium">Feature</th>
+                    <th className={`text-center py-2 px-3 font-medium ${currentPlan === "basic" ? "text-primary" : "text-muted-foreground"}`}>Basic</th>
+                    <th className={`text-center py-2 px-3 font-medium ${currentPlan === "professional" ? "text-primary" : "text-muted-foreground"}`}>HACCP</th>
+                    <th className="text-center py-2 px-3 font-medium text-muted-foreground">Compliance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { feature: "HACCP Plan",      basic: "Simplified",  haccp: "Full Risk Analysis", compliance: "Full Risk Analysis" },
+                    { feature: "Monitoring Logs",  basic: "7 Essential", haccp: "All Logs",           compliance: "All Logs" },
+                    { feature: "PRP Programs",    basic: "—",           haccp: "✓",                  compliance: "✓" },
+                    { feature: "SOP Procedures",  basic: "—",           haccp: "✓",                  compliance: "✓" },
+                    { feature: "Equipment",       basic: "—",           haccp: "✓",                  compliance: "✓" },
+                    { feature: "Audit Ready",     basic: "—",           haccp: "—",                  compliance: "✓" },
+                    { feature: "FSMS Documents",  basic: "—",           haccp: "—",                  compliance: "✓" },
+                    { feature: "Branches",        basic: "1",           haccp: "Up to 3",            compliance: "Unlimited" },
+                    { feature: "Users",           basic: "2",           haccp: "3",                  compliance: "Unlimited" },
+                  ].map((row) => (
+                    <tr key={row.feature} className="border-b border-border last:border-0">
+                      <td className="py-2 pr-4 text-foreground font-medium">{row.feature}</td>
+                      <td className="py-2 px-3 text-center text-muted-foreground">{row.basic}</td>
+                      <td className="py-2 px-3 text-center text-muted-foreground">{row.haccp}</td>
+                      <td className="py-2 px-3 text-center text-muted-foreground">{row.compliance}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
