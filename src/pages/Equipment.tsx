@@ -204,6 +204,20 @@ const Equipment = () => {
     }
   };
 
+  const handleDelete = async (item: Equipment) => {
+    const { error } = await supabase
+      .from("equipment" as any)
+      .delete()
+      .eq("id", item.id);
+
+    if (error) {
+      toast.error("Failed to delete equipment");
+    } else {
+      toast.success("Equipment deleted");
+      loadData();
+    }
+  };
+
   const openEdit = (item: Equipment) => {
     setEditItem(item);
     setEditName(item.equipment_name);
