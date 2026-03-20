@@ -559,7 +559,7 @@ const Documents = () => {
               <ArrowLeft className="w-4 h-4 mr-1" /> Back to Documents
             </Button>
             <div className="flex gap-2">
-              {!selectedDoc.isUploaded && !editing && (
+              {!selectedDoc.isUploaded && !editing && guard.canEdit && (
                 <Button variant="outline" size="sm" onClick={startEditing}>
                   <Edit2 className="w-4 h-4 mr-1" /> Edit
                 </Button>
