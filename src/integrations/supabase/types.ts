@@ -1130,6 +1130,48 @@ export type Database = {
         }
         Relationships: []
       }
+      uploaded_documents: {
+        Row: {
+          activity: string | null
+          branch_id: string
+          category: string
+          created_at: string
+          document_name: string
+          file_path: string | null
+          file_type: string | null
+          id: string
+          organization_id: string
+          responsible: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          activity?: string | null
+          branch_id: string
+          category?: string
+          created_at?: string
+          document_name: string
+          file_path?: string | null
+          file_type?: string | null
+          id?: string
+          organization_id: string
+          responsible?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          activity?: string | null
+          branch_id?: string
+          category?: string
+          created_at?: string
+          document_name?: string
+          file_path?: string | null
+          file_type?: string | null
+          id?: string
+          organization_id?: string
+          responsible?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
