@@ -92,6 +92,7 @@ export function AppSidebar() {
       icon: Settings,
       items: [
         { title: "Settings", url: "/settings", icon: Settings, visible: sidebar.settings },
+        { title: "Control Panel", url: "/admin", icon: Crown, visible: isRealSuperAdmin },
       ],
     },
   ];
