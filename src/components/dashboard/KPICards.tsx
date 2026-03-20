@@ -169,7 +169,7 @@ const KPICards = ({ branchId }: Props) => {
         ],
   };
 
-  const cards = kpiConfig[plan];
+  const cards = kpiConfig[plan] || kpiConfig.premium || [];
 
   return (
     <div className={`grid gap-4 ${cards.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
