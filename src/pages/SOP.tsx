@@ -90,7 +90,7 @@ const SOPPage = () => {
     if (activityLoading) return;
     loadSOPs();
     loadSetupItems();
-  }, [activityLoading]);
+  }, [activityLoading, activityName]);
 
   const loadSetupItems = async () => {
     if (!profile?.organization_id) return;
