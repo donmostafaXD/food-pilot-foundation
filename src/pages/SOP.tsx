@@ -75,6 +75,7 @@ const SOPPage = () => {
   const [printOpen, setPrintOpen] = useState(false);
   const [showAllLibrary, setShowAllLibrary] = useState(false);
   const printHeader = usePrintHeader("SOP Procedures");
+  const [setupItems, setSetupItems] = useState<FoodSafetySetupItem[]>([]);
 
   // Add Item dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
