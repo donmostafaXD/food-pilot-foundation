@@ -203,36 +203,28 @@ const PRP = () => {
     }
   }, [planJustUpdated]);
 
-  // PRP programs allowed for HACCP (professional) plan
-  const HACCP_ALLOWED_PRP_KEYWORDS = useMemo(() => [
-    "cleaning and sanitation",
-    "pest control",
-    "personal hygiene",
-    "supplier control",
-  ], []);
-
-  // Filtered programs by activity and plan
+  // Dynamic plan-tier filtering using category from prp_master (database-driven)
   const filteredPrograms = useMemo(() => {
     let base = programs;
 
-    // Basic plan: only Core / System category PRPs
+    // Basic plan: only "Core" category PRPs
     if (plan === "basic") {
       base = base.filter((p) => {
         if (p.isCustom) return true;
         const cat = ((p as any)._category || "").toLowerCase();
-        return cat === "core" || cat === "system";
+        return cat === "core";
       });
     }
 
-    // HACCP plan: restrict to specific PRP programs
+    // HACCP (Professional) plan: "Core" + "Operational" categories
     if (plan === "professional") {
       base = base.filter((p) => {
         if (p.isCustom) return true;
-        const lower = p.program_name.toLowerCase();
-        return HACCP_ALLOWED_PRP_KEYWORDS.some((kw) => lower.includes(kw));
+        const cat = ((p as any)._category || "").toLowerCase();
+        return cat === "core" || cat === "operational";
       });
-      return base;
     }
+    // Premium/Compliance: all categories pass through
 
     if (showAllLibrary || !activityName) return base;
 
@@ -248,7 +240,7 @@ const PRP = () => {
       return p.activity.toLowerCase() === activityName.toLowerCase() ||
         p.activity.toLowerCase() === "all";
     });
-  }, [programs, showAllLibrary, activityName, plan, HACCP_ALLOWED_PRP_KEYWORDS]);
+  }, [programs, showAllLibrary, activityName, plan]);
 
   const programNames = useMemo(
     () => [...new Set(programs.map((p) => p.program_name))].sort(),

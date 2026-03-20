@@ -484,9 +484,10 @@ const Logs = () => {
     const currentNames = new Set(logNames);
     let available = logStructures.filter((l) => !currentNames.has(l.log_name));
     if (isBasicPlan) {
-      available = available.filter((l) => BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name));
+      available = available.filter((l) => ((l as any)._log_category || "Core").toLowerCase() === "core");
     } else if (isHACCPPlan) {
-      available = available.filter((l) => HACCP_ALLOWED_LOGS.has(l.log_name));
+      const allowed = new Set(["core", "ccp"]);
+      available = available.filter((l) => allowed.has(((l as any)._log_category || "Core").toLowerCase()));
     }
     setLibraryLogs(available);
     setAddDialogOpen(true);
