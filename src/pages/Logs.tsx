@@ -676,12 +676,17 @@ const Logs = () => {
             </div>
 
             {logNames.length === 0 ? (
-              <Card>
+              <Card className="shadow-sm">
                 <CardContent className="flex flex-col items-center py-16 gap-3">
-                  <ClipboardList className="w-8 h-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    No log structures found. Complete the Setup Wizard first.
-                  </p>
+                  <div className="p-4 rounded-full bg-muted">
+                    <ClipboardList className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium text-foreground">No log structures found</p>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      Complete the Setup Wizard to generate log structures based on your activity type, or create a custom log.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
