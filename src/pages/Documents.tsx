@@ -250,7 +250,8 @@ function HazardAnalysisData({ orgId, planId }: { orgId: string; planId: string |
 const Documents = () => {
   const { profile } = useAuth();
   const { plan } = usePlan();
-  const { activityName, loading: activityLoading } = useActivityFilter();
+  const { activityName, planId: activePlanId, loading: activityLoading } = useActivityFilter();
+  const guard = usePermissionGuard("documents");
   const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<EnrichedDocument[]>([]);
   const [uploadedDocs, setUploadedDocs] = useState<EnrichedDocument[]>([]);
