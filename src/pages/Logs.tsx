@@ -207,10 +207,26 @@ const Logs = () => {
 
         const grouped: Record<string, LogStructure> = {};
 
+        // Build activity-mapped log names for filtering
+        const mappedLogNames = new Set<string>();
+        const mappedProcessSteps = new Map<string, Set<string>>();
+        if (mappingData && activityName) {
+          ((mappingData as any[]) || []).forEach((m: any) => {
+            if (m.activity.toLowerCase() === activityName.toLowerCase()) {
+              mappedLogNames.add(m.log_name);
+              if (!mappedProcessSteps.has(m.log_name)) mappedProcessSteps.set(m.log_name, new Set());
+              mappedProcessSteps.get(m.log_name)!.add(m.process_step);
+            }
+          });
+        }
+
         if (unifiedData && (unifiedData as any[]).length > 0) {
-          // Use logs_unified (richer field metadata)
           (unifiedData as any[]).forEach((row: any) => {
-            // Filter by activity if applicable
+            // If we have activity mapping, only include mapped logs
+            if (activityName && mappedLogNames.size > 0 && !mappedLogNames.has(row.log_name)) {
+              return;
+            }
+            // Also check applicable_activities field
             const applicable = row.applicable_activities || "All";
             if (applicable !== "All" && activityName &&
               !applicable.toLowerCase().includes(activityName.toLowerCase())) {
@@ -228,7 +244,6 @@ const Logs = () => {
             grouped[row.log_name].fields.push(row.field_name);
           });
         } else if (legacyData) {
-          // Fallback to legacy logs_structure
           legacyData.forEach((row) => {
             if (!grouped[row.log_name]) {
               grouped[row.log_name] = {
@@ -239,17 +254,6 @@ const Logs = () => {
             }
             grouped[row.log_name].fields.push(row.field_name);
           });
-        }
-
-        // Also apply logs_mapping for activity-based filtering
-        let mappedLogNames: Set<string> | null = null;
-        if (mappingData && activityName) {
-          mappedLogNames = new Set(
-            ((mappingData as any[])
-              .filter((m: any) => m.activity.toLowerCase() === activityName.toLowerCase())
-              .map((m: any) => m.log_name))
-          );
-          // mappedLogNames available for future filtering
         }
 
         setLogStructures(Object.values(grouped));
