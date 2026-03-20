@@ -234,7 +234,7 @@ const SetupWizard = () => {
         </div>
 
         {/* Step content */}
-        <div className="bg-card rounded-lg shadow-industrial-sm p-6 min-h-[400px]">
+        <div className="bg-card rounded-lg shadow-sm p-6 min-h-[400px]">
           {currentStep === 0 && (
             <Step1BusinessInfo
               businessName={businessName}

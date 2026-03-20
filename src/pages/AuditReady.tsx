@@ -311,8 +311,16 @@ const AuditReady = () => {
   if (!planLoading && !isOwner) {
     return (
       <DashboardLayout>
-        <div className="flex items-center justify-center h-full p-8">
-          <p className="text-muted-foreground">Access restricted to Owner only.</p>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center space-y-3 max-w-sm px-6">
+            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <ShieldCheck className="w-6 h-6 text-muted-foreground" />
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">Owner Access Required</h2>
+            <p className="text-sm text-muted-foreground">
+              The Audit Ready dashboard is available to organization Owners only. Contact your Owner for audit preparation.
+            </p>
+          </div>
         </div>
       </DashboardLayout>
     );

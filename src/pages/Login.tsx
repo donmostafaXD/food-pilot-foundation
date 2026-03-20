@@ -46,7 +46,7 @@ const Login = () => {
           <p className="text-sm text-muted-foreground">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-card shadow-industrial-md rounded-lg p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-card shadow-md rounded-lg p-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@company.com" />

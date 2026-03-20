@@ -360,7 +360,7 @@ const ManageActivitiesSection = () => {
         </p>
       </div>
 
-      <Card className="shadow-industrial-sm">
+      <Card className="shadow-sm">
         <CardContent className="pt-6 pb-5 space-y-3">
           <div className="flex items-center justify-between">
             <div>
@@ -404,7 +404,7 @@ const ManageActivitiesSection = () => {
       </Card>
 
       {canChangeActivity && (
-        <Card className="shadow-industrial-sm">
+        <Card className="shadow-sm">
           <CardContent className="pt-6 pb-5 space-y-4">
             <div className="flex flex-col items-center text-center gap-3">
               <div className="p-3 rounded-full bg-destructive/10">
@@ -545,7 +545,7 @@ const BusinessProfileSection = () => {
         </div>
       )}
 
-      <Card className="shadow-industrial-sm">
+      <Card className="shadow-sm">
         <CardContent className="pt-5 pb-4">
           {!editing || !canEdit ? (
             <div className="space-y-4">
@@ -685,7 +685,7 @@ const SubscriptionSection = () => {
       </div>
 
       {/* Current plan card */}
-      <Card className="shadow-industrial-sm border-primary/30 bg-primary/5">
+      <Card className="shadow-sm border-primary/30 bg-primary/5">
         <CardContent className="flex items-center gap-3 pt-5 pb-4">
           <div className="p-2.5 rounded-lg bg-primary/10">
             <Crown className="w-5 h-5 text-primary" />
@@ -719,7 +719,7 @@ const SubscriptionSection = () => {
             const isUpgrade = (p.tier === "professional" && currentPlan === "basic") ||
                               (p.tier === "premium" && currentPlan !== "premium");
             return (
-              <Card key={p.tier} className={`flex flex-col shadow-industrial-sm transition-all ${isCurrent ? "ring-2 ring-primary/30 bg-primary/5" : isUpgrade ? "hover:border-primary/30" : "opacity-60"}`}>
+              <Card key={p.tier} className={`flex flex-col shadow-sm transition-all ${isCurrent ? "ring-2 ring-primary/30 bg-primary/5" : isUpgrade ? "hover:border-primary/30" : "opacity-60"}`}>
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base">{PLAN_DISPLAY_NAMES[p.tier]}</CardTitle>
@@ -783,7 +783,7 @@ const SubscriptionSection = () => {
 
       {/* Feature comparison */}
       {!loading && (
-        <Card className="shadow-industrial-sm">
+        <Card className="shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">Feature Comparison</CardTitle>
             <p className="text-xs text-muted-foreground">See what each plan includes across all modules.</p>
@@ -965,7 +965,7 @@ const UsersSection = () => {
       )}
 
       {canManageUsers && (
-        <Card className="shadow-industrial-sm">
+        <Card className="shadow-sm">
           <CardContent className="pt-5 pb-4 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-primary">
@@ -1042,7 +1042,7 @@ const UsersSection = () => {
         </Card>
       )}
 
-      <Card className="shadow-industrial-sm">
+      <Card className="shadow-sm">
         <CardContent className="pt-5 pb-4 space-y-4">
           <div className="flex items-center gap-2 text-primary">
             <Users className="w-4 h-4" />
