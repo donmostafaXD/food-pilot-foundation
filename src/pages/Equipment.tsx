@@ -356,6 +356,17 @@ const Equipment = () => {
                                   }`}
                                 />
                               </Button>
+                              {guard.canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleDelete(item)}
+                                  title="Delete equipment"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         )}
