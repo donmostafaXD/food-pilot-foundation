@@ -666,7 +666,53 @@ const PRP = () => {
                 </div>
               )}
 
-              <div className="space-y-1.5">
+              {/* Dynamic Food Safety Setup Injection */}
+              {(() => {
+                const name = selectedProgram.program_name.toLowerCase();
+                const sections: { label: string; values: string[] }[] = [];
+
+                if (name.includes("clean") || name.includes("sanit")) {
+                  const vals = getSetupValues("cleaning_chemicals");
+                  if (vals.length > 0) sections.push({ label: "Cleaning Chemicals", values: vals });
+                }
+                if (name.includes("pest")) {
+                  const vals = getSetupValues("waste_disposal");
+                  if (vals.length > 0) sections.push({ label: "Waste Disposal Methods", values: vals });
+                }
+                if (name.includes("supplier") || name.includes("receiv")) {
+                  const vals = getSetupValues("suppliers");
+                  if (vals.length > 0) sections.push({ label: "Approved Suppliers", values: vals });
+                }
+                if (name.includes("storage") || name.includes("cold") || name.includes("temperature")) {
+                  const temps = getSetupValues("temperature_standards");
+                  const areas = getSetupValues("storage_areas");
+                  if (temps.length > 0) sections.push({ label: "Temperature Standards", values: temps });
+                  if (areas.length > 0) sections.push({ label: "Storage Areas", values: areas });
+                }
+                if (name.includes("waste")) {
+                  const vals = getSetupValues("waste_disposal");
+                  if (vals.length > 0) sections.push({ label: "Waste Disposal Methods", values: vals });
+                }
+
+                if (sections.length === 0) return null;
+
+                return (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">Organization Setup Data</h3>
+                    {sections.map((sec) => (
+                      <div key={sec.label} className="rounded-md border border-border bg-muted/30 p-3">
+                        <p className="text-xs font-medium text-muted-foreground mb-1.5">{sec.label}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {sec.values.map((v, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">{v}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
                 <Label className="text-sm">Notes (optional)</Label>
                 <Textarea
                   value={notes}
