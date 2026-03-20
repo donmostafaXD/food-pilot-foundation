@@ -272,8 +272,7 @@ const Logs = () => {
               .filter((m: any) => m.activity.toLowerCase() === activityName.toLowerCase())
               .map((m: any) => m.log_name))
           );
-          // Store mapped names for use in filtering
-          (window as any).__logsMappedNames = mappedLogNames;
+          // mappedLogNames available for future filtering
         }
 
         setLogStructures(Object.values(grouped));
