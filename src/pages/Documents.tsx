@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
+import { useActivityFilter } from "@/hooks/useActivityFilter";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -30,6 +33,10 @@ import {
   Edit2,
   Save,
   X,
+  Plus,
+  Eye,
+  Upload,
+  Trash2,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +44,7 @@ import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import { openPrintWindow, escapeHtml } from "@/lib/printUtils";
 import { toast } from "sonner";
+import AddDocumentModal from "@/components/documents/AddDocumentModal";
 
 // ── Types ──────────────────────────────────────────
 interface DocLibraryItem {
@@ -51,18 +59,16 @@ type DocCategory = "all" | "haccp" | "prp" | "general";
 interface EnrichedDocument extends DocLibraryItem {
   category: DocCategory;
   categoryLabel: string;
+  isUploaded?: boolean;
+  uploadedId?: string;
+  filePath?: string | null;
+  uploadCategory?: string;
 }
 
 // ── Category classification ─────────────────────────
 const HACCP_KEYWORDS = [
-  "haccp",
-  "hazard",
-  "critical control",
-  "ccp",
-  "flow diagram",
-  "product description",
-  "verification",
-  "corrective action",
+  "haccp", "hazard", "critical control", "ccp", "flow diagram",
+  "product description", "verification", "corrective action",
 ];
 const PRP_KEYWORDS = ["prerequisite", "prp", "cleaning", "sanitation", "pest", "hygiene", "maintenance"];
 
@@ -94,7 +100,6 @@ function HACCPPlanData({ orgId }: { orgId: string }) {
           .select("*, haccp_plan_hazards(*)")
           .eq("haccp_plan_id", plans[0].id)
           .order("step_order");
-
         setSteps(stepsData || []);
       }
       setLoading(false);
@@ -184,9 +189,7 @@ function FlowDiagramData({ orgId }: { orgId: string }) {
               <span className="text-muted-foreground mr-2">{step.step_order}.</span>
               {step.process_name}
             </div>
-            {i < steps.length - 1 && (
-              <div className="w-px h-4 bg-border" />
-            )}
+            {i < steps.length - 1 && <div className="w-px h-4 bg-border" />}
           </div>
         ))}
       </div>
@@ -266,94 +269,168 @@ function HazardAnalysisData({ orgId }: { orgId: string }) {
 const Documents = () => {
   const { profile } = useAuth();
   const { plan } = usePlan();
+  const { activityName, loading: activityLoading } = useActivityFilter();
   const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<EnrichedDocument[]>([]);
+  const [uploadedDocs, setUploadedDocs] = useState<EnrichedDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState(searchParams.get("search") || "");
   const [categoryFilter, setCategoryFilter] = useState<DocCategory>("all");
   const [selectedDoc, setSelectedDoc] = useState<EnrichedDocument | null>(null);
   const [printOpen, setPrintOpen] = useState(false);
+  const [showAllLibrary, setShowAllLibrary] = useState(false);
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const printHeader = usePrintHeader("FSMS Documents");
 
-  useEffect(() => {
-    (async () => {
-      // Load from new fsms_documents table (primary), fall back to document_library
-      const [{ data: fsmsData }, { data: legacyData }] = await Promise.all([
-        supabase.from("fsms_documents" as any).select("*").order("id"),
-        supabase.from("document_library").select("*").order("id"),
-      ]);
+  // Load system documents
+  const loadDocuments = useCallback(async () => {
+    setLoading(true);
+    const [{ data: fsmsData }, { data: legacyData }] = await Promise.all([
+      supabase.from("fsms_documents").select("*").order("id"),
+      supabase.from("document_library").select("*").order("id"),
+    ]);
 
-      const source = (fsmsData && (fsmsData as any[]).length > 0) ? fsmsData as any[] : legacyData || [];
-      setDocuments(
-        source.map((d: any) => ({
+    const source = (fsmsData && fsmsData.length > 0) ? fsmsData : legacyData || [];
+    setDocuments(
+      source.map((d: any) => ({
+        id: d.id,
+        document_name: d.document_name,
+        description: d.description,
+        responsible: d.responsible,
+        ...classifyDocument(d.document_name),
+      }))
+    );
+
+    // Load uploaded docs
+    if (profile?.organization_id && profile?.branch_id) {
+      const { data: uploaded } = await supabase
+        .from("uploaded_documents")
+        .select("*")
+        .eq("organization_id", profile.organization_id)
+        .eq("branch_id", profile.branch_id)
+        .order("created_at", { ascending: false });
+
+      setUploadedDocs(
+        (uploaded || []).map((d: any) => ({
           id: d.id,
           document_name: d.document_name,
-          description: d.description,
+          description: null,
           responsible: d.responsible,
           ...classifyDocument(d.document_name),
+          isUploaded: true,
+          uploadedId: d.id,
+          filePath: d.file_path,
+          uploadCategory: d.category,
         }))
       );
-      setLoading(false);
-    })();
-  }, []);
+    }
 
-  // Documents allowed for HACCP plan (certification-essential only)
+    setLoading(false);
+  }, [profile?.organization_id, profile?.branch_id]);
+
+  useEffect(() => {
+    if (activityLoading) return;
+    loadDocuments();
+  }, [activityLoading, loadDocuments]);
+
+  // Documents allowed for HACCP plan
   const HACCP_ALLOWED_DOC_KEYWORDS = useMemo(() => [
-    "flow diagram",
-    "haccp verification",
-    "record keeping",
-    "corrective action",
-    "supplier approval",
-    "approved supplier",
-    "raw material",
-    "allergen",
-    "calibration",
-    "equipment",
-    "cleaning",
-    "sanitation",
-    "pest control",
-    "training",
-    "non-conformance",
-    "hold & release",
-    "document control",
-    "record control",
-    "risk assessment",
-    "hazard evaluation",
-    "haccp plan",
+    "flow diagram", "haccp verification", "record keeping", "corrective action",
+    "supplier approval", "approved supplier", "raw material", "allergen",
+    "calibration", "equipment", "cleaning", "sanitation", "pest control",
+    "training", "non-conformance", "hold & release", "document control",
+    "record control", "risk assessment", "hazard evaluation", "haccp plan",
     "hazard analysis",
   ], []);
 
-  // Basic plan: only show HACCP + PRP docs, hide General FSMS
   const BASIC_ALLOWED_DOC_CATEGORIES: DocCategory[] = ["haccp", "prp"];
 
-  const filtered = documents.filter((d) => {
+  // Merge system + uploaded, apply activity filter
+  const allDocs = useMemo(() => {
+    let systemDocs = documents;
+
+    // Activity-based filtering for system docs
+    if (!showAllLibrary && activityName) {
+      const actLower = activityName.toLowerCase();
+      // Filter docs relevant to activity by keyword matching
+      systemDocs = systemDocs.filter((d) => {
+        const lower = d.document_name.toLowerCase();
+        // Always include core HACCP/PRP docs
+        if (d.category === "haccp" || d.category === "prp") return true;
+        // For general docs, include if name relates to activity or is universal
+        return true; // System docs are always relevant
+      });
+    }
+
+    // Uploaded docs: filter by activity
+    let filteredUploaded = uploadedDocs;
+    if (!showAllLibrary && activityName) {
+      filteredUploaded = uploadedDocs.filter((d) => {
+        const docActivity = (d as any).activity;
+        if (!docActivity) return true;
+        return docActivity.toLowerCase() === activityName.toLowerCase();
+      });
+    }
+
+    return [...systemDocs, ...filteredUploaded];
+  }, [documents, uploadedDocs, showAllLibrary, activityName]);
+
+  const filtered = allDocs.filter((d) => {
     const matchesSearch =
       !search ||
       d.document_name.toLowerCase().includes(search.toLowerCase()) ||
       d.description?.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = categoryFilter === "all" || d.category === categoryFilter;
 
-    // Basic plan: exclude general FSMS documents (audit, policy, etc.)
     if (plan === "basic") {
-      if (!BASIC_ALLOWED_DOC_CATEGORIES.includes(d.category)) return false;
+      if (!d.isUploaded && !BASIC_ALLOWED_DOC_CATEGORIES.includes(d.category)) return false;
     }
 
-    // HACCP plan: whitelist only certification-essential documents
     if (plan === "professional") {
-      const lower = d.document_name.toLowerCase();
-      if (d.category === "general") return false;
-      if (!HACCP_ALLOWED_DOC_KEYWORDS.some((kw) => lower.includes(kw))) return false;
+      if (!d.isUploaded) {
+        const lower = d.document_name.toLowerCase();
+        if (d.category === "general") return false;
+        if (!HACCP_ALLOWED_DOC_KEYWORDS.some((kw) => lower.includes(kw))) return false;
+      }
     }
 
     return matchesSearch && matchesCategory;
   });
 
+  // Separate system vs uploaded for display
+  const systemFiltered = filtered.filter((d) => !d.isUploaded);
+  const uploadFiltered = filtered.filter((d) => d.isUploaded);
+
   const grouped: Record<string, EnrichedDocument[]> = {};
-  filtered.forEach((d) => {
+  systemFiltered.forEach((d) => {
     if (!grouped[d.categoryLabel]) grouped[d.categoryLabel] = [];
     grouped[d.categoryLabel].push(d);
   });
+
+  const existingDocIds = useMemo(
+    () => new Set(documents.map((d) => d.id)),
+    [documents]
+  );
+
+  const handleDeleteUploaded = async (doc: EnrichedDocument) => {
+    if (!doc.uploadedId) return;
+    // Delete file from storage if exists
+    if (doc.filePath) {
+      await supabase.storage.from("documents").remove([doc.filePath]);
+    }
+    const { error } = await supabase
+      .from("uploaded_documents")
+      .delete()
+      .eq("id", doc.uploadedId);
+
+    if (error) {
+      toast.error("Failed to delete document");
+    } else {
+      toast.success("Document removed");
+      setUploadedDocs((prev) => prev.filter((d) => d.uploadedId !== doc.uploadedId));
+    }
+  };
 
   const handlePrint = (blank: boolean) => {
     const printWindow = window.open("", "_blank");
@@ -371,28 +448,17 @@ const Documents = () => {
       : printRef.current.innerHTML;
 
     printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${selectedDoc?.document_name || "Document"}</title>
-          <style>
-            @page { size: A4; margin: 20mm; }
-            body { font-family: system-ui, -apple-system, sans-serif; color: #1a1a1a; line-height: 1.6; max-width: 210mm; margin: 0 auto; padding: 20px; }
-            h1 { font-size: 20px; margin-bottom: 4px; }
-            h2 { font-size: 16px; margin-top: 20px; }
-            h3 { font-size: 14px; margin-top: 16px; }
-            table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
-            th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
-            th { background: #f5f5f5; font-weight: 600; }
-            .badge { display: inline-block; padding: 1px 6px; border-radius: 9999px; font-size: 10px; font-weight: 600; }
-            .badge-destructive { background: #fee2e2; color: #991b1b; }
-            .badge-secondary { background: #f3f4f6; color: #374151; }
-            .badge-outline { border: 1px solid #d1d5db; color: #374151; }
-            @media print { body { padding: 0; } }
-          </style>
-        </head>
-        <body>${content}</body>
-      </html>
+      <!DOCTYPE html><html><head><title>${selectedDoc?.document_name || "Document"}</title>
+      <style>
+        @page { size: A4; margin: 20mm; }
+        body { font-family: system-ui, -apple-system, sans-serif; color: #1a1a1a; line-height: 1.6; max-width: 210mm; margin: 0 auto; padding: 20px; }
+        h1 { font-size: 20px; margin-bottom: 4px; } h2 { font-size: 16px; margin-top: 20px; } h3 { font-size: 14px; margin-top: 16px; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+        th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+        th { background: #f5f5f5; font-weight: 600; }
+        .badge { display: inline-block; padding: 1px 6px; border-radius: 9999px; font-size: 10px; font-weight: 600; }
+        @media print { body { padding: 0; } }
+      </style></head><body>${content}</body></html>
     `);
     printWindow.document.close();
     printWindow.print();
@@ -412,7 +478,6 @@ const Documents = () => {
   const renderDynamicContent = (doc: EnrichedDocument) => {
     if (!profile?.organization_id) return null;
     const lower = doc.document_name.toLowerCase();
-
     if (lower.includes("haccp plan")) return <HACCPPlanData orgId={profile.organization_id} />;
     if (lower.includes("flow diagram")) return <FlowDiagramData orgId={profile.organization_id} />;
     if (lower.includes("hazard analysis")) return <HazardAnalysisData orgId={profile.organization_id} />;
@@ -436,14 +501,13 @@ const Documents = () => {
   const [savingDoc, setSavingDoc] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
 
-  // Load custom content when doc is selected
   useEffect(() => {
-    if (!selectedDoc || !profile?.organization_id) return;
+    if (!selectedDoc || !profile?.organization_id || selectedDoc.isUploaded) return;
     setEditing(false);
     setLoadingContent(true);
     (async () => {
       const { data } = await supabase
-        .from("document_custom_content" as any)
+        .from("document_custom_content")
         .select("section_key, content")
         .eq("organization_id", profile.organization_id!)
         .eq("document_id", selectedDoc.id);
@@ -483,7 +547,7 @@ const Documents = () => {
     try {
       for (const key of SECTION_KEYS) {
         const content = editContent[key] ?? getSectionContent(key);
-        await supabase.from("document_custom_content" as any).upsert(
+        await supabase.from("document_custom_content").upsert(
           {
             organization_id: profile.organization_id,
             document_id: selectedDoc.id,
@@ -513,11 +577,12 @@ const Documents = () => {
               <ArrowLeft className="w-4 h-4 mr-1" /> Back to Documents
             </Button>
             <div className="flex gap-2">
-              {!editing ? (
+              {!selectedDoc.isUploaded && !editing && (
                 <Button variant="outline" size="sm" onClick={startEditing}>
                   <Edit2 className="w-4 h-4 mr-1" /> Edit
                 </Button>
-              ) : (
+              )}
+              {editing && (
                 <>
                   <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
                     <X className="w-4 h-4 mr-1" /> Cancel
@@ -539,14 +604,7 @@ const Documents = () => {
           <PrintDialog
             open={printOpen}
             onClose={() => setPrintOpen(false)}
-            onSelect={(mode: PrintMode) => {
-              const header = { ...printHeader, documentTitle: selectedDoc!.document_name };
-              if (mode === "blank") {
-                handlePrint(true);
-              } else {
-                handlePrint(false);
-              }
-            }}
+            onSelect={(mode: PrintMode) => handlePrint(mode === "blank")}
             title={`Print: ${selectedDoc?.document_name}`}
           />
 
@@ -556,8 +614,13 @@ const Documents = () => {
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="outline" className="text-[10px]">
                     {getCategoryIcon(selectedDoc.category)}
-                    <span className="ml-1">{selectedDoc.categoryLabel}</span>
+                    <span className="ml-1">{selectedDoc.isUploaded ? (selectedDoc.uploadCategory || "Uploaded") : selectedDoc.categoryLabel}</span>
                   </Badge>
+                  {selectedDoc.isUploaded && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      <Upload className="w-3 h-3 mr-1" /> Uploaded
+                    </Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{selectedDoc.document_name}</CardTitle>
                 {selectedDoc.responsible && (
@@ -567,107 +630,96 @@ const Documents = () => {
                 )}
               </CardHeader>
               <CardContent className="space-y-6">
-                {selectedDoc.description && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-foreground mb-2">Description</h3>
-                    <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                      {selectedDoc.description}
-                    </p>
+                {selectedDoc.isUploaded && selectedDoc.filePath && (
+                  <div className="bg-muted/30 rounded-lg p-4">
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-primary" />
+                      <span className="text-sm font-medium">Attached file</span>
+                      <Badge variant="outline" className="text-[10px] ml-auto">
+                        {selectedDoc.filePath.split(".").pop()?.toUpperCase()}
+                      </Badge>
+                    </div>
                   </div>
                 )}
 
-                <Separator />
-
-                {loadingContent ? (
-                  <div className="flex items-center gap-2 py-4 text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Loading content...
-                  </div>
-                ) : (
+                {!selectedDoc.isUploaded && (
                   <>
-                    {/* Purpose */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground mb-2">Purpose</h3>
-                      {editing ? (
-                        <Textarea
-                          value={editContent.purpose ?? ""}
-                          onChange={(e) => setEditContent((prev) => ({ ...prev, purpose: e.target.value }))}
-                          rows={3}
-                          className="resize-none text-sm"
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground whitespace-pre-line">
-                          {getSectionContent("purpose")}
+                    {selectedDoc.description && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-foreground mb-2">Description</h3>
+                        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                          {selectedDoc.description}
                         </p>
-                      )}
-                    </div>
-
-                    {/* Scope */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground mb-2">Scope</h3>
-                      {editing ? (
-                        <Textarea
-                          value={editContent.scope ?? ""}
-                          onChange={(e) => setEditContent((prev) => ({ ...prev, scope: e.target.value }))}
-                          rows={3}
-                          className="resize-none text-sm"
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground whitespace-pre-line">
-                          {getSectionContent("scope")}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Responsibilities */}
-                    <div>
-                      <h3 className="text-sm font-semibold text-foreground mb-2">Responsibilities</h3>
-                      {editing ? (
-                        <Textarea
-                          value={editContent.responsibilities ?? ""}
-                          onChange={(e) => setEditContent((prev) => ({ ...prev, responsibilities: e.target.value }))}
-                          rows={4}
-                          className="resize-none text-sm"
-                        />
-                      ) : (
-                        <p className="text-sm text-muted-foreground whitespace-pre-line">
-                          {getSectionContent("responsibilities")}
-                        </p>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {/* Dynamic data injection */}
-                {hasDynamicData(selectedDoc.document_name) && (
-                  <>
-                    <Separator />
-                    <div className="bg-muted/30 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <CheckCircle2 className="w-4 h-4 text-primary" />
-                        <span className="text-xs font-medium text-primary">Live Data from Your HACCP Plan</span>
                       </div>
-                      {renderDynamicContent(selectedDoc)}
+                    )}
+
+                    <Separator />
+
+                    {loadingContent ? (
+                      <div className="flex items-center gap-2 py-4 text-muted-foreground">
+                        <Loader2 className="w-4 h-4 animate-spin" /> Loading content...
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground mb-2">Purpose</h3>
+                          {editing ? (
+                            <Textarea value={editContent.purpose ?? ""} onChange={(e) => setEditContent((prev) => ({ ...prev, purpose: e.target.value }))} rows={3} className="resize-none text-sm" />
+                          ) : (
+                            <p className="text-sm text-muted-foreground whitespace-pre-line">{getSectionContent("purpose")}</p>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground mb-2">Scope</h3>
+                          {editing ? (
+                            <Textarea value={editContent.scope ?? ""} onChange={(e) => setEditContent((prev) => ({ ...prev, scope: e.target.value }))} rows={3} className="resize-none text-sm" />
+                          ) : (
+                            <p className="text-sm text-muted-foreground whitespace-pre-line">{getSectionContent("scope")}</p>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground mb-2">Responsibilities</h3>
+                          {editing ? (
+                            <Textarea value={editContent.responsibilities ?? ""} onChange={(e) => setEditContent((prev) => ({ ...prev, responsibilities: e.target.value }))} rows={4} className="resize-none text-sm" />
+                          ) : (
+                            <p className="text-sm text-muted-foreground whitespace-pre-line">{getSectionContent("responsibilities")}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
+
+                    {hasDynamicData(selectedDoc.document_name) && (
+                      <>
+                        <Separator />
+                        <div className="bg-muted/30 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle2 className="w-4 h-4 text-primary" />
+                            <span className="text-xs font-medium text-primary">Live Data from Your HACCP Plan</span>
+                          </div>
+                          {renderDynamicContent(selectedDoc)}
+                        </div>
+                      </>
+                    )}
+
+                    <Separator />
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground mb-2">Review & Approval</h3>
+                      <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Prepared by:</p>
+                          <div className="border-b border-border mt-6 mb-1" />
+                          <p className="text-xs">Signature / Date</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Approved by:</p>
+                          <div className="border-b border-border mt-6 mb-1" />
+                          <p className="text-xs">Signature / Date</p>
+                        </div>
+                      </div>
                     </div>
                   </>
                 )}
-
-                <Separator />
-
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Review & Approval</h3>
-                  <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Prepared by:</p>
-                      <div className="border-b border-border mt-6 mb-1" />
-                      <p className="text-xs">Signature / Date</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Approved by:</p>
-                      <div className="border-b border-border mt-6 mb-1" />
-                      <p className="text-xs">Signature / Date</p>
-                    </div>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -681,10 +733,26 @@ const Documents = () => {
     <DashboardLayout>
       <div className="p-4 lg:p-8 max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">FSMS Documents</h1>
-          <Badge variant="secondary" className="text-xs">
-            {filtered.length} document{filtered.length !== 1 ? "s" : ""}
-          </Badge>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">FSMS Documents</h1>
+            {activityName && (
+              <p className="text-sm text-muted-foreground mt-1">
+                Filtered for
+                <Badge variant="secondary" className="ml-2 text-[10px]">
+                  {activityName}
+                </Badge>
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              {filtered.length} document{filtered.length !== 1 ? "s" : ""}
+            </Badge>
+            <Button size="sm" onClick={() => setAddModalOpen(true)} className="gap-1.5">
+              <Plus className="w-4 h-4" />
+              Add Document
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -709,10 +777,23 @@ const Documents = () => {
               <SelectItem value="general">General FSMS</SelectItem>
             </SelectContent>
           </Select>
+          {activityName && (
+            <div className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-muted-foreground" />
+              <Label htmlFor="show-all-docs" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+                Show All
+              </Label>
+              <Switch
+                id="show-all-docs"
+                checked={showAllLibrary}
+                onCheckedChange={setShowAllLibrary}
+              />
+            </div>
+          )}
         </div>
 
         {/* Loading */}
-        {loading ? (
+        {loading || activityLoading ? (
           <div className="flex items-center justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
@@ -723,10 +804,14 @@ const Documents = () => {
                 <FileText className="w-8 h-8 text-muted-foreground" />
               </div>
               <p className="text-sm text-muted-foreground">No documents found.</p>
+              <Button variant="outline" size="sm" onClick={() => setAddModalOpen(true)}>
+                <Plus className="w-4 h-4 mr-1" /> Add Document
+              </Button>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-8">
+            {/* System documents grouped by category */}
             {Object.entries(grouped).map(([label, docs]) => (
               <div key={label}>
                 <div className="flex items-center gap-2 mb-3">
@@ -737,7 +822,7 @@ const Documents = () => {
                 <div className="grid gap-2">
                   {docs.map((doc) => (
                     <Card
-                      key={doc.id}
+                      key={`sys-${doc.id}`}
                       className="shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
                       onClick={() => setSelectedDoc(doc)}
                     >
@@ -774,8 +859,78 @@ const Documents = () => {
                 </div>
               </div>
             ))}
+
+            {/* Uploaded documents section */}
+            {uploadFiltered.length > 0 && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Upload className="w-4 h-4 text-primary" />
+                  <h2 className="text-sm font-semibold text-foreground">Your Documents</h2>
+                  <Badge variant="secondary" className="text-[10px] ml-1">{uploadFiltered.length}</Badge>
+                </div>
+                <div className="grid gap-2">
+                  {uploadFiltered.map((doc) => (
+                    <Card
+                      key={`up-${doc.uploadedId}`}
+                      className="shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+                      onClick={() => setSelectedDoc(doc)}
+                    >
+                      <CardContent className="flex items-center justify-between p-4">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 rounded-md bg-primary/10 shrink-0">
+                            <Upload className="w-4 h-4 text-primary" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">
+                              {doc.document_name}
+                            </p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <Badge variant="outline" className="text-[10px]">
+                                {doc.uploadCategory || "FSMS"}
+                              </Badge>
+                              {doc.filePath && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {doc.filePath.split(".").pop()?.toUpperCase()} file attached
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {doc.responsible && (
+                            <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">
+                              {doc.responsible}
+                            </Badge>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteUploaded(doc);
+                            }}
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </Button>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
+
+        <AddDocumentModal
+          open={addModalOpen}
+          onClose={() => setAddModalOpen(false)}
+          onAdded={loadDocuments}
+          existingDocIds={existingDocIds}
+          activityName={activityName}
+        />
       </div>
     </DashboardLayout>
   );
