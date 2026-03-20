@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AdminPlanOverrideProvider } from "@/contexts/AdminPlanOverrideContext";
 import { ActivityProvider } from "@/contexts/ActivityContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-
+import AdminRoute from "@/components/admin/AdminRoute";
 
 // Public pages
 import Home from "./pages/Home";
@@ -30,7 +30,15 @@ import PRP from "./pages/PRP";
 import SOP from "./pages/SOP";
 import EquipmentPage from "./pages/Equipment";
 import AuditReady from "./pages/AuditReady";
-import AdminPanel from "./pages/AdminPanel";
+
+// Admin pages (completely separate system)
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminOrganizations from "./pages/admin/AdminOrganizations";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminPlans from "./pages/admin/AdminPlans";
+import AdminAccess from "./pages/admin/AdminAccess";
+import AdminCMS from "./pages/admin/AdminCMS";
+import AdminUI from "./pages/admin/AdminUI";
 
 const queryClient = new QueryClient();
 
@@ -57,7 +65,7 @@ const AppRoutes = () => {
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
 
-      {/* Protected app routes — each declares its module for permission enforcement */}
+      {/* Protected app routes */}
       <Route path="/dashboard" element={<ProtectedRoute module="dashboard"><Dashboard /></ProtectedRoute>} />
       <Route path="/setup" element={<ProtectedRoute module="activities"><SetupWizard /></ProtectedRoute>} />
       <Route path="/haccp" element={<ProtectedRoute module="haccp_plan"><HACCPPlan /></ProtectedRoute>} />
@@ -68,7 +76,15 @@ const AppRoutes = () => {
       <Route path="/sop" element={<ProtectedRoute module="sop"><SOP /></ProtectedRoute>} />
       <Route path="/equipment" element={<ProtectedRoute module="equipment"><EquipmentPage /></ProtectedRoute>} />
       <Route path="/audit" element={<ProtectedRoute module="audit"><AuditReady /></ProtectedRoute>} />
-      <Route path="/admin" element={<ProtectedRoute module="settings"><AdminPanel /></ProtectedRoute>} />
+
+      {/* ─── Super Admin Panel (completely separate system) ─── */}
+      <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+      <Route path="/admin/organizations" element={<AdminRoute><AdminOrganizations /></AdminRoute>} />
+      <Route path="/admin/users" element={<AdminRoute><AdminUsers /></AdminRoute>} />
+      <Route path="/admin/plans" element={<AdminRoute><AdminPlans /></AdminRoute>} />
+      <Route path="/admin/access" element={<AdminRoute><AdminAccess /></AdminRoute>} />
+      <Route path="/admin/cms" element={<AdminRoute><AdminCMS /></AdminRoute>} />
+      <Route path="/admin/ui" element={<AdminRoute><AdminUI /></AdminRoute>} />
 
       {/* Redirects for removed routes */}
       <Route path="/app/pricing" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />
@@ -94,7 +110,6 @@ const App = () => {
               </ActivityProvider>
             </AdminPlanOverrideProvider>
           </AuthProvider>
-
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
