@@ -730,10 +730,12 @@ const Documents = () => {
             <Badge variant="secondary" className="text-xs">
               {filtered.length} document{filtered.length !== 1 ? "s" : ""}
             </Badge>
-            <Button size="sm" onClick={() => setAddModalOpen(true)} className="gap-1.5">
-              <Plus className="w-4 h-4" />
-              Add Document
-            </Button>
+            {guard.canCreate && (
+              <Button size="sm" onClick={() => setAddModalOpen(true)} className="gap-1.5">
+                <Plus className="w-4 h-4" />
+                Add Document
+              </Button>
+            )}
           </div>
         </div>
 
