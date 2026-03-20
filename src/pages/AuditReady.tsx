@@ -55,6 +55,7 @@ const AuditReady = () => {
   const navigate = useNavigate();
   const { plan, showRiskFields, showComplianceTools, canAccessSOP, canAccessPRP, loading: planLoading } = usePlan();
   const { effectiveRole } = useRoleAccess();
+  const { activeActivityId, activeActivity } = useActivity();
   const printHeader = usePrintHeader("Audit Ready Report");
   const isBasicPlan = plan === "basic";
   const isOwner = effectiveRole === "Owner" || effectiveRole === "super_admin";
