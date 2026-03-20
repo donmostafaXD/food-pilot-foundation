@@ -84,29 +84,22 @@ function classifyDocument(name: string): { category: DocCategory; categoryLabel:
 }
 
 // ── Dynamic data components ─────────────────────────
-function HACCPPlanData({ orgId }: { orgId: string }) {
+function HACCPPlanData({ orgId, planId }: { orgId: string; planId: string | null }) {
   const [steps, setSteps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: plans } = await supabase
-        .from("haccp_plans")
-        .select("id, activity_name, status")
-        .eq("organization_id", orgId)
-        .limit(1);
-
-      if (plans && plans.length > 0) {
-        const { data: stepsData } = await supabase
-          .from("haccp_plan_steps")
-          .select("*, haccp_plan_hazards(*)")
-          .eq("haccp_plan_id", plans[0].id)
-          .order("step_order");
-        setSteps(stepsData || []);
-      }
+      if (!planId) { setLoading(false); return; }
+      const { data: stepsData } = await supabase
+        .from("haccp_plan_steps")
+        .select("*, haccp_plan_hazards(*)")
+        .eq("haccp_plan_id", planId)
+        .order("step_order");
+      setSteps(stepsData || []);
       setLoading(false);
     })();
-  }, [orgId]);
+  }, [orgId, planId]);
 
   if (loading) return <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading HACCP data...</div>;
   if (!steps.length) return <p className="text-sm text-muted-foreground italic py-2">No HACCP plan data available. Complete the Setup Wizard first.</p>;
