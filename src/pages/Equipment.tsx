@@ -40,6 +40,7 @@ import {
   Power,
   Loader2,
   PackagePlus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
