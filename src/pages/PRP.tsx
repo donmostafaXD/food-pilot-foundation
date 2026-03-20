@@ -85,6 +85,8 @@ interface FoodSafetySetupItem {
   item_name: string;
   item_value: string | null;
 }
+
+interface PRPRecord {
   id: string;
   program_name: string;
   date: string;
