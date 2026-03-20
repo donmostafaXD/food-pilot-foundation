@@ -1,9 +1,9 @@
 /**
- * Admin Organization Management — view/edit all orgs, change plans, etc.
+ * Admin Organization Management — view/edit all orgs, change plans, delete.
  */
 import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -22,7 +22,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Search, Save, Building2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Search, Building2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -35,6 +46,7 @@ interface Org {
   city: string | null;
   employee_count: number | null;
   created_at: string;
+  userCount?: number;
 }
 
 export default function AdminOrganizations() {
@@ -43,14 +55,27 @@ export default function AdminOrganizations() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const fetchOrgs = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("organizations")
-      .select("*")
-      .order("created_at", { ascending: false });
-    const list = (data || []) as Org[];
+    const [orgsRes, profilesRes] = await Promise.all([
+      supabase.from("organizations").select("*").order("created_at", { ascending: false }),
+      supabase.from("profiles").select("organization_id"),
+    ]);
+
+    const orgData = (orgsRes.data || []) as Org[];
+    const profiles = profilesRes.data || [];
+
+    // Count users per org
+    const userCounts: Record<string, number> = {};
+    for (const p of profiles) {
+      if (p.organization_id) {
+        userCounts[p.organization_id] = (userCounts[p.organization_id] || 0) + 1;
+      }
+    }
+
+    const list = orgData.map((o) => ({ ...o, userCount: userCounts[o.id] || 0 }));
     setOrgs(list);
     setFiltered(list);
     setLoading(false);
@@ -75,8 +100,32 @@ export default function AdminOrganizations() {
     else {
       toast.success("Plan updated");
       setOrgs((prev) => prev.map((o) => o.id === orgId ? { ...o, subscription_plan: newPlan } : o));
+      setFiltered((prev) => prev.map((o) => o.id === orgId ? { ...o, subscription_plan: newPlan } : o));
     }
     setSavingId(null);
+  };
+
+  const handleDeleteOrg = async (orgId: string, orgName: string) => {
+    setDeletingId(orgId);
+    try {
+      const res = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "delete_organization",
+          target_org_id: orgId,
+        },
+      });
+
+      if (res.error || res.data?.error) {
+        throw new Error(res.data?.error || res.error?.message || "Failed to delete organization");
+      }
+
+      toast.success(`Organization "${orgName}" deleted`);
+      await fetchOrgs();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete organization");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   if (loading) {
@@ -118,15 +167,16 @@ export default function AdminOrganizations() {
                 <TableRow>
                   <TableHead className="text-xs">Organization</TableHead>
                   <TableHead className="text-xs">Location</TableHead>
-                  <TableHead className="text-xs">Employees</TableHead>
+                  <TableHead className="text-xs">Users</TableHead>
                   <TableHead className="text-xs">Plan</TableHead>
                   <TableHead className="text-xs">Created</TableHead>
+                  <TableHead className="text-xs w-[60px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                    <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                       No organizations found.
                     </TableCell>
                   </TableRow>
@@ -137,7 +187,7 @@ export default function AdminOrganizations() {
                       <TableCell className="text-xs text-muted-foreground">
                         {[org.city, org.country].filter(Boolean).join(", ") || "—"}
                       </TableCell>
-                      <TableCell className="text-xs tabular-nums">{org.employee_count || "—"}</TableCell>
+                      <TableCell className="text-xs tabular-nums">{org.userCount}</TableCell>
                       <TableCell>
                         <Select
                           value={org.subscription_plan || "basic"}
@@ -156,6 +206,43 @@ export default function AdminOrganizations() {
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {new Date(org.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                              disabled={deletingId === org.id}
+                            >
+                              {deletingId === org.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Trash2 className="w-3.5 h-3.5" />
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Organization</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete <strong>{org.name}</strong>?
+                                This will delete all users ({org.userCount}) and data associated with this organization.
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={() => handleDeleteOrg(org.id, org.name)}
+                              >
+                                Delete Organization
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </TableCell>
                     </TableRow>
                   ))
