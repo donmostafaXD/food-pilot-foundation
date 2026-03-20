@@ -151,10 +151,10 @@ export default function AdminUsers() {
       const res = await supabase.functions.invoke("manage-users", {
         body: {
           action: "invite",
-          email: addEmail.trim(),
+          email: trimmedEmail,
           full_name: addName.trim() || null,
           role: addRole,
-          organization_id: addOrgId || null,
+          subscription_plan: addPlan,
         },
       });
 
