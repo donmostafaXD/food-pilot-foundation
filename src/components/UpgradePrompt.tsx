@@ -22,7 +22,7 @@ interface UpgradePromptProps {
   variant?: "inline" | "page" | "card";
 }
 
-const PLAN_HIGHLIGHTS: Record<PlanTier, string[]> = {
+const PLAN_HIGHLIGHTS: Partial<Record<PlanTier, string[]>> = {
   basic: [],
   professional: [
     "Full risk analysis (S × L)",

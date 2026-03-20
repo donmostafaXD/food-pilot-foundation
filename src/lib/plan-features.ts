@@ -114,6 +114,7 @@ export const PLAN_TIER_LABELS: Record<PlanTier, string> = {
   basic: "Basic",
   professional: "HACCP",
   premium: "Compliance",
+  demo: "Demo",
 };
 
 /** Plan comparison data for upgrade prompts */

@@ -41,12 +41,12 @@ interface PlanFeatures {
   updatePlan: (newPlan: PlanTier) => Promise<{ error: Error | null }>;
 }
 
-export const PLAN_CONFIG: Record<PlanTier, {
+export const PLAN_CONFIG: Partial<Record<PlanTier, {
   name: string;
   price: number;
   description: string;
   features: string[];
-}> = {
+}>> = {
   basic: {
     name: "Basic",
     price: 29,

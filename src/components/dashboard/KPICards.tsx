@@ -143,7 +143,7 @@ const KPICards = ({ branchId }: Props) => {
   }
 
   // Manager/Owner KPIs vary by plan
-  const kpiConfig: Record<PlanTier, { label: string; value: string | number; icon: React.ElementType; color: string }[]> = {
+  const kpiConfig: Partial<Record<PlanTier, { label: string; value: string | number; icon: React.ElementType; color: string }[]>> = {
     basic: [
       { label: "Logs Today", value: data.logsToday, icon: ClipboardList, color: "text-primary" },
       { label: "Missing Logs", value: data.missingLogs, icon: AlertTriangle, color: data.missingLogs > 0 ? "text-destructive" : "text-accent" },

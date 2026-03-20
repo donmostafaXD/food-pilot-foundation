@@ -15,7 +15,7 @@ import { toast } from "@/hooks/use-toast";
 
 const PLANS: PlanTier[] = ["basic", "professional", "premium"];
 
-const ROLE_OPTIONS: Record<PlanTier, { value: PreviewRole; label: string }[]> = {
+const ROLE_OPTIONS: Partial<Record<PlanTier, { value: PreviewRole; label: string }[]>> & Record<"basic" | "professional" | "premium", { value: PreviewRole; label: string }[]> = {
   basic: [
     { value: "Owner", label: "Owner / Manager" },
     { value: "Staff", label: "Staff" },
