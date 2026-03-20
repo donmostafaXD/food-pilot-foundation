@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useActivity } from "@/contexts/ActivityContext";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import { openPrintWindow, escapeHtml } from "@/lib/printUtils";
 
