@@ -12,6 +12,9 @@
  * NOTE: QA and Auditor exist in the DB enum but are treated as specialized read-only roles.
  */
 
+import type { PlanTier } from "@/hooks/usePlan";
+import { isModuleHidden } from "@/lib/plan-features";
+
 export type AppRole = "Owner" | "Manager" | "QA" | "Staff" | "Auditor" | "super_admin";
 
 // ── Actions ──────────────────────────────────────────────────────────
@@ -80,7 +83,7 @@ const PERMISSION_MATRIX: Record<AppRole, RolePermissions> = {
     subscription:      {},                                      // No access
     users:             { view: true, create: true },            // Can invite Staff only
     business_profile:  { view: true },
-    activities:        { view: true },
+    activities:        {},                                      // No access — Owner only
     food_safety_setup: { view: true, edit: true },
   },
 
@@ -97,7 +100,7 @@ const PERMISSION_MATRIX: Record<AppRole, RolePermissions> = {
     subscription:      {},
     users:             {},
     business_profile:  { view: true },
-    activities:        { view: true },
+    activities:        {},
     food_safety_setup: { view: true },
   },
 
@@ -105,9 +108,9 @@ const PERMISSION_MATRIX: Record<AppRole, RolePermissions> = {
     dashboard:         { view: true },
     haccp_plan:        { view: true },                          // Read-only
     logs:              { view: true, create: true },            // Can submit logs
-    prp:               {},                                      // No access
-    sop:               {},                                      // No access
-    equipment:         { view: true },                          // Read-only
+    prp:               { view: true },                          // Read-only view
+    sop:               { view: true },                          // Read-only view
+    equipment:         {},                                      // No access
     audit:             {},                                      // No access
     documents:         {},                                      // No access
     settings:          {},                                      // No access
@@ -235,6 +238,20 @@ export function getAccessDeniedMessage(module: AppModule, role: AppRole | null):
 }
 
 // ── Sidebar visibility helpers ───────────────────────────────────────
+
+/** Map PlanModule names to the sidebar keys */
+const SIDEBAR_MODULE_MAP: Record<string, keyof SidebarModuleVisibility> = {
+  dashboard: "dashboard",
+  haccp_plan: "haccp",
+  logs: "logs",
+  prp: "prp",
+  sop: "sop",
+  equipment: "equipment",
+  audit: "audit",
+  documents: "documents",
+  settings: "settings",
+};
+
 export interface SidebarModuleVisibility {
   dashboard: boolean;
   haccp: boolean;
@@ -247,16 +264,20 @@ export interface SidebarModuleVisibility {
   settings: boolean;
 }
 
-export function getSidebarVisibility(role: AppRole | null): SidebarModuleVisibility {
+/**
+ * Compute sidebar visibility based on BOTH role permissions AND plan tier.
+ * Hidden modules (per plan) are completely removed from sidebar.
+ */
+export function getSidebarVisibility(role: AppRole | null, plan: PlanTier = "basic"): SidebarModuleVisibility {
   return {
-    dashboard: false,        // Temporarily disabled — stabilization phase
-    haccp: canAccessModule(role, "haccp_plan"),
-    logs: canAccessModule(role, "logs"),
-    prp: canAccessModule(role, "prp"),
-    sop: canAccessModule(role, "sop"),
-    equipment: false,        // Temporarily disabled — stabilization phase
-    audit: false,            // Temporarily disabled — stabilization phase
-    documents: false,        // Temporarily disabled — stabilization phase
-    settings: canAccessModule(role, "settings"),
+    dashboard: canAccessModule(role, "dashboard") && !isModuleHidden(plan, "dashboard"),
+    haccp:     canAccessModule(role, "haccp_plan") && !isModuleHidden(plan, "haccp_plan"),
+    logs:      canAccessModule(role, "logs") && !isModuleHidden(plan, "logs"),
+    prp:       canAccessModule(role, "prp") && !isModuleHidden(plan, "prp"),
+    sop:       canAccessModule(role, "sop") && !isModuleHidden(plan, "sop"),
+    equipment: canAccessModule(role, "equipment") && !isModuleHidden(plan, "equipment"),
+    audit:     canAccessModule(role, "audit") && !isModuleHidden(plan, "audit"),
+    documents: canAccessModule(role, "documents") && !isModuleHidden(plan, "documents"),
+    settings:  canAccessModule(role, "settings") && !isModuleHidden(plan, "settings"),
   };
 }

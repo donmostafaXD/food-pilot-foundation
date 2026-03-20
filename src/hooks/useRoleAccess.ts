@@ -123,7 +123,8 @@ export function useRoleAccess(): RoleAccess {
       canViewAllBranches: isOwnerLevel,
       canFillLogs: can("logs", "create"),
 
-      sidebar: getSidebarVisibility(effectiveRole),
+      // Pass plan to getSidebarVisibility for plan+role gating
+      sidebar: getSidebarVisibility(effectiveRole, plan),
 
       maxUsers: isSuperAdmin && !isPreviewMode ? Infinity : PLAN_USER_LIMITS[plan],
       allowedInviteRoles,

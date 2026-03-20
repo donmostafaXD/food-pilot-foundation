@@ -232,12 +232,12 @@ const PRP = () => {
   const filteredPrograms = useMemo(() => {
     let base = programs;
 
-    // Basic plan: only "Core" category PRPs
+    // Basic plan: only "Core" and "System" category PRPs
     if (plan === "basic") {
       base = base.filter((p) => {
         if (p.isCustom) return true;
         const cat = ((p as any)._category || "").toLowerCase();
-        return cat === "core";
+        return cat === "core" || cat === "system";
       });
     }
 
