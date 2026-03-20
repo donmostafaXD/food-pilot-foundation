@@ -11,6 +11,7 @@ export const PLAN_DISPLAY_NAMES: Record<PlanTier, string> = {
   basic: "Basic",
   professional: "HACCP",
   premium: "Compliance",
+  demo: "Demo",
 };
 
 interface PlanFeatures {
