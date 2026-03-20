@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import { useAdminPlanConfig, type AdminPlanDefinition } from "@/hooks/useAdminPlanConfig";
 
-export type PlanTier = "basic" | "professional" | "premium";
+export type PlanTier = "basic" | "professional" | "premium" | "demo";
 
 /** Display names mapping internal tier → user-facing name */
 export const PLAN_DISPLAY_NAMES: Record<PlanTier, string> = {
