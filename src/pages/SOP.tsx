@@ -195,7 +195,7 @@ const SOPPage = () => {
     "pasteurization", "fermentation", "calibration", "water quality",
   ]), []);
 
-  // Dynamic filtering: driven by plan, activity, and HACCP plan process steps
+  // Dynamic filtering: driven by plan, activity, HACCP process steps + PRP relevance
   const activityFiltered = useMemo(() => {
     let base = sops;
 
@@ -208,16 +208,21 @@ const SOPPage = () => {
       });
     }
 
-    // Filter by HACCP plan process steps (database-driven)
+    // Filter by HACCP plan process steps AND related PRP (dual filtering)
     if (showAllLibrary || !activityName) return base;
     const processNames = planProcessNames.length > 0 ? planProcessNames : activityProcesses;
     if (processNames.length === 0) return base;
 
     return base.filter((s) => {
       if (s.isCustom) return true;
-      return processNames.some((p) =>
+      // Match by process_step
+      const matchesProcess = processNames.some((p) =>
         s.process_step.toLowerCase().includes(p.toLowerCase())
       );
+      // Match by related PRP (if SOP has PRP links from prp_mapping)
+      const matchesPRP = (s._relatedPRPs && s._relatedPRPs.length > 0);
+      // Include if matches process step OR has related PRP for this activity
+      return matchesProcess || matchesPRP;
     });
   }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, BASIC_HIDDEN_SOPS]);
 
