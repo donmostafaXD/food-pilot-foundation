@@ -142,6 +142,22 @@ const PRP = () => {
   const [filterProgram, setFilterProgram] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // Load food safety setup items for dynamic injection
+  useEffect(() => {
+    if (!profile?.organization_id) return;
+    const loadSetup = async () => {
+      const { data } = await supabase
+        .from("food_safety_setup")
+        .select("category, item_name, item_value")
+        .eq("organization_id", profile.organization_id!);
+      setSetupItems((data || []) as FoodSafetySetupItem[]);
+    };
+    loadSetup();
+  }, [profile?.organization_id]);
+
+  const getSetupValues = (category: string) =>
+    setupItems.filter((i) => i.category === category).map((i) => i.item_name + (i.item_value ? ` (${i.item_value})` : ""));
+
   useEffect(() => {
     if (authLoading || activityLoading || !profile?.organization_id) return;
     const load = async () => {
