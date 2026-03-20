@@ -5,10 +5,26 @@ import { ShieldCheck, Menu, X } from "lucide-react";
 
 const links = [
   { label: "Home", to: "/" },
+  { label: "Features", to: "/#features" },
+  { label: "Plans", to: "/#plans" },
+  { label: "Demo", to: "/#demo-request" },
   { label: "Pricing", to: "/pricing" },
-  { label: "About", to: "/about" },
   { label: "Contact", to: "/contact" },
 ];
+
+function handleAnchorClick(to: string, setOpen: (v: boolean) => void) {
+  setOpen(false);
+  if (to.startsWith("/#")) {
+    const id = to.slice(2);
+    // If already on home page, scroll directly
+    if (window.location.pathname === "/") {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    } else {
+      // Navigate to home then scroll
+      window.location.href = to;
+    }
+  }
+}
 
 export default function PublicNavbar() {
   const [open, setOpen] = useState(false);
@@ -27,19 +43,38 @@ export default function PublicNavbar() {
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-1">
-          {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                pathname === l.to
-                  ? "text-primary bg-primary/5"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-              }`}
-            >
-              {l.label}
-            </Link>
-          ))}
+          {links.map((l) => {
+            const isAnchor = l.to.startsWith("/#");
+            const isActive = !isAnchor && pathname === l.to;
+
+            return isAnchor ? (
+              <a
+                key={l.to}
+                href={l.to}
+                onClick={(e) => {
+                  if (pathname === "/") {
+                    e.preventDefault();
+                    handleAnchorClick(l.to, setOpen);
+                  }
+                }}
+                className="px-3 py-2 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-secondary"
+              >
+                {l.label}
+              </a>
+            ) : (
+              <Link
+                key={l.to}
+                to={l.to}
+                className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  isActive
+                    ? "text-primary bg-primary/5"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+                }`}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Desktop CTA */}
@@ -61,18 +96,37 @@ export default function PublicNavbar() {
       {/* Mobile menu */}
       {open && (
         <div className="md:hidden border-t border-border bg-card px-4 pb-4 space-y-1">
-          {links.map((l) => (
-            <Link
-              key={l.to}
-              to={l.to}
-              onClick={() => setOpen(false)}
-              className={`block px-3 py-2.5 text-sm font-medium rounded-md ${
-                pathname === l.to ? "text-primary bg-primary/5" : "text-muted-foreground"
-              }`}
-            >
-              {l.label}
-            </Link>
-          ))}
+          {links.map((l) => {
+            const isAnchor = l.to.startsWith("/#");
+            return isAnchor ? (
+              <a
+                key={l.to}
+                href={l.to}
+                onClick={(e) => {
+                  if (pathname === "/") {
+                    e.preventDefault();
+                    handleAnchorClick(l.to, setOpen);
+                  } else {
+                    setOpen(false);
+                  }
+                }}
+                className="block px-3 py-2.5 text-sm font-medium rounded-md text-muted-foreground"
+              >
+                {l.label}
+              </a>
+            ) : (
+              <Link
+                key={l.to}
+                to={l.to}
+                onClick={() => setOpen(false)}
+                className={`block px-3 py-2.5 text-sm font-medium rounded-md ${
+                  pathname === l.to ? "text-primary bg-primary/5" : "text-muted-foreground"
+                }`}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
           <div className="flex gap-2 pt-2">
             <Button variant="outline" size="sm" className="flex-1" asChild>
               <Link to="/login" onClick={() => setOpen(false)}>Login</Link>
