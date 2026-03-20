@@ -435,7 +435,7 @@ const SOPPage = () => {
 
         {/* Activity toggle + Filters */}
         <div className="flex flex-col gap-4 mb-6">
-          {activityName && isSuperAdmin && (
+          {activityName && plan !== "basic" && (
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-muted-foreground" />
               <Label htmlFor="show-all-sop" className="text-sm text-muted-foreground cursor-pointer">
