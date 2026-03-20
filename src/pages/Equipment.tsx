@@ -296,28 +296,32 @@ const Equipment = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => openEdit(item)}
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => toggleStatus(item)}
-                            >
-                              <Power
-                                className={`w-3.5 h-3.5 ${
-                                  item.status === "Active"
-                                    ? "text-muted-foreground"
-                                    : "text-primary"
-                                }`}
-                              />
-                            </Button>
+                            {guard.canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => openEdit(item)}
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            {guard.canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => toggleStatus(item)}
+                              >
+                                <Power
+                                  className={`w-3.5 h-3.5 ${
+                                    item.status === "Active"
+                                      ? "text-muted-foreground"
+                                      : "text-primary"
+                                  }`}
+                                />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
