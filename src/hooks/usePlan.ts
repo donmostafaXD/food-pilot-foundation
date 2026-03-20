@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
+import { useAdminPlanConfig, type AdminPlanDefinition } from "@/hooks/useAdminPlanConfig";
 
 export type PlanTier = "basic" | "professional" | "premium";
 
