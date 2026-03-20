@@ -15,10 +15,6 @@ import QuickActions from "@/components/dashboard/QuickActions";
 import ComplianceChart from "@/components/dashboard/ComplianceChart";
 import RecentActivity from "@/components/dashboard/RecentActivity";
 import { UpgradePrompt } from "@/components/UpgradePrompt";
-import AlertsSection from "@/components/dashboard/AlertsSection";
-import QuickActions from "@/components/dashboard/QuickActions";
-import ComplianceChart from "@/components/dashboard/ComplianceChart";
-import RecentActivity from "@/components/dashboard/RecentActivity";
 
 interface Branch {
   id: string;
