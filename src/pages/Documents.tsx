@@ -185,33 +185,26 @@ function FlowDiagramData({ orgId, planId }: { orgId: string; planId: string | nu
   );
 }
 
-function HazardAnalysisData({ orgId }: { orgId: string }) {
+function HazardAnalysisData({ orgId, planId }: { orgId: string; planId: string | null }) {
   const [hazards, setHazards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: plans } = await supabase
-        .from("haccp_plans")
-        .select("id")
-        .eq("organization_id", orgId)
-        .limit(1);
+      if (!planId) { setLoading(false); return; }
+      const { data: stepsData } = await supabase
+        .from("haccp_plan_steps")
+        .select("process_name, step_order, haccp_plan_hazards(*)")
+        .eq("haccp_plan_id", planId)
+        .order("step_order");
 
-      if (plans && plans.length > 0) {
-        const { data: stepsData } = await supabase
-          .from("haccp_plan_steps")
-          .select("process_name, step_order, haccp_plan_hazards(*)")
-          .eq("haccp_plan_id", plans[0].id)
-          .order("step_order");
-
-        const all = (stepsData || []).flatMap((s: any) =>
-          (s.haccp_plan_hazards || []).map((h: any) => ({ ...h, process_name: s.process_name }))
-        );
-        setHazards(all);
-      }
+      const all = (stepsData || []).flatMap((s: any) =>
+        (s.haccp_plan_hazards || []).map((h: any) => ({ ...h, process_name: s.process_name }))
+      );
+      setHazards(all);
       setLoading(false);
     })();
-  }, [orgId]);
+  }, [orgId, planId]);
 
   if (loading) return <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading hazard data...</div>;
   if (!hazards.length) return <p className="text-sm text-muted-foreground italic py-2">No hazard analysis data available.</p>;
