@@ -1,3 +1,4 @@
+import ScrollReveal from "./ScrollReveal";
 import {
   ShieldCheck,
   ClipboardList,
@@ -18,11 +19,14 @@ const items = [
 
 export default function WhatWeOfferSection() {
   return (
-    <section id="features" className="py-20 sm:py-28 bg-card border-y border-border">
+    <section id="features" className="py-24 sm:py-32 bg-card/50 border-y border-border">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <div className="max-w-2xl mx-auto text-center space-y-4 mb-14">
+        <ScrollReveal className="max-w-2xl mx-auto text-center space-y-4 mb-16">
           <p className="text-sm font-semibold text-primary uppercase tracking-wider">What We Offer</p>
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight" style={{ lineHeight: 1.15 }}>
+          <h2
+            className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight"
+            style={{ lineHeight: 1.12 }}
+          >
             Everything You Need for
             <br className="hidden sm:block" />
             Food Safety Compliance
@@ -31,20 +35,19 @@ export default function WhatWeOfferSection() {
             From HACCP plan generation to audit-ready reports — manage every
             aspect of food safety digitally.
           </p>
-        </div>
+        </ScrollReveal>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {items.map((item) => (
-            <div
-              key={item.title}
-              className="group p-6 rounded-xl border border-border bg-background hover:border-primary/30 hover:shadow-md transition-all duration-300"
-            >
-              <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
-                <item.icon className="w-5 h-5 text-primary" />
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {items.map((item, i) => (
+            <ScrollReveal key={item.title} delay={i * 80}>
+              <div className="group h-full p-6 rounded-xl border border-border bg-background hover:border-primary/25 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                <div className="w-11 h-11 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/15 transition-colors">
+                  <item.icon className="w-5 h-5 text-primary" />
+                </div>
+                <h3 className="text-base font-semibold text-foreground mb-1.5">{item.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
-              <h3 className="text-base font-semibold text-foreground mb-1.5">{item.title}</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
-            </div>
+            </ScrollReveal>
           ))}
         </div>
       </div>

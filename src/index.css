@@ -120,6 +120,23 @@
   }
 }
 
+/* Scroll reveal */
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(18px); filter: blur(4px); }
+  to   { opacity: 1; transform: translateY(0);    filter: blur(0);   }
+}
+.reveal {
+  opacity: 0;
+  animation: reveal-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.reveal-d1 { animation-delay: 80ms; }
+.reveal-d2 { animation-delay: 160ms; }
+.reveal-d3 { animation-delay: 240ms; }
+.reveal-d4 { animation-delay: 320ms; }
+.reveal-d5 { animation-delay: 400ms; }
+.reveal-d6 { animation-delay: 480ms; }
+.reveal-d7 { animation-delay: 560ms; }
+
 /* Print styles */
 @media print {
   .no-print { display: none !important; }
