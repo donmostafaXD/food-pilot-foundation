@@ -1,10 +1,12 @@
 /**
- * Admin Global User Management — view all users, change roles, etc.
+ * Admin Global User Management — view all users, add, change roles, delete.
  */
 import { useState, useEffect } from "react";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -21,7 +23,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Loader2, Search, Users } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Search, Users, Plus, Trash2, Copy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -34,6 +56,11 @@ interface UserRow {
   roles: string[];
 }
 
+interface OrgOption {
+  id: string;
+  name: string;
+}
+
 const ROLE_OPTIONS = ["Owner", "Manager", "QA", "Staff", "Auditor", "super_admin"];
 
 export default function AdminUsers() {
@@ -41,6 +68,16 @@ export default function AdminUsers() {
   const [filtered, setFiltered] = useState<UserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [orgs, setOrgs] = useState<OrgOption[]>([]);
+
+  // Add user form
+  const [addOpen, setAddOpen] = useState(false);
+  const [addEmail, setAddEmail] = useState("");
+  const [addName, setAddName] = useState("");
+  const [addRole, setAddRole] = useState("Staff");
+  const [addOrgId, setAddOrgId] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [tempPassword, setTempPassword] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -52,8 +89,10 @@ export default function AdminUsers() {
 
     const profiles = profilesRes.data || [];
     const allRoles = rolesRes.data || [];
-    const orgs = orgsRes.data || [];
-    const orgMap = Object.fromEntries(orgs.map((o) => [o.id, o.name]));
+    const orgsList = (orgsRes.data || []) as OrgOption[];
+    setOrgs(orgsList);
+
+    const orgMap = Object.fromEntries(orgsList.map((o) => [o.id, o.name]));
     const roleMap: Record<string, string[]> = {};
     for (const r of allRoles) {
       if (!roleMap[r.user_id]) roleMap[r.user_id] = [];
@@ -87,7 +126,6 @@ export default function AdminUsers() {
   }, [search, users]);
 
   const changeRole = async (userId: string, currentRoles: string[], newRole: string) => {
-    // Remove all non-super_admin roles, add new one
     const nonSuperRoles = currentRoles.filter((r) => r !== "super_admin");
     for (const r of nonSuperRoles) {
       await supabase.from("user_roles").delete().eq("user_id", userId).eq("role", r as any);
@@ -99,6 +137,64 @@ export default function AdminUsers() {
       toast.success("Role updated");
       await fetchUsers();
     }
+  };
+
+  const handleAddUser = async () => {
+    if (!addEmail.trim()) { toast.error("Email is required"); return; }
+    setAdding(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "invite",
+          email: addEmail.trim(),
+          full_name: addName.trim() || null,
+          role: addRole,
+          organization_id: addOrgId || null,
+        },
+      });
+
+      if (res.error || res.data?.error) {
+        throw new Error(res.data?.error || res.error?.message || "Failed to add user");
+      }
+
+      setTempPassword(res.data.temp_password);
+      toast.success("User created successfully");
+      await fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add user");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    try {
+      const res = await supabase.functions.invoke("manage-users", {
+        body: {
+          action: "remove",
+          user_id: userId,
+          organization_id: "admin", // super admin bypass
+        },
+      });
+
+      if (res.error || res.data?.error) {
+        throw new Error(res.data?.error || res.error?.message || "Failed to delete user");
+      }
+
+      toast.success(`User "${userName}" deleted`);
+      await fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete user");
+    }
+  };
+
+  const resetAddForm = () => {
+    setAddEmail("");
+    setAddName("");
+    setAddRole("Staff");
+    setAddOrgId("");
+    setTempPassword(null);
   };
 
   if (loading) {
@@ -122,14 +218,100 @@ export default function AdminUsers() {
             </h1>
             <p className="text-sm text-muted-foreground mt-1">{users.length} total users</p>
           </div>
-          <div className="relative w-64">
-            <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or org..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-sm"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative w-64">
+              <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or org..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9 h-9 text-sm"
+              />
+            </div>
+
+            {/* Add User Dialog */}
+            <Dialog open={addOpen} onOpenChange={(open) => { setAddOpen(open); if (!open) resetAddForm(); }}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-1.5">
+                  <Plus className="w-4 h-4" /> Add User
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New User</DialogTitle>
+                  <DialogDescription>Create a new user account. A temporary password will be generated.</DialogDescription>
+                </DialogHeader>
+
+                {tempPassword ? (
+                  <div className="space-y-4 py-2">
+                    <div className="p-4 rounded-lg bg-primary/5 border border-primary/20 space-y-2">
+                      <p className="text-sm font-medium text-foreground">✅ User created successfully!</p>
+                      <div>
+                        <Label className="text-xs text-muted-foreground">Temporary Password</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <code className="flex-1 p-2 rounded bg-muted text-sm font-mono select-all">{tempPassword}</code>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            onClick={() => { navigator.clipboard.writeText(tempPassword); toast.success("Password copied"); }}
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Share this password with the user. They should change it after first login.</p>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={() => { setAddOpen(false); resetAddForm(); }}>Done</Button>
+                    </DialogFooter>
+                  </div>
+                ) : (
+                  <div className="space-y-4 py-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Email *</Label>
+                      <Input value={addEmail} onChange={(e) => setAddEmail(e.target.value)} placeholder="user@example.com" className="h-9" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Full Name</Label>
+                      <Input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="John Doe" className="h-9" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Role</Label>
+                        <Select value={addRole} onValueChange={setAddRole}>
+                          <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {ROLE_OPTIONS.map((r) => (
+                              <SelectItem key={r} value={r} className="text-sm">{r}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Organization</Label>
+                        <Select value={addOrgId} onValueChange={setAddOrgId}>
+                          <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select org..." /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none" className="text-sm text-muted-foreground">No organization</SelectItem>
+                            {orgs.map((o) => (
+                              <SelectItem key={o.id} value={o.id} className="text-sm">{o.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => { setAddOpen(false); resetAddForm(); }}>Cancel</Button>
+                      <Button onClick={handleAddUser} disabled={adding}>
+                        {adding && <Loader2 className="w-4 h-4 animate-spin mr-1.5" />}
+                        Create User
+                      </Button>
+                    </DialogFooter>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -142,12 +324,13 @@ export default function AdminUsers() {
                   <TableHead className="text-xs">Email</TableHead>
                   <TableHead className="text-xs">Organization</TableHead>
                   <TableHead className="text-xs">Role</TableHead>
+                  <TableHead className="text-xs w-[60px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-sm text-muted-foreground py-8">
+                    <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
                       No users found.
                     </TableCell>
                   </TableRow>
@@ -179,6 +362,34 @@ export default function AdminUsers() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </TableCell>
+                        <TableCell>
+                          {!isSuperAdmin && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive">
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete User</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete <strong>{u.full_name || u.email}</strong>? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={() => handleDeleteUser(u.user_id, u.full_name || u.email || "User")}
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
