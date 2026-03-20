@@ -47,7 +47,7 @@ export function AdminPlanSwitcher() {
   if (!isSuperAdmin) return null;
 
   const activePlan = overridePlan ?? "basic";
-  const roleOptions = ROLE_OPTIONS[activePlan];
+  const roleOptions = ROLE_OPTIONS[activePlan] || ROLE_OPTIONS.premium;
 
   const handlePlanChange = (v: string) => {
     const newPlan = v === "none" ? null : (v as PlanTier);
