@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Loader2, BookOpen, ShieldAlert } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Trash2, Loader2, BookOpen, ShieldAlert, ShieldCheck, AlertTriangle, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ProcessStep, PlanStep, HazardRow } from "@/pages/SetupWizard";
@@ -19,9 +20,7 @@ interface Props {
   activityName: string;
   planSteps: PlanStep[];
   setPlanSteps?: (v: PlanStep[]) => void;
-  /** When false (Basic plan), hide S, L, Risk Score columns */
   showRiskFields?: boolean;
-  /** When false (Basic plan), disable editing of S & L */
   canEditRiskFields?: boolean;
 }
 
@@ -33,7 +32,6 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
   const isReadOnly = !setPlanSteps;
   const [loading, setLoading] = useState(true);
 
-  // Number of extra columns to span when risk fields hidden
   const emptyColSpan = showRiskFields ? 7 : 4;
 
   useEffect(() => {
@@ -185,6 +183,12 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
     );
   }
 
+  // Summary stats
+  const totalHazards = planSteps.reduce((acc, s) => acc + s.hazards.length, 0);
+  const ccpCount = planSteps.reduce((acc, s) => acc + s.hazards.filter(h => h.control_type === "CCP").length, 0);
+  const oprpCount = planSteps.reduce((acc, s) => acc + s.hazards.filter(h => h.control_type === "OPRP").length, 0);
+  const prpCount = totalHazards - ccpCount - oprpCount;
+
   return (
     <div className="space-y-4">
       <div>
@@ -198,171 +202,239 @@ const HACCPTable = ({ processSteps, isFoodService, activityName, planSteps, setP
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="bg-muted/50">
-              <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Process Step</th>
-              <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Hazard</th>
-              {showRiskFields && (
-                <>
-                  <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">S</th>
-                  <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-16">L</th>
-                  <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-24">Risk</th>
-                </>
-              )}
-              {!showRiskFields && (
-                <th className="text-center p-2 font-medium text-muted-foreground border-b border-border w-20">Type</th>
-              )}
-              <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Critical Limit</th>
-              <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Monitoring</th>
-              <th className="text-left p-2 font-medium text-muted-foreground border-b border-border">Corrective Action</th>
-              {!isReadOnly && <th className="p-2 border-b border-border w-10"></th>}
-            </tr>
-          </thead>
-          <tbody>
-            {planSteps.map((step, si) => (
-              <React.Fragment key={`step-${si}`}>
-                {step.hazards.length === 0 ? (
-                  <tr key={`step-${si}-empty`} className="border-b border-border">
-                     <td className="p-2 font-medium text-foreground">{step.process_name}
-                       <Button variant="ghost" size="sm" className="h-5 px-1 ml-1 text-xs text-primary" onClick={() => navigate(`/sop?search=${encodeURIComponent(step.process_name)}`)}>
-                         <BookOpen className="w-3 h-3 mr-0.5" /> SOP
-                       </Button>
-                     </td>
-                    <td colSpan={emptyColSpan} className="p-2 text-muted-foreground text-xs italic">
-                      No hazards identified
-                    </td>
-                    {!isReadOnly && (
-                    <td className="p-2">
-                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addHazard(si)}>
-                        <Plus className="w-3.5 h-3.5" />
-                      </Button>
-                    </td>
-                    )}
-                  </tr>
-                ) : (
-                  step.hazards.map((h, hi) => {
-                    const risk = getRiskDisplay(h.risk_score, h.control_type);
-                    return (
-                      <tr key={h.id} className="border-b border-border hover:bg-muted/20">
-                         <td className="p-2 font-medium text-foreground align-top">
-                           {hi === 0 && (
-                             <>
-                               {step.process_name}
-                               <Button variant="ghost" size="sm" className="h-5 px-1 ml-1 text-xs text-primary" onClick={() => navigate(`/sop?search=${encodeURIComponent(step.process_name)}`)}>
-                                 <BookOpen className="w-3 h-3 mr-0.5" /> SOP
-                               </Button>
-                             </>
-                           )}
-                           {hi === step.hazards.length - 1 && !isReadOnly && (
-                            <Button variant="ghost" size="sm" className="h-6 px-1 mt-1 text-xs" onClick={() => addHazard(si)}>
-                              <Plus className="w-3 h-3 mr-0.5" /> Add
-                            </Button>
-                          )}
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            className="h-7 text-xs"
-                            value={h.hazard_name}
-                            onChange={(e) => updateHazard(si, hi, "hazard_name", e.target.value)}
-                            readOnly={isReadOnly}
-                          />
-                        </td>
+      {/* Summary Bar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <Badge variant="outline" className="text-xs gap-1.5 py-1">
+          <ShieldCheck className="h-3 w-3" />
+          {planSteps.length} Steps
+        </Badge>
+        <Badge variant="outline" className="text-xs gap-1.5 py-1">
+          <AlertTriangle className="h-3 w-3" />
+          {totalHazards} Hazards
+        </Badge>
+        {ccpCount > 0 && (
+          <Badge variant="destructive" className="text-xs gap-1.5 py-1">
+            {ccpCount} CCP
+          </Badge>
+        )}
+        {oprpCount > 0 && (
+          <Badge className="text-xs gap-1.5 py-1 bg-warning text-warning-foreground">
+            {oprpCount} OPRP
+          </Badge>
+        )}
+        {prpCount > 0 && (
+          <Badge variant="secondary" className="text-xs gap-1.5 py-1">
+            {prpCount} PRP
+          </Badge>
+        )}
+      </div>
 
-                        {/* HACCP / Compliance: show S, L, Risk Score */}
-                        {showRiskFields && (
-                          <>
-                            <td className="p-2 text-center">
-                              <Input
-                                className="h-7 w-12 text-xs text-center tabular-nums mx-auto"
-                                type="number"
-                                min={1}
-                                max={5}
-                                value={h.severity}
-                                onChange={(e) => updateHazard(si, hi, "severity", e.target.value)}
-                                disabled={!canEditRiskFields || isReadOnly}
-                              />
+      <Card className="shadow-sm">
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="text-left p-3 font-medium text-muted-foreground border-b border-border min-w-[160px]">Process Step</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground border-b border-border min-w-[140px]">Hazard</th>
+                  {showRiskFields && (
+                    <>
+                      <th className="text-center p-3 font-medium text-muted-foreground border-b border-border w-14">S</th>
+                      <th className="text-center p-3 font-medium text-muted-foreground border-b border-border w-14">L</th>
+                      <th className="text-center p-3 font-medium text-muted-foreground border-b border-border w-24">Risk</th>
+                    </>
+                  )}
+                  {!showRiskFields && (
+                    <th className="text-center p-3 font-medium text-muted-foreground border-b border-border w-20">Type</th>
+                  )}
+                  <th className="text-left p-3 font-medium text-muted-foreground border-b border-border min-w-[120px]">Critical Limit</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground border-b border-border min-w-[120px]">Monitoring</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground border-b border-border min-w-[120px]">Corrective Action</th>
+                  {!isReadOnly && <th className="p-3 border-b border-border w-10"></th>}
+                </tr>
+              </thead>
+              <tbody>
+                {planSteps.map((step, si) => (
+                  <React.Fragment key={`step-${si}`}>
+                    {step.hazards.length === 0 ? (
+                      <tr key={`step-${si}-empty`} className="border-b border-border">
+                        <td className="p-3 font-medium text-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground font-normal">{si + 1}.</span>
+                            {step.process_name}
+                          </div>
+                          <Button variant="ghost" size="sm" className="h-5 px-1 mt-0.5 text-xs text-primary" onClick={() => navigate(`/sop?search=${encodeURIComponent(step.process_name)}`)}>
+                            <BookOpen className="w-3 h-3 mr-0.5" /> SOP
+                          </Button>
+                        </td>
+                        <td colSpan={emptyColSpan} className="p-3 text-muted-foreground text-xs">
+                          <span className="flex items-center gap-1.5">
+                            <Info className="h-3 w-3" />
+                            No hazards identified for this step
+                          </span>
+                        </td>
+                        {!isReadOnly && (
+                          <td className="p-3">
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addHazard(si)}>
+                              <Plus className="w-3.5 h-3.5" />
+                            </Button>
+                          </td>
+                        )}
+                      </tr>
+                    ) : (
+                      step.hazards.map((h, hi) => {
+                        const risk = getRiskDisplay(h.risk_score, h.control_type);
+                        const isCCP = h.control_type === "CCP";
+                        const isOPRP = h.control_type === "OPRP";
+                        const rowHighlight = isCCP
+                          ? "bg-destructive/5 hover:bg-destructive/10"
+                          : isOPRP
+                            ? "bg-warning/5 hover:bg-warning/10"
+                            : "hover:bg-muted/30";
+
+                        return (
+                          <tr key={h.id} className={`border-b border-border transition-colors ${rowHighlight}`}>
+                            <td className="p-3 font-medium text-foreground align-top">
+                              {hi === 0 && (
+                                <>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-xs text-muted-foreground font-normal">{si + 1}.</span>
+                                    {step.process_name}
+                                  </div>
+                                  <Button variant="ghost" size="sm" className="h-5 px-1 mt-0.5 text-xs text-primary" onClick={() => navigate(`/sop?search=${encodeURIComponent(step.process_name)}`)}>
+                                    <BookOpen className="w-3 h-3 mr-0.5" /> SOP
+                                  </Button>
+                                </>
+                              )}
+                              {hi === step.hazards.length - 1 && !isReadOnly && (
+                                <Button variant="ghost" size="sm" className="h-6 px-1 mt-1 text-xs" onClick={() => addHazard(si)}>
+                                  <Plus className="w-3 h-3 mr-0.5" /> Add
+                                </Button>
+                              )}
                             </td>
-                            <td className="p-2 text-center">
-                              <Input
-                                className="h-7 w-12 text-xs text-center tabular-nums mx-auto"
-                                type="number"
-                                min={1}
-                                max={5}
-                                value={h.likelihood}
-                                onChange={(e) => updateHazard(si, hi, "likelihood", e.target.value)}
-                                disabled={!canEditRiskFields || isReadOnly}
-                              />
-                            </td>
-                            <td className="p-2 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Badge className={`${risk.className} text-xs tabular-nums`}>
-                                  {h.risk_score} {risk.label}
-                                </Badge>
-                                {h.safeguard_applied && (
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top" className="max-w-[220px] text-xs">
-                                      Safety safeguard active. This step is typically a CCP and cannot be downgraded by score alone.
-                                    </TooltipContent>
-                                  </Tooltip>
+                            <td className="p-3">
+                              <div className="space-y-1">
+                                <Input
+                                  className="h-7 text-xs"
+                                  value={h.hazard_name}
+                                  onChange={(e) => updateHazard(si, hi, "hazard_name", e.target.value)}
+                                  readOnly={isReadOnly}
+                                />
+                                {h.hazard_type && (
+                                  <span className="text-[10px] text-muted-foreground">{h.hazard_type}</span>
                                 )}
                               </div>
                             </td>
-                          </>
-                        )}
 
-                        {/* Basic plan: show control type label only */}
-                        {!showRiskFields && (
-                          <td className="p-2 text-center">
-                            <Badge className={`${risk.className} text-xs`}>
-                              {risk.label}
-                            </Badge>
-                          </td>
-                        )}
+                            {showRiskFields && (
+                              <>
+                                <td className="p-3 text-center">
+                                  <Input
+                                    className="h-7 w-12 text-xs text-center tabular-nums mx-auto"
+                                    type="number"
+                                    min={1}
+                                    max={5}
+                                    value={h.severity}
+                                    onChange={(e) => updateHazard(si, hi, "severity", e.target.value)}
+                                    disabled={!canEditRiskFields || isReadOnly}
+                                  />
+                                </td>
+                                <td className="p-3 text-center">
+                                  <Input
+                                    className="h-7 w-12 text-xs text-center tabular-nums mx-auto"
+                                    type="number"
+                                    min={1}
+                                    max={5}
+                                    value={h.likelihood}
+                                    onChange={(e) => updateHazard(si, hi, "likelihood", e.target.value)}
+                                    disabled={!canEditRiskFields || isReadOnly}
+                                  />
+                                </td>
+                                <td className="p-3 text-center">
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Badge className={`${risk.className} text-xs tabular-nums`}>
+                                      {h.risk_score} {risk.label}
+                                    </Badge>
+                                    {h.safeguard_applied && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <ShieldAlert className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-[220px] text-xs">
+                                          Safety safeguard active. This step is typically a CCP and cannot be downgraded by score alone.
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                  </div>
+                                </td>
+                              </>
+                            )}
 
-                        <td className="p-2">
-                          <Input
-                            className="h-7 text-xs"
-                            value={h.critical_limit || ""}
-                            onChange={(e) => updateHazard(si, hi, "critical_limit", e.target.value)}
-                            readOnly={isReadOnly}
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            className="h-7 text-xs"
-                            value={h.monitoring || ""}
-                            onChange={(e) => updateHazard(si, hi, "monitoring", e.target.value)}
-                            readOnly={isReadOnly}
-                          />
-                        </td>
-                        <td className="p-2">
-                          <Input
-                            className="h-7 text-xs"
-                            value={h.corrective_action || ""}
-                            onChange={(e) => updateHazard(si, hi, "corrective_action", e.target.value)}
-                            readOnly={isReadOnly}
-                          />
-                        </td>
-                        {!isReadOnly && (
-                        <td className="p-2">
-                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeHazard(si, hi)}>
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </td>
-                        )}
-                      </tr>
-                    );
-                  })
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
+                            {!showRiskFields && (
+                              <td className="p-3 text-center">
+                                <Badge className={`${risk.className} text-xs`}>
+                                  {risk.label}
+                                </Badge>
+                              </td>
+                            )}
+
+                            <td className="p-3">
+                              <Input
+                                className="h-7 text-xs"
+                                value={h.critical_limit || ""}
+                                onChange={(e) => updateHazard(si, hi, "critical_limit", e.target.value)}
+                                readOnly={isReadOnly}
+                                placeholder={isReadOnly ? "—" : "Enter limit"}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <Input
+                                className="h-7 text-xs"
+                                value={h.monitoring || ""}
+                                onChange={(e) => updateHazard(si, hi, "monitoring", e.target.value)}
+                                readOnly={isReadOnly}
+                                placeholder={isReadOnly ? "—" : "Enter method"}
+                              />
+                            </td>
+                            <td className="p-3">
+                              <Input
+                                className="h-7 text-xs"
+                                value={h.corrective_action || ""}
+                                onChange={(e) => updateHazard(si, hi, "corrective_action", e.target.value)}
+                                readOnly={isReadOnly}
+                                placeholder={isReadOnly ? "—" : "Enter action"}
+                              />
+                            </td>
+                            {!isReadOnly && (
+                              <td className="p-3">
+                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => removeHazard(si, hi)}>
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-destructive/10 border border-destructive/30" /> CCP — Critical Control Point
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-warning/10 border border-warning/30" /> OPRP — Operational Prerequisite
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded-sm bg-muted border border-border" /> PRP — Prerequisite Program
+        </span>
       </div>
     </div>
   );

@@ -251,16 +251,28 @@ const Equipment = () => {
         </div>
 
         {/* Equipment Table */}
-        <Card>
+        <Card className="shadow-sm">
           <CardContent className="pt-5">
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center py-16 gap-3">
-                <Wrench className="w-8 h-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  {equipment.length === 0
-                    ? "No equipment added yet. Add from the library or create custom."
-                    : "No results match your search."}
-                </p>
+                <div className="p-4 rounded-full bg-muted">
+                  <Wrench className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    {equipment.length === 0 ? "No equipment added yet" : "No results found"}
+                  </p>
+                  <p className="text-xs text-muted-foreground max-w-sm">
+                    {equipment.length === 0
+                      ? "Start by adding equipment from the library or create a custom entry to track your branch inventory."
+                      : "Try adjusting your search query."}
+                  </p>
+                </div>
+                {equipment.length === 0 && guard.canCreate && (
+                  <Button size="sm" onClick={() => setShowAdd(true)} className="mt-2 gap-1.5">
+                    <Plus className="w-4 h-4" /> Add First Equipment
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="overflow-x-auto">
@@ -271,7 +283,7 @@ const Equipment = () => {
                       <TableHead>Type</TableHead>
                       <TableHead>Location</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      {guard.canEdit && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -287,16 +299,20 @@ const Equipment = () => {
                           {item.location || "—"}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant={item.status === "Active" ? "outline" : "destructive"}
-                            className="text-xs"
-                          >
-                            {item.status}
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${
+                              item.status === "Active" ? "bg-accent" : "bg-destructive"
+                            }`} />
+                            <span className={`text-xs font-medium ${
+                              item.status === "Active" ? "text-accent" : "text-destructive"
+                            }`}>
+                              {item.status}
+                            </span>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-1">
-                            {guard.canEdit && (
+                        {guard.canEdit && (
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-1">
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -305,13 +321,12 @@ const Equipment = () => {
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
                               </Button>
-                            )}
-                            {guard.canEdit && (
                               <Button
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => toggleStatus(item)}
+                                title={item.status === "Active" ? "Deactivate" : "Activate"}
                               >
                                 <Power
                                   className={`w-3.5 h-3.5 ${
@@ -321,13 +336,23 @@ const Equipment = () => {
                                   }`}
                                 />
                               </Button>
-                            )}
-                          </div>
-                        </TableCell>
+                            </div>
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
+                <div className="flex items-center justify-between pt-3 border-t border-border mt-2">
+                  <span className="text-xs text-muted-foreground">
+                    {filtered.length} item{filtered.length !== 1 ? "s" : ""}
+                    {filtered.length !== equipment.length && ` (filtered from ${equipment.length})`}
+                  </span>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent" /> {equipment.filter(e => e.status === "Active").length} Active</span>
+                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-destructive" /> {equipment.filter(e => e.status !== "Active").length} Inactive</span>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

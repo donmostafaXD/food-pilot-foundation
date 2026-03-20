@@ -3,8 +3,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import HACCPTable from "@/components/haccp/HACCPTable";
-import { Loader2, Printer, Settings } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Printer, Settings, ShieldCheck, ArrowRight, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { useNavigate } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
@@ -16,7 +18,7 @@ import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 const HACCPPlanPage = () => {
   const { profile } = useAuth();
   const guard = usePermissionGuard("haccp_plan");
-  const { plan, showRiskFields, canEditRiskFields, canExportFullHACCP, loading: planLoading } = usePlan();
+  const { plan, planDisplayName, showRiskFields, canEditRiskFields, canExportFullHACCP, loading: planLoading } = usePlan();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("HACCP Plan");
   const [loading, setLoading] = useState(true);
@@ -116,9 +118,26 @@ const HACCPPlanPage = () => {
   if (!planExists) {
     return (
       <DashboardLayout>
-        <div className="flex flex-col items-center justify-center h-64 gap-4">
-          <p className="text-muted-foreground">No HACCP plan found.</p>
-          <Button onClick={() => navigate("/settings")}>Go to Settings → HACCP Setup</Button>
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+          <h1 className="text-2xl font-bold text-foreground tracking-tight mb-6">HACCP Plan</h1>
+          <Card className="shadow-sm">
+            <CardContent className="flex flex-col items-center justify-center py-16 gap-4">
+              <div className="p-4 rounded-full bg-muted">
+                <Inbox className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="text-sm font-medium text-foreground">No HACCP plan created yet</p>
+                <p className="text-xs text-muted-foreground max-w-sm">
+                  Set up your HACCP plan through the Settings page. The system will auto-generate your hazard analysis based on your activity type.
+                </p>
+              </div>
+              <Button onClick={() => navigate("/settings")} className="gap-1.5 mt-2">
+                <Settings className="w-4 h-4" />
+                Go to Settings
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </DashboardLayout>
     );
@@ -152,22 +171,29 @@ const HACCPPlanPage = () => {
     openPrintWindow(printHeader, html);
   };
 
-
-
   return (
     <DashboardLayout>
       <div className="p-6 lg:p-8 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            HACCP Plan
-          </h1>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">
+              HACCP Plan
+            </h1>
+            <div className="flex items-center gap-2 mt-1">
+              {activityName && (
+                <Badge variant="secondary" className="text-[10px]">{activityName}</Badge>
+              )}
+              <Badge variant="outline" className="text-[10px]">{planDisplayName} Plan</Badge>
+            </div>
+          </div>
           <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)} disabled={!guard.canExport}>
             <Printer className="w-4 h-4 mr-1" /> Print
           </Button>
         </div>
 
         {guard.isReadOnly ? (
-          <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
+          <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 shrink-0" />
             <span>You have read-only access to the HACCP plan. Contact your manager for edit access.</span>
           </div>
         ) : guard.canEdit ? (
