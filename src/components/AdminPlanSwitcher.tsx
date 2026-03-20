@@ -54,7 +54,7 @@ export function AdminPlanSwitcher() {
     setOverridePlan(newPlan);
     if (overrideRole) {
       const plan = newPlan ?? "basic";
-      const available = ROLE_OPTIONS[plan].map((r) => r.value);
+      const available = (ROLE_OPTIONS[plan] || ROLE_OPTIONS.premium).map((r) => r.value);
       if (!available.includes(overrideRole)) {
         setOverrideRole(null);
       }
