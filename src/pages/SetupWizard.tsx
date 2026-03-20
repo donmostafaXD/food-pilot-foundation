@@ -48,6 +48,7 @@ const STEPS = ["Business Info", "Activity", "Questions", "Process Flow", "HACCP 
 
 const SetupWizard = () => {
   const { profile } = useAuth();
+  const { switchActivity, refreshActivities } = useActivity();
   const navigate = useNavigate();
   const {
     canAccessManufacturing,
