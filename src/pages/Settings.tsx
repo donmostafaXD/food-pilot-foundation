@@ -44,6 +44,7 @@ import HACCPTable from "@/components/haccp/HACCPTable";
 import FoodSafetySetupSection from "@/components/settings/FoodSafetySetupSection";
 import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 import { PLAN_COMPARISON, PLAN_TIER_LABELS } from "@/lib/plan-features";
+import { useActivity } from "@/contexts/ActivityContext";
 
 // ── Locked Section Wrapper ───────────────────────────────────────────
 const LockedSection = ({ title, description, requiredRole = "Owner" }: { title: string; description: string; requiredRole?: string }) => (
