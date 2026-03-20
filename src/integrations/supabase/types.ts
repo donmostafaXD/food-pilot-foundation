@@ -56,6 +56,33 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_cms_content: {
+        Row: {
+          content: Json
+          id: string
+          section_key: string
+          sort_order: number
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          content?: Json
+          id?: string
+          section_key: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          content?: Json
+          id?: string
+          section_key?: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Relationships: []
+      }
       admin_module_access: {
         Row: {
           access: string
@@ -139,6 +166,27 @@ export type Database = {
           sort_order?: number | null
           updated_at?: string | null
           visible?: boolean | null
+        }
+        Relationships: []
+      }
+      admin_ui_config: {
+        Row: {
+          config_key: string
+          config_value: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          config_key: string
+          config_value?: Json
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          config_key?: string
+          config_value?: Json
+          id?: string
+          updated_at?: string
         }
         Relationships: []
       }
