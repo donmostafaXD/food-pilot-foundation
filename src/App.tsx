@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { AdminPlanOverrideProvider, useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
+import { AdminPlanOverrideProvider } from "@/contexts/AdminPlanOverrideContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import PlanGate from "@/components/PlanGate";
 
@@ -33,13 +33,7 @@ import AuditReady from "./pages/AuditReady";
 const queryClient = new QueryClient();
 
 const AppRoutes = () => {
-  const { user, loading, roles } = useAuth();
-  const { overrideRole, overridePlan } = useAdminPlanOverride();
-
-  // Determine effective Staff restriction (real role or preview)
-  const isSuperAdmin = roles.includes("super_admin" as any);
-  const isRealStaff = !isSuperAdmin && roles.includes("Staff") && !roles.includes("Owner") && !roles.includes("Manager");
-  const isStaffRestricted = overrideRole === "Staff" || (isRealStaff && !overrideRole);
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -61,17 +55,17 @@ const AppRoutes = () => {
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
 
-      {/* Protected app routes */}
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/setup" element={<ProtectedRoute><SetupWizard /></ProtectedRoute>} />
-      <Route path="/haccp" element={<ProtectedRoute><HACCPPlan /></ProtectedRoute>} />
-      <Route path="/documents" element={<ProtectedRoute><PlanGate feature="canAccessDocuments"><Documents /></PlanGate></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <SettingsPage />}</ProtectedRoute>} />
-      <Route path="/logs" element={<ProtectedRoute><Logs /></ProtectedRoute>} />
-      <Route path="/prp" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessPRP"><PRP /></PlanGate>}</ProtectedRoute>} />
-      <Route path="/sop" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <PlanGate feature="canAccessSOP"><SOP /></PlanGate>}</ProtectedRoute>} />
-      <Route path="/equipment" element={<ProtectedRoute>{isStaffRestricted ? <Navigate to="/dashboard" replace /> : <EquipmentPage />}</ProtectedRoute>} />
-      <Route path="/audit" element={<ProtectedRoute><AuditReady /></ProtectedRoute>} />
+      {/* Protected app routes — each declares its module for permission enforcement */}
+      <Route path="/dashboard" element={<ProtectedRoute module="dashboard"><Dashboard /></ProtectedRoute>} />
+      <Route path="/setup" element={<ProtectedRoute module="activities"><SetupWizard /></ProtectedRoute>} />
+      <Route path="/haccp" element={<ProtectedRoute module="haccp_plan"><HACCPPlan /></ProtectedRoute>} />
+      <Route path="/documents" element={<ProtectedRoute module="documents"><PlanGate feature="canAccessDocuments"><Documents /></PlanGate></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute module="settings"><SettingsPage /></ProtectedRoute>} />
+      <Route path="/logs" element={<ProtectedRoute module="logs"><Logs /></ProtectedRoute>} />
+      <Route path="/prp" element={<ProtectedRoute module="prp"><PlanGate feature="canAccessPRP"><PRP /></PlanGate></ProtectedRoute>} />
+      <Route path="/sop" element={<ProtectedRoute module="sop"><PlanGate feature="canAccessSOP"><SOP /></PlanGate></ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute module="equipment"><EquipmentPage /></ProtectedRoute>} />
+      <Route path="/audit" element={<ProtectedRoute module="audit"><AuditReady /></ProtectedRoute>} />
 
       {/* Redirects for removed routes */}
       <Route path="/app/pricing" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />
