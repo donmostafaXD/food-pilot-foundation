@@ -938,15 +938,20 @@ const FoodSafetySetupWrapper = () => {
 
 // ── Main Settings Page ───────────────────────────────────────────────
 const SettingsPage = () => {
-  const { canChangeActivity, canManageSubscription, canManageUsers, canEditHACCP } = useRoleAccess();
+  const { can, canView, effectiveRole } = useRoleAccess();
   const { plan } = usePlan();
 
-  // Build tab list dynamically based on role and plan
+  const canChangeActivity = can("activities", "edit");
+  const canManageSubscription = can("subscription", "manage_settings");
+  const canManageUsers = canView("users");
+  const canEditBusiness = can("business_profile", "edit");
+
+  // Build tab list dynamically based on role permissions
   const tabs = [
-    { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: true },
-    { value: "food-safety", label: "Food Safety Setup", shortLabel: "Safety", icon: ShieldCheck, visible: true },
+    { value: "haccp-plan", label: "HACCP Plan", shortLabel: "Plan", icon: FileEdit, visible: can("haccp_plan", "view") },
+    { value: "food-safety", label: "Food Safety Setup", shortLabel: "Safety", icon: ShieldCheck, visible: can("food_safety_setup", "view") },
     { value: "manage-activities", label: "Manage Activities", shortLabel: "Activities", icon: Wand2, visible: canChangeActivity },
-    { value: "business", label: "Business", shortLabel: "Biz", icon: Building2, visible: true },
+    { value: "business", label: "Business", shortLabel: "Biz", icon: Building2, visible: can("business_profile", "view") },
     { value: "subscription", label: "Subscription", shortLabel: "Plan", icon: CreditCard, visible: canManageSubscription },
     { value: "users", label: "Users", shortLabel: "Users", icon: Users, visible: canManageUsers },
   ].filter((t) => t.visible);
@@ -984,13 +989,17 @@ const SettingsPage = () => {
             <FoodSafetySetupWrapper />
           </TabsContent>
 
-          <TabsContent value="manage-activities">
-            <ManageActivitiesSection />
-          </TabsContent>
+          {canChangeActivity && (
+            <TabsContent value="manage-activities">
+              <ManageActivitiesSection />
+            </TabsContent>
+          )}
 
-          <TabsContent value="business">
-            <BusinessProfileSection />
-          </TabsContent>
+          {can("business_profile", "view") && (
+            <TabsContent value="business">
+              <BusinessProfileSection />
+            </TabsContent>
+          )}
 
           {canManageSubscription && (
             <TabsContent value="subscription">
