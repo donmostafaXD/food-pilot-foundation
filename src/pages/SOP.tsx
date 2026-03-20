@@ -48,6 +48,16 @@ interface SOPItem {
   process_step_id?: number;
   isCustom?: boolean;
   customId?: string;
+  _purpose?: string;
+  _scope?: string;
+  _frequency?: string;
+  _related_prp?: string;
+}
+
+interface FoodSafetySetupItem {
+  category: string;
+  item_name: string;
+  item_value: string | null;
 }
 
 const SOPPage = () => {
