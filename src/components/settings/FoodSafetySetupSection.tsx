@@ -174,7 +174,7 @@ const FoodSafetySetupSection = ({ activityName }: Props) => {
       {visibleCategories.map((cat) => {
         const catItems = items.filter((i) => i.category === cat.key);
         return (
-          <Card key={cat.key} className="shadow-industrial-sm">
+          <Card key={cat.key} className="shadow-sm">
             <CardContent className="pt-5 pb-4 space-y-3">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-foreground">{cat.label}</p>

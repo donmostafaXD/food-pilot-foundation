@@ -102,7 +102,7 @@ const Register = () => {
         </div>
 
         {step === "credentials" && (
-          <form onSubmit={handleCredentials} className="bg-card shadow-industrial-md rounded-lg p-6 space-y-4">
+          <form onSubmit={handleCredentials} className="bg-card shadow-md rounded-lg p-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="you@company.com" />
@@ -119,7 +119,7 @@ const Register = () => {
         )}
 
         {step === "verify" && (
-          <div className="bg-card shadow-industrial-md rounded-lg p-6 space-y-4 text-center">
+          <div className="bg-card shadow-md rounded-lg p-6 space-y-4 text-center">
             <p className="text-sm text-muted-foreground">
               We sent a verification link to <strong className="text-foreground">{email}</strong>.
               Please check your inbox and click the link to continue.
@@ -132,7 +132,7 @@ const Register = () => {
         )}
 
         {step === "organization" && (
-          <form onSubmit={handleOrganization} className="bg-card shadow-industrial-md rounded-lg p-6 space-y-4">
+          <form onSubmit={handleOrganization} className="bg-card shadow-md rounded-lg p-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Your Full Name</Label>
               <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required placeholder="John Smith" />

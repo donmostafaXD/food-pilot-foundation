@@ -5,7 +5,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card shadow-industrial-sm">
+      <header className="bg-card shadow-sm">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
@@ -42,7 +42,7 @@ const Index = () => {
 
         {/* Architecture cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-card rounded-lg shadow-industrial-sm p-5 space-y-3">
+          <div className="bg-card rounded-lg shadow-sm p-5 space-y-3">
             <div className="flex items-center gap-2 text-primary">
               <Database className="w-4 h-4" />
               <span className="text-sm font-semibold font-display">HACCP Data Model</span>
@@ -66,7 +66,7 @@ const Index = () => {
             </ul>
           </div>
 
-          <div className="bg-card rounded-lg shadow-industrial-sm p-5 space-y-3">
+          <div className="bg-card rounded-lg shadow-sm p-5 space-y-3">
             <div className="flex items-center gap-2 text-primary">
               <GitBranch className="w-4 h-4" />
               <span className="text-sm font-semibold font-display">Multi-Tenant Architecture</span>

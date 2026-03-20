@@ -85,7 +85,7 @@ const HACCPSummary = () => {
   if (!summary) return null;
 
   return (
-    <Card className="shadow-industrial-sm">
+    <Card className="shadow-sm">
       <CardHeader className="pb-3">
         <CardTitle className="text-lg flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-primary" />

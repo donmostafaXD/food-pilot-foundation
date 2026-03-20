@@ -123,7 +123,7 @@ const UserManagement = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="bg-card shadow-industrial-sm">
+      <header className="bg-card shadow-sm">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
@@ -143,7 +143,7 @@ const UserManagement = () => {
       <main className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {/* Add User Form */}
         {canManage && (
-          <div className="bg-card shadow-industrial-md rounded-lg p-6 space-y-4">
+          <div className="bg-card shadow-md rounded-lg p-6 space-y-4">
             <div className="flex items-center gap-2 text-primary">
               <UserPlus className="w-4 h-4" />
               <span className="text-sm font-semibold font-display">Add User</span>
@@ -190,7 +190,7 @@ const UserManagement = () => {
         )}
 
         {/* User list */}
-        <div className="bg-card shadow-industrial-md rounded-lg p-6 space-y-4">
+        <div className="bg-card shadow-md rounded-lg p-6 space-y-4">
           <div className="flex items-center gap-2 text-primary">
             <Users className="w-4 h-4" />
             <span className="text-sm font-semibold font-display">Team Members</span>

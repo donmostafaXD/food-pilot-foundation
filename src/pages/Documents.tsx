@@ -551,7 +551,7 @@ const Documents = () => {
           />
 
           <div ref={printRef}>
-            <Card className="shadow-industrial-sm">
+            <Card className="shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="outline" className="text-[10px]">
@@ -717,7 +717,7 @@ const Documents = () => {
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : filtered.length === 0 ? (
-          <Card className="shadow-industrial-sm">
+          <Card className="shadow-sm">
             <CardContent className="flex flex-col items-center justify-center py-16 gap-3">
               <div className="p-4 rounded-full bg-muted">
                 <FileText className="w-8 h-8 text-muted-foreground" />
@@ -738,7 +738,7 @@ const Documents = () => {
                   {docs.map((doc) => (
                     <Card
                       key={doc.id}
-                      className="shadow-industrial-sm hover:shadow-md transition-shadow cursor-pointer group"
+                      className="shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
                       onClick={() => setSelectedDoc(doc)}
                     >
                       <CardContent className="flex items-center justify-between p-4">

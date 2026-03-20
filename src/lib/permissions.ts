@@ -74,7 +74,7 @@ const PERMISSION_MATRIX: Record<AppRole, RolePermissions> = {
     prp:               { view: true, create: true, edit: true, export: true },
     sop:               { view: true, create: true, edit: true, export: true },
     equipment:         { view: true, create: true, edit: true },
-    audit:             { view: true },
+    audit:             {},                                      // Owner-only module
     documents:         { view: true },
     settings:          { view: true },
     subscription:      {},                                      // No access
