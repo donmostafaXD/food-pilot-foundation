@@ -76,9 +76,15 @@ interface PRPProgram {
   activity: string;
   isCustom?: boolean;
   customId?: string;
+  _activities?: string[];
+  _category?: string;
 }
 
-interface PRPRecord {
+interface FoodSafetySetupItem {
+  category: string;
+  item_name: string;
+  item_value: string | null;
+}
   id: string;
   program_name: string;
   date: string;
