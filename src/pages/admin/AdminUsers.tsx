@@ -197,7 +197,7 @@ export default function AdminUsers() {
     setAddEmail("");
     setAddName("");
     setAddRole("Staff");
-    setAddOrgId("");
+    setAddPlan("basic");
     setTempPassword(null);
   };
 
