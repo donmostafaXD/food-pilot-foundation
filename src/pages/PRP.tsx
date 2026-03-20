@@ -121,6 +121,7 @@ const PRP = () => {
   const [recordsLoading, setRecordsLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [showAllLibrary, setShowAllLibrary] = useState(false);
+  const [setupItems, setSetupItems] = useState<FoodSafetySetupItem[]>([]);
 
   // Add Item dialog
   const [addDialogOpen, setAddDialogOpen] = useState(false);
