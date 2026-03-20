@@ -313,32 +313,44 @@ const ManageActivitiesSection = () => {
   const { profile } = useAuth();
   const { plan, maxActivities } = usePlan();
   const { canChangeActivity } = useRoleAccess();
+  const { activities, activeActivityId, switchActivity, refreshActivities, loading: actLoading } = useActivity();
   const [showConfirm, setShowConfirm] = useState(false);
-  const [activityCount, setActivityCount] = useState(0);
-  const [loadingCount, setLoadingCount] = useState(true);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const isBasic = plan === "basic";
+  const activityCount = activities.length;
   const canAddActivity = activityCount < maxActivities;
 
-  useEffect(() => {
-    if (!profile?.organization_id) return;
-    const load = async () => {
-      const { data } = await supabase
-        .from("haccp_plans")
-        .select("id")
-        .eq("organization_id", profile.organization_id!);
-      setActivityCount(data?.length || 0);
-      setLoadingCount(false);
-    };
-    load();
-  }, [profile?.organization_id]);
+  const handleDeleteActivity = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
 
-  const handleStart = () => {
-    if (showConfirm) {
-      navigate("/setup");
-    } else {
-      setShowConfirm(true);
+    // Delete hazards first, then steps, then the plan
+    const { data: steps } = await supabase
+      .from("haccp_plan_steps")
+      .select("id")
+      .eq("haccp_plan_id", deleteTarget);
+
+    const stepIds = (steps || []).map((s) => s.id);
+    if (stepIds.length > 0) {
+      await supabase.from("haccp_plan_hazards").delete().in("haccp_plan_step_id", stepIds);
     }
+    await supabase.from("haccp_plan_steps").delete().eq("haccp_plan_id", deleteTarget);
+    await supabase.from("haccp_plans").delete().eq("id", deleteTarget);
+
+    // If we deleted the active activity, switch to another
+    if (deleteTarget === activeActivityId) {
+      const remaining = activities.filter((a) => a.id !== deleteTarget);
+      if (remaining.length > 0) {
+        switchActivity(remaining[0].id);
+      }
+    }
+
+    await refreshActivities();
+    setDeleteTarget(null);
+    setDeleting(false);
+    sonnerToast.success("Activity deleted");
   };
 
   if (!canChangeActivity) {
@@ -361,20 +373,69 @@ const ManageActivitiesSection = () => {
       </div>
 
       <Card className="shadow-sm">
-        <CardContent className="pt-6 pb-5 space-y-3">
+        <CardContent className="pt-6 pb-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-foreground">Current Activities</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {loadingCount ? "Loading..." : `${activityCount} active ${activityCount === 1 ? "activity" : "activities"}`}
+                {actLoading ? "Loading..." : `${activityCount} active ${activityCount === 1 ? "activity" : "activities"}`}
               </p>
             </div>
-            {maxActivities !== Infinity && !loadingCount && (
+            {maxActivities !== Infinity && !actLoading && (
               <Badge variant={activityCount >= maxActivities ? "destructive" : "secondary"} className="text-[10px]">
                 {activityCount} / {maxActivities} {maxActivities === 1 ? "activity" : "activities"}
               </Badge>
             )}
           </div>
+
+          {/* Activity list */}
+          {activities.length > 0 && (
+            <div className="space-y-2">
+              {activities.map((act) => {
+                const isActive = act.id === activeActivityId;
+                return (
+                  <div
+                    key={act.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      isActive ? "border-primary/30 bg-primary/5" : "border-border bg-card"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{act.activity_name}</p>
+                        <p className="text-xs text-muted-foreground">{act.business_type}</p>
+                      </div>
+                      {isActive && (
+                        <Badge variant="default" className="text-[9px] shrink-0">Active</Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {!isActive && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => switchActivity(act.id)}
+                        >
+                          Switch
+                        </Button>
+                      )}
+                      {activityCount > 1 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-destructive hover:text-destructive"
+                          onClick={() => setDeleteTarget(act.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {isBasic && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
@@ -392,7 +453,7 @@ const ManageActivitiesSection = () => {
             </Button>
           )}
 
-          {!isBasic && !canAddActivity && !loadingCount && (
+          {!isBasic && !canAddActivity && !actLoading && (
             <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
               <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
               <p className="text-xs text-muted-foreground">
@@ -402,6 +463,36 @@ const ManageActivitiesSection = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete confirmation dialog */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <Card className="w-[380px] shadow-xl">
+            <CardContent className="pt-6 pb-5 space-y-4 text-center">
+              <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Delete Activity?</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  This will permanently delete the HACCP plan and all associated hazard data for
+                  <strong className="ml-1">{activities.find((a) => a.id === deleteTarget)?.activity_name}</strong>.
+                  Logs, PRP records, and SOP data are not deleted.
+                </p>
+              </div>
+              <div className="flex gap-2 justify-center">
+                <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)} disabled={deleting}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" size="sm" onClick={handleDeleteActivity} disabled={deleting}>
+                  {deleting ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : null}
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {canChangeActivity && (
         <Card className="shadow-sm">
@@ -430,7 +521,10 @@ const ManageActivitiesSection = () => {
               )}
 
               <div className="flex gap-2 mt-2">
-                <Button variant="destructive" onClick={handleStart}>
+                <Button variant="destructive" onClick={() => {
+                  if (showConfirm) navigate("/setup");
+                  else setShowConfirm(true);
+                }}>
                   <Wand2 className="w-4 h-4 mr-2" />
                   {showConfirm ? "Confirm & Start Setup" : "Change Activity"}
                 </Button>
