@@ -1,13 +1,15 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { usePlan } from "@/hooks/usePlan";
 import { Navigate } from "react-router-dom";
 import {
   type AppModule,
   canAccessModule,
   getAccessDeniedMessage,
   getModuleLabel,
-  ROUTE_MODULE_MAP,
 } from "@/lib/permissions";
+import { isModuleHidden, getUpgradeMessage } from "@/lib/plan-features";
+import type { PlanModule } from "@/lib/plan-features";
 import { ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -22,6 +24,7 @@ interface Props {
 const ProtectedRoute = ({ children, module, requiredRoles }: Props) => {
   const { user, loading } = useAuth();
   const { effectiveRole, isRealSuperAdmin, isPreviewMode } = useRoleAccess();
+  const { plan } = usePlan();
 
   if (loading) {
     return (
@@ -40,6 +43,12 @@ const ProtectedRoute = ({ children, module, requiredRoles }: Props) => {
 
   // Module-based access check (primary method)
   if (module) {
+    // Plan-based: if module is hidden for this plan, redirect to dashboard
+    if (isModuleHidden(plan, module as PlanModule)) {
+      return <Navigate to="/dashboard" replace />;
+    }
+
+    // Role-based: check if role can view module
     const allowed = canAccessModule(effectiveRole, module);
     if (!allowed) {
       return <AccessDenied module={module} />;
@@ -64,8 +73,6 @@ function AccessDenied({ module }: { module?: AppModule }) {
   const message = module
     ? getAccessDeniedMessage(module, effectiveRole)
     : "You do not have permission to access this page.";
-
-  const label = module ? getModuleLabel(module) : "this section";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
