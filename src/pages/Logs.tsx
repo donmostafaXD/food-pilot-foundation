@@ -121,34 +121,11 @@ function parseCsvToEntries(csvText: string): Record<string, string>[] {
   });
 }
 
-/** Logs allowed on Basic plan (Food Service only) */
-const BASIC_ALLOWED_LOGS = new Set([
-  "Receiving Log",
-  "Cold Storage Log",
-  "Cooking Temperature Log",
-  "Hot Holding Log",
-  "Cleaning Log",
-  "Pest Control Log",
-  "Training Log",
-]);
-
-/** Logs explicitly hidden from Basic plan */
-const BASIC_HIDDEN_LOGS = new Set([
-  "Internal Audit Log",
-  "Corrective Action Log",
-  "CCP Monitoring Log",
-]);
-
-/** Logs allowed on HACCP (professional) plan */
-const HACCP_ALLOWED_LOGS = new Set([
-  "Cooking Temperature Log",
-  "Cold Storage Log",
-  "Hot Holding Log",
-  "Receiving Log",
-  "CCP Monitoring Log",
-  "Cleaning Log",
-  "Corrective Action Log",
-]);
+/* Plan-tier log categories (driven by log_category from logs_unified):
+ * Basic: "Core" only
+ * HACCP (Professional): "Core" + "CCP"
+ * Premium/Compliance: All categories
+ * This replaces all hardcoded log name sets. */
 
 const Logs = () => {
   const navigate = useNavigate();
