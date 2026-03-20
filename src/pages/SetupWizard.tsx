@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActivity } from "@/contexts/ActivityContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Step1BusinessInfo from "@/components/setup/Step1BusinessInfo";
@@ -47,6 +48,7 @@ const STEPS = ["Business Info", "Activity", "Questions", "Process Flow", "HACCP 
 
 const SetupWizard = () => {
   const { profile } = useAuth();
+  const { switchActivity, refreshActivities } = useActivity();
   const navigate = useNavigate();
   const {
     canAccessManufacturing,
@@ -184,6 +186,9 @@ const SetupWizard = () => {
       }
 
       localStorage.setItem("haccp_plan_updated", "true");
+      // Set the newly created plan as the active activity
+      switchActivity(plan.id);
+      await refreshActivities();
       toast.success("HACCP Plan saved successfully!");
       navigate("/dashboard", { replace: true });
     } catch (err: any) {

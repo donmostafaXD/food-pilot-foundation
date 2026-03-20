@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AdminPlanOverrideProvider } from "@/contexts/AdminPlanOverrideContext";
+import { ActivityProvider } from "@/contexts/ActivityContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 
@@ -88,9 +89,12 @@ const App = () => {
         <BrowserRouter>
           <AuthProvider>
             <AdminPlanOverrideProvider>
-              <AppRoutes />
+              <ActivityProvider>
+                <AppRoutes />
+              </ActivityProvider>
             </AdminPlanOverrideProvider>
           </AuthProvider>
+
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
