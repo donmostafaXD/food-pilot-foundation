@@ -63,6 +63,7 @@ interface Equipment {
 const Equipment = () => {
   const { profile, loading: authLoading } = useAuth();
   const guard = usePermissionGuard("equipment");
+  const { activeActivity } = useActivity();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
