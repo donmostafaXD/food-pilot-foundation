@@ -342,20 +342,6 @@ const SOPPage = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Purpose & Scope from sop_master */}
-              {(selectedSOP as any)?._purpose && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Purpose</h3>
-                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._purpose}</p>
-                </div>
-              )}
-              {(selectedSOP as any)?._scope && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Scope</h3>
-                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._scope}</p>
-                </div>
-              )}
-
               <div>
                 <h3 className="text-sm font-semibold text-foreground mb-2">Procedure</h3>
                 {procedures.length > 0 ? (
@@ -368,20 +354,6 @@ const SOPPage = () => {
                   <p className="text-sm text-muted-foreground italic">No procedure details available.</p>
                 )}
               </div>
-
-              {(selectedSOP as any)?._frequency && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Frequency</h3>
-                  <p className="text-sm text-muted-foreground">{(selectedSOP as any)._frequency}</p>
-                </div>
-              )}
-
-              {(selectedSOP as any)?._related_prp && (
-                <div>
-                  <h3 className="text-sm font-semibold text-foreground mb-2">Related PRP</h3>
-                  <Badge variant="secondary">{(selectedSOP as any)._related_prp}</Badge>
-                </div>
-              )}
 
               {/* Dynamic Food Safety Setup Injection */}
               {(() => {
