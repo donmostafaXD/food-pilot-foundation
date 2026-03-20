@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useActivity } from "@/contexts/ActivityContext";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,29 +84,22 @@ function classifyDocument(name: string): { category: DocCategory; categoryLabel:
 }
 
 // ── Dynamic data components ─────────────────────────
-function HACCPPlanData({ orgId }: { orgId: string }) {
+function HACCPPlanData({ orgId, planId }: { orgId: string; planId: string | null }) {
   const [steps, setSteps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: plans } = await supabase
-        .from("haccp_plans")
-        .select("id, activity_name, status")
-        .eq("organization_id", orgId)
-        .limit(1);
-
-      if (plans && plans.length > 0) {
-        const { data: stepsData } = await supabase
-          .from("haccp_plan_steps")
-          .select("*, haccp_plan_hazards(*)")
-          .eq("haccp_plan_id", plans[0].id)
-          .order("step_order");
-        setSteps(stepsData || []);
-      }
+      if (!planId) { setLoading(false); return; }
+      const { data: stepsData } = await supabase
+        .from("haccp_plan_steps")
+        .select("*, haccp_plan_hazards(*)")
+        .eq("haccp_plan_id", planId)
+        .order("step_order");
+      setSteps(stepsData || []);
       setLoading(false);
     })();
-  }, [orgId]);
+  }, [orgId, planId]);
 
   if (loading) return <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading HACCP data...</div>;
   if (!steps.length) return <p className="text-sm text-muted-foreground italic py-2">No HACCP plan data available. Complete the Setup Wizard first.</p>;
@@ -152,29 +147,22 @@ function HACCPPlanData({ orgId }: { orgId: string }) {
   );
 }
 
-function FlowDiagramData({ orgId }: { orgId: string }) {
+function FlowDiagramData({ orgId, planId }: { orgId: string; planId: string | null }) {
   const [steps, setSteps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: plans } = await supabase
-        .from("haccp_plans")
-        .select("id")
-        .eq("organization_id", orgId)
-        .limit(1);
-
-      if (plans && plans.length > 0) {
-        const { data } = await supabase
-          .from("haccp_plan_steps")
-          .select("process_name, step_order")
-          .eq("haccp_plan_id", plans[0].id)
-          .order("step_order");
-        setSteps(data || []);
-      }
+      if (!planId) { setLoading(false); return; }
+      const { data } = await supabase
+        .from("haccp_plan_steps")
+        .select("process_name, step_order")
+        .eq("haccp_plan_id", planId)
+        .order("step_order");
+      setSteps(data || []);
       setLoading(false);
     })();
-  }, [orgId]);
+  }, [orgId, planId]);
 
   if (loading) return <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading flow data...</div>;
   if (!steps.length) return <p className="text-sm text-muted-foreground italic py-2">No process flow data available.</p>;
@@ -197,33 +185,26 @@ function FlowDiagramData({ orgId }: { orgId: string }) {
   );
 }
 
-function HazardAnalysisData({ orgId }: { orgId: string }) {
+function HazardAnalysisData({ orgId, planId }: { orgId: string; planId: string | null }) {
   const [hazards, setHazards] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data: plans } = await supabase
-        .from("haccp_plans")
-        .select("id")
-        .eq("organization_id", orgId)
-        .limit(1);
+      if (!planId) { setLoading(false); return; }
+      const { data: stepsData } = await supabase
+        .from("haccp_plan_steps")
+        .select("process_name, step_order, haccp_plan_hazards(*)")
+        .eq("haccp_plan_id", planId)
+        .order("step_order");
 
-      if (plans && plans.length > 0) {
-        const { data: stepsData } = await supabase
-          .from("haccp_plan_steps")
-          .select("process_name, step_order, haccp_plan_hazards(*)")
-          .eq("haccp_plan_id", plans[0].id)
-          .order("step_order");
-
-        const all = (stepsData || []).flatMap((s: any) =>
-          (s.haccp_plan_hazards || []).map((h: any) => ({ ...h, process_name: s.process_name }))
-        );
-        setHazards(all);
-      }
+      const all = (stepsData || []).flatMap((s: any) =>
+        (s.haccp_plan_hazards || []).map((h: any) => ({ ...h, process_name: s.process_name }))
+      );
+      setHazards(all);
       setLoading(false);
     })();
-  }, [orgId]);
+  }, [orgId, planId]);
 
   if (loading) return <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading hazard data...</div>;
   if (!hazards.length) return <p className="text-sm text-muted-foreground italic py-2">No hazard analysis data available.</p>;
@@ -269,7 +250,8 @@ function HazardAnalysisData({ orgId }: { orgId: string }) {
 const Documents = () => {
   const { profile } = useAuth();
   const { plan } = usePlan();
-  const { activityName, loading: activityLoading } = useActivityFilter();
+  const { activityName, planId: activePlanId, loading: activityLoading } = useActivityFilter();
+  const guard = usePermissionGuard("documents");
   const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<EnrichedDocument[]>([]);
   const [uploadedDocs, setUploadedDocs] = useState<EnrichedDocument[]>([]);
@@ -478,9 +460,9 @@ const Documents = () => {
   const renderDynamicContent = (doc: EnrichedDocument) => {
     if (!profile?.organization_id) return null;
     const lower = doc.document_name.toLowerCase();
-    if (lower.includes("haccp plan")) return <HACCPPlanData orgId={profile.organization_id} />;
-    if (lower.includes("flow diagram")) return <FlowDiagramData orgId={profile.organization_id} />;
-    if (lower.includes("hazard analysis")) return <HazardAnalysisData orgId={profile.organization_id} />;
+    if (lower.includes("haccp plan")) return <HACCPPlanData orgId={profile.organization_id} planId={activePlanId} />;
+    if (lower.includes("flow diagram")) return <FlowDiagramData orgId={profile.organization_id} planId={activePlanId} />;
+    if (lower.includes("hazard analysis")) return <HazardAnalysisData orgId={profile.organization_id} planId={activePlanId} />;
     return null;
   };
 
@@ -577,7 +559,7 @@ const Documents = () => {
               <ArrowLeft className="w-4 h-4 mr-1" /> Back to Documents
             </Button>
             <div className="flex gap-2">
-              {!selectedDoc.isUploaded && !editing && (
+              {!selectedDoc.isUploaded && !editing && guard.canEdit && (
                 <Button variant="outline" size="sm" onClick={startEditing}>
                   <Edit2 className="w-4 h-4 mr-1" /> Edit
                 </Button>
@@ -748,10 +730,12 @@ const Documents = () => {
             <Badge variant="secondary" className="text-xs">
               {filtered.length} document{filtered.length !== 1 ? "s" : ""}
             </Badge>
-            <Button size="sm" onClick={() => setAddModalOpen(true)} className="gap-1.5">
-              <Plus className="w-4 h-4" />
-              Add Document
-            </Button>
+            {guard.canCreate && (
+              <Button size="sm" onClick={() => setAddModalOpen(true)} className="gap-1.5">
+                <Plus className="w-4 h-4" />
+                Add Document
+              </Button>
+            )}
           </div>
         </div>
 
@@ -902,17 +886,19 @@ const Documents = () => {
                               {doc.responsible}
                             </Badge>
                           )}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteUploaded(doc);
-                            }}
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
+                          {guard.canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteUploaded(doc);
+                              }}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          )}
                           <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                         </div>
                       </CardContent>

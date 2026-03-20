@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useActivity } from "@/contexts/ActivityContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,6 +40,7 @@ import {
   Power,
   Loader2,
   PackagePlus,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -61,6 +63,7 @@ interface Equipment {
 const Equipment = () => {
   const { profile, loading: authLoading } = useAuth();
   const guard = usePermissionGuard("equipment");
+  const { activeActivity } = useActivity();
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,6 +204,20 @@ const Equipment = () => {
     }
   };
 
+  const handleDelete = async (item: Equipment) => {
+    const { error } = await supabase
+      .from("equipment" as any)
+      .delete()
+      .eq("id", item.id);
+
+    if (error) {
+      toast.error("Failed to delete equipment");
+    } else {
+      toast.success("Equipment deleted");
+      loadData();
+    }
+  };
+
   const openEdit = (item: Equipment) => {
     setEditItem(item);
     setEditName(item.equipment_name);
@@ -229,6 +246,9 @@ const Equipment = () => {
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Equipment</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Manage your branch equipment inventory
+              {activeActivity && (
+                <Badge variant="secondary" className="ml-2 text-[10px]">{activeActivity.activity_name}</Badge>
+              )}
             </p>
           </div>
           {guard.canCreate && (
@@ -336,6 +356,17 @@ const Equipment = () => {
                                   }`}
                                 />
                               </Button>
+                              {guard.canDelete && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleDelete(item)}
+                                  title="Delete equipment"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                                </Button>
+                              )}
                             </div>
                           </TableCell>
                         )}
