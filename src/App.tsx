@@ -56,7 +56,7 @@ const AppRoutes = () => {
   return (
     <Routes>
       {/* Public pages */}
-      <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Home />} />
+      <Route path="/" element={<Home />} />
       <Route path="/pricing" element={user ? <Navigate to="/app/pricing" replace /> : <PricingPublic />} />
       <Route path="/about" element={<About />} />
       <Route path="/contact" element={<Contact />} />
