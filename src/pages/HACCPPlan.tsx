@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import HACCPTable from "@/components/haccp/HACCPTable";
@@ -8,6 +7,7 @@ import { Loader2, Printer, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { usePlan } from "@/hooks/usePlan";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { usePrintHeader } from "@/hooks/usePrintHeader";
 import PrintDialog, { type PrintMode } from "@/components/PrintDialog";
 import { openPrintWindow, blankTable, escapeHtml, controlBadgeClass } from "@/lib/printUtils";
@@ -15,8 +15,7 @@ import type { ProcessStep, PlanStep } from "@/pages/SetupWizard";
 
 const HACCPPlanPage = () => {
   const { profile } = useAuth();
-  const { overrideRole } = useAdminPlanOverride();
-  const isStaffPreview = overrideRole === "Staff";
+  const guard = usePermissionGuard("haccp_plan");
   const { plan, showRiskFields, canEditRiskFields, canExportFullHACCP, loading: planLoading } = usePlan();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("HACCP Plan");
@@ -162,23 +161,23 @@ const HACCPPlanPage = () => {
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
             HACCP Plan
           </h1>
-          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)} disabled={!guard.canExport}>
             <Printer className="w-4 h-4 mr-1" /> Print
           </Button>
         </div>
 
-        {isStaffPreview ? (
+        {guard.isReadOnly ? (
           <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground">
-            <span>To edit your HACCP plan, contact your manager</span>
+            <span>You have read-only access to the HACCP plan. Contact your manager for edit access.</span>
           </div>
-        ) : (
+        ) : guard.canEdit ? (
           <div className="mb-4 p-3 rounded-lg bg-muted/50 border border-border text-sm text-muted-foreground flex items-center justify-between">
             <span>To edit your HACCP plan, go to <strong>Settings → HACCP Plan</strong></span>
             <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
               <Settings className="w-4 h-4 mr-1" /> Go to Settings
             </Button>
           </div>
-        )}
+        ) : null}
 
         <PrintDialog
           open={printOpen}

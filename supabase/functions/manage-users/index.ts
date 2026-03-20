@@ -25,15 +25,17 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    // Verify caller is authenticated
-    const authHeader = req.headers.get("Authorization")!;
+    // ── 1. Authenticate caller ──────────────────────────
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Missing authorization header");
+
     const callerClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_PUBLISHABLE_KEY")!, {
       global: { headers: { Authorization: authHeader } },
     });
     const { data: { user: caller } } = await callerClient.auth.getUser();
     if (!caller) throw new Error("Unauthorized");
 
-    // Check caller has Owner or Manager role
+    // ── 2. Verify caller roles ──────────────────────────
     const { data: callerRoles } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -42,15 +44,41 @@ Deno.serve(async (req) => {
     const isOwner = roles.includes("Owner") || roles.includes("super_admin");
     const isManager = roles.includes("Manager");
     if (!isOwner && !isManager) {
-      throw new Error("Insufficient permissions");
+      throw new Error("Insufficient permissions: requires Owner or Manager role.");
     }
 
+    // ── 3. Verify caller belongs to the target organization ─
     const body = await req.json();
     const { action, email, full_name, role, branch_id, organization_id } = body;
 
+    if (!organization_id) throw new Error("organization_id is required");
+
+    const { data: callerProfile } = await supabaseAdmin
+      .from("profiles")
+      .select("organization_id")
+      .eq("user_id", caller.id)
+      .maybeSingle();
+
+    if (!callerProfile || callerProfile.organization_id !== organization_id) {
+      throw new Error("Access denied: you do not belong to this organization.");
+    }
+
+    // ── 4. Verify branch belongs to the organization ────
+    if (branch_id) {
+      const { data: branchCheck } = await supabaseAdmin
+        .from("branches")
+        .select("id")
+        .eq("id", branch_id)
+        .eq("organization_id", organization_id)
+        .maybeSingle();
+
+      if (!branchCheck) {
+        throw new Error("Invalid branch: branch does not belong to this organization.");
+      }
+    }
+
     if (action === "invite") {
       // ── Enforce plan-based limits ──────────────────────
-      // Get organization's plan
       const { data: org } = await supabaseAdmin
         .from("organizations")
         .select("subscription_plan")
@@ -60,14 +88,24 @@ Deno.serve(async (req) => {
       const maxUsers = PLAN_USER_LIMITS[plan] ?? 2;
       const allowedRoles = PLAN_ALLOWED_ROLES[plan] ?? ["Owner", "Staff"];
 
+      // Validate role
+      if (!role || typeof role !== "string") {
+        throw new Error("Role is required");
+      }
+
       // Check role is allowed for this plan
       if (!allowedRoles.includes(role)) {
         throw new Error(`Role "${role}" is not available on your current plan.`);
       }
 
-      // Manager can only add Staff
+      // Manager can only add Staff — enforce server-side
       if (isManager && !isOwner && role !== "Staff") {
         throw new Error("Managers can only add Staff users.");
+      }
+
+      // Prevent creating Owner or super_admin roles
+      if (role === "Owner" || role === "super_admin") {
+        throw new Error("Cannot assign Owner or super_admin role via invite.");
       }
 
       // Check current user count
@@ -77,6 +115,11 @@ Deno.serve(async (req) => {
         .eq("organization_id", organization_id);
       if ((count || 0) >= maxUsers) {
         throw new Error(`User limit reached (${maxUsers}). Upgrade your plan to add more users.`);
+      }
+
+      // Validate email format
+      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error("Invalid email address");
       }
 
       // ── Create user ───────────────────────────────────
@@ -91,15 +134,14 @@ Deno.serve(async (req) => {
       const userId = newUser.user.id;
 
       // Update profile (auto-created by trigger)
-      // Wait briefly for trigger
       await new Promise((r) => setTimeout(r, 500));
 
       await supabaseAdmin
         .from("profiles")
         .update({
-          full_name,
+          full_name: full_name || null,
           organization_id,
-          branch_id,
+          branch_id: branch_id || null,
         })
         .eq("user_id", userId);
 
@@ -128,6 +170,17 @@ Deno.serve(async (req) => {
         throw new Error("You cannot remove yourself.");
       }
 
+      // Verify target user belongs to the same organization
+      const { data: targetProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("organization_id")
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+
+      if (!targetProfile || targetProfile.organization_id !== organization_id) {
+        throw new Error("Cannot remove a user from a different organization.");
+      }
+
       // Delete from auth (cascades to profiles and user_roles via FK)
       const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
       if (deleteError) throw deleteError;
@@ -140,9 +193,12 @@ Deno.serve(async (req) => {
 
     throw new Error("Unknown action");
   } catch (err: any) {
+    const status = err.message?.includes("Unauthorized") || err.message?.includes("Access denied")
+      ? 403
+      : 400;
     return new Response(
       JSON.stringify({ error: err.message }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

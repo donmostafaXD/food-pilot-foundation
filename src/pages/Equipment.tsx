@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -59,6 +60,7 @@ interface Equipment {
 
 const Equipment = () => {
   const { profile, loading: authLoading } = useAuth();
+  const guard = usePermissionGuard("equipment");
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,10 +231,12 @@ const Equipment = () => {
               Manage your branch equipment inventory
             </p>
           </div>
-          <Button size="sm" onClick={() => setShowAdd(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Add Equipment
-          </Button>
+          {guard.canCreate && (
+            <Button size="sm" onClick={() => setShowAdd(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Add Equipment
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -292,28 +296,32 @@ const Equipment = () => {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => openEdit(item)}
-                            >
-                              <Edit2 className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => toggleStatus(item)}
-                            >
-                              <Power
-                                className={`w-3.5 h-3.5 ${
-                                  item.status === "Active"
-                                    ? "text-muted-foreground"
-                                    : "text-primary"
-                                }`}
-                              />
-                            </Button>
+                            {guard.canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => openEdit(item)}
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </Button>
+                            )}
+                            {guard.canEdit && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => toggleStatus(item)}
+                              >
+                                <Power
+                                  className={`w-3.5 h-3.5 ${
+                                    item.status === "Active"
+                                      ? "text-muted-foreground"
+                                      : "text-primary"
+                                  }`}
+                                />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
