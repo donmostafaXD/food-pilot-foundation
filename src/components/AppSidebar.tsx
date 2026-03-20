@@ -120,9 +120,9 @@ export function AppSidebar() {
         <div className="px-4 py-5 border-b border-sidebar-border">
           {!collapsed ? (
             <div>
-              <h2 className="text-base font-bold tracking-tight text-sidebar-foreground">
+              <a href="/" className="text-base font-bold tracking-tight text-sidebar-foreground hover:text-primary transition-colors">
                 FoodPilot
-              </h2>
+              </a>
               {profile?.full_name && (
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">
                   {profile.full_name}
