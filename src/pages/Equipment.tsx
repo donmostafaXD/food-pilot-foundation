@@ -231,10 +231,12 @@ const Equipment = () => {
               Manage your branch equipment inventory
             </p>
           </div>
-          <Button size="sm" onClick={() => setShowAdd(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Add Equipment
-          </Button>
+          {guard.canCreate && (
+            <Button size="sm" onClick={() => setShowAdd(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Add Equipment
+            </Button>
+          )}
         </div>
 
         {/* Search */}
