@@ -92,7 +92,21 @@ const SOPPage = () => {
   useEffect(() => {
     if (activityLoading) return;
     loadSOPs();
+    loadSetupItems();
   }, [activityLoading]);
+
+  const loadSetupItems = async () => {
+    if (!profile?.organization_id) return;
+    const { data } = await supabase
+      .from("food_safety_setup")
+      .select("category, item_name, item_value")
+      .eq("organization_id", profile.organization_id);
+    setSetupItems((data || []) as FoodSafetySetupItem[]);
+  };
+
+  const getSetupValues = (category: string) =>
+    setupItems.filter((i) => i.category === category).map((i) => i.item_name + (i.item_value ? ` (${i.item_value})` : ""));
+
 
   // Show sync notification when plan was just updated
   useEffect(() => {
