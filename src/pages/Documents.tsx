@@ -460,9 +460,9 @@ const Documents = () => {
   const renderDynamicContent = (doc: EnrichedDocument) => {
     if (!profile?.organization_id) return null;
     const lower = doc.document_name.toLowerCase();
-    if (lower.includes("haccp plan")) return <HACCPPlanData orgId={profile.organization_id} />;
-    if (lower.includes("flow diagram")) return <FlowDiagramData orgId={profile.organization_id} />;
-    if (lower.includes("hazard analysis")) return <HazardAnalysisData orgId={profile.organization_id} />;
+    if (lower.includes("haccp plan")) return <HACCPPlanData orgId={profile.organization_id} planId={activePlanId} />;
+    if (lower.includes("flow diagram")) return <FlowDiagramData orgId={profile.organization_id} planId={activePlanId} />;
+    if (lower.includes("hazard analysis")) return <HazardAnalysisData orgId={profile.organization_id} planId={activePlanId} />;
     return null;
   };
 
