@@ -351,12 +351,13 @@ const Logs = () => {
     }
     let base = logStructures;
     if (isBasicPlan) {
-      base = base.filter((l) => l.isCustom || (BASIC_ALLOWED_LOGS.has(l.log_name) && !BASIC_HIDDEN_LOGS.has(l.log_name)));
+      base = base.filter((l) => l.isCustom || ((l as any)._log_category || "Core").toLowerCase() === "core");
     } else if (isHACCPPlan) {
-      base = base.filter((l) => l.isCustom || HACCP_ALLOWED_LOGS.has(l.log_name));
+      const allowed = new Set(["core", "ccp"]);
+      base = base.filter((l) => l.isCustom || allowed.has(((l as any)._log_category || "Core").toLowerCase()));
     }
     return base.map((l) => l.log_name).sort();
-  }, [businessType, logStructures, mfgLogs, isBasicPlan]);
+  }, [businessType, logStructures, mfgLogs, isBasicPlan, isHACCPPlan]);
 
   const selectedFields = useMemo(() => {
     if (!selectedLog) return [];
