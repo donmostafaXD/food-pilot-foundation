@@ -44,14 +44,9 @@ interface SOPItem {
   description: string | null;
   procedure_text: string | null;
   responsible: string | null;
-  category: "Food Service" | "Manufacturing" | "Custom";
-  process_step_id?: number;
+  category: "Food Service" | "Custom";
   isCustom?: boolean;
   customId?: string;
-  _purpose?: string;
-  _scope?: string;
-  _frequency?: string;
-  _related_prp?: string;
 }
 
 interface FoodSafetySetupItem {
