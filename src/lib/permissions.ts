@@ -249,14 +249,14 @@ export interface SidebarModuleVisibility {
 
 export function getSidebarVisibility(role: AppRole | null): SidebarModuleVisibility {
   return {
-    dashboard: canAccessModule(role, "dashboard"),
+    dashboard: false,        // Temporarily disabled — stabilization phase
     haccp: canAccessModule(role, "haccp_plan"),
     logs: canAccessModule(role, "logs"),
     prp: canAccessModule(role, "prp"),
     sop: canAccessModule(role, "sop"),
-    equipment: canAccessModule(role, "equipment"),
-    audit: canAccessModule(role, "audit"),
-    documents: canAccessModule(role, "documents"),
+    equipment: false,        // Temporarily disabled — stabilization phase
+    audit: false,            // Temporarily disabled — stabilization phase
+    documents: false,        // Temporarily disabled — stabilization phase
     settings: canAccessModule(role, "settings"),
   };
 }
