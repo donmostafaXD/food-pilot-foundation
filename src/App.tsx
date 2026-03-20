@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AdminPlanOverrideProvider } from "@/contexts/AdminPlanOverrideContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import PlanGate from "@/components/PlanGate";
+
 
 // Public pages
 import Home from "./pages/Home";
@@ -59,12 +59,12 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={<ProtectedRoute module="dashboard"><Dashboard /></ProtectedRoute>} />
       <Route path="/setup" element={<ProtectedRoute module="activities"><SetupWizard /></ProtectedRoute>} />
       <Route path="/haccp" element={<ProtectedRoute module="haccp_plan"><HACCPPlan /></ProtectedRoute>} />
-      <Route path="/documents" element={<ProtectedRoute module="documents"><PlanGate feature="canAccessDocuments"><Documents /></PlanGate></ProtectedRoute>} />
+      <Route path="/documents" element={<ProtectedRoute module="documents"><Documents /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute module="settings"><SettingsPage /></ProtectedRoute>} />
       <Route path="/logs" element={<ProtectedRoute module="logs"><Logs /></ProtectedRoute>} />
-      <Route path="/prp" element={<ProtectedRoute module="prp"><PlanGate feature="canAccessPRP"><PRP /></PlanGate></ProtectedRoute>} />
-      <Route path="/sop" element={<ProtectedRoute module="sop"><PlanGate feature="canAccessSOP"><SOP /></PlanGate></ProtectedRoute>} />
-      <Route path="/equipment" element={<ProtectedRoute module="equipment"><PlanGate feature="canAccessEquipment"><EquipmentPage /></PlanGate></ProtectedRoute>} />
+      <Route path="/prp" element={<ProtectedRoute module="prp"><PRP /></ProtectedRoute>} />
+      <Route path="/sop" element={<ProtectedRoute module="sop"><SOP /></ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute module="equipment"><EquipmentPage /></ProtectedRoute>} />
       <Route path="/audit" element={<ProtectedRoute module="audit"><AuditReady /></ProtectedRoute>} />
 
       {/* Redirects for removed routes */}

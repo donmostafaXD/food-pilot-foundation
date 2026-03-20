@@ -10,19 +10,17 @@ import {
   FileText,
   Crown,
   ClipboardCheck,
-  Lock,
   Layers,
   Briefcase,
   ShieldAlert,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { NavLink } from "@/components/NavLink";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
-import { isModuleLocked, type PlanModule } from "@/lib/plan-features";
 import {
   Sidebar,
   SidebarContent,
@@ -36,21 +34,12 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { toast } from "sonner";
 
 interface NavItem {
   title: string;
   url: string;
   icon: React.ComponentType<{ className?: string }>;
   visible: boolean;
-  locked: boolean;
-  lockReason?: string;
-  planModule?: PlanModule;
 }
 
 interface NavGroup {
@@ -63,116 +52,65 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const navigate = useNavigate();
   const { signOut, profile } = useAuth();
   const { overrideRole } = useAdminPlanOverride();
-  const { plan, loading: planLoading } = usePlan();
+  const { plan } = usePlan();
   const { effectiveRole, isRealSuperAdmin, isPreviewMode, sidebar } = useRoleAccess();
 
   const isActive = (path: string) => location.pathname === path;
 
-  const planLocked = (mod: PlanModule) => {
-    if (isRealSuperAdmin && !isPreviewMode) return false;
-    if (planLoading) return false;
-    return isModuleLocked(plan, mod);
-  };
-
-  // Grouped navigation
+  // Grouped navigation — no plan-based locking
   const groups: NavGroup[] = [
     {
       label: "Core",
       icon: Layers,
       items: [
-        { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, visible: sidebar.dashboard, locked: false },
-        { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck, visible: sidebar.haccp, locked: false },
-        { title: "Logs", url: "/logs", icon: ClipboardList, visible: sidebar.logs, locked: false },
+        { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, visible: sidebar.dashboard },
+        { title: "HACCP Plan", url: "/haccp", icon: ShieldCheck, visible: sidebar.haccp },
+        { title: "Logs", url: "/logs", icon: ClipboardList, visible: sidebar.logs },
       ],
     },
     {
       label: "Operations",
       icon: Briefcase,
       items: [
-        { title: "PRP Programs", url: "/prp", icon: Shield, visible: sidebar.prp || planLocked("prp"), locked: planLocked("prp"), lockReason: "Available in HACCP plan", planModule: "prp" },
-        { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: sidebar.sop || planLocked("sop"), locked: planLocked("sop"), lockReason: "Available in HACCP plan", planModule: "sop" },
-        { title: "Equipment", url: "/equipment", icon: Wrench, visible: sidebar.equipment || planLocked("equipment"), locked: planLocked("equipment"), lockReason: "Available in HACCP plan", planModule: "equipment" },
+        { title: "PRP Programs", url: "/prp", icon: Shield, visible: sidebar.prp },
+        { title: "SOP Procedures", url: "/sop", icon: BookOpen, visible: sidebar.sop },
+        { title: "Equipment", url: "/equipment", icon: Wrench, visible: sidebar.equipment },
       ],
     },
     {
       label: "Compliance",
       icon: ShieldAlert,
       items: [
-        { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: sidebar.audit || planLocked("audit"), locked: planLocked("audit"), lockReason: "Available in Compliance plan", planModule: "audit" },
-        { title: "Documents", url: "/documents", icon: FileText, visible: sidebar.documents || planLocked("documents"), locked: planLocked("documents"), lockReason: "Available in Compliance plan", planModule: "documents" },
+        { title: "Audit Ready", url: "/audit", icon: ClipboardCheck, visible: sidebar.audit },
+        { title: "Documents", url: "/documents", icon: FileText, visible: sidebar.documents },
       ],
     },
     {
       label: "Admin",
       icon: Settings,
       items: [
-        { title: "Settings", url: "/settings", icon: Settings, visible: sidebar.settings, locked: false },
+        { title: "Settings", url: "/settings", icon: Settings, visible: sidebar.settings },
       ],
     },
   ];
 
-  const handleLockedClick = (item: NavItem) => {
-    toast.info(item.lockReason || "This feature requires a plan upgrade", {
-      action: {
-        label: "Upgrade",
-        onClick: () => navigate("/settings"),
-      },
-    });
-  };
-
-  const renderItem = (item: NavItem) => {
-    if (item.locked) {
-      const content = (
-        <SidebarMenuItem key={item.title}>
-          <SidebarMenuButton
-            onClick={() => handleLockedClick(item)}
-            className="opacity-50 cursor-not-allowed"
-          >
-            <div className="flex items-center gap-2 w-full">
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && (
-                <>
-                  <span className="flex-1">{item.title}</span>
-                  <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
-                </>
-              )}
-            </div>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      );
-
-      if (collapsed) {
-        return (
-          <Tooltip key={item.title}>
-            <TooltipTrigger asChild>{content}</TooltipTrigger>
-            <TooltipContent side="right">
-              <p className="text-xs">{item.lockReason}</p>
-            </TooltipContent>
-          </Tooltip>
-        );
-      }
-      return content;
-    }
-
-    return (
-      <SidebarMenuItem key={item.title}>
-        <SidebarMenuButton asChild isActive={isActive(item.url)}>
-          <NavLink
-            to={item.url}
-            end
-            className="flex items-center gap-2"
-            activeClassName="bg-sidebar-accent text-primary font-medium"
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>{item.title}</span>}
-          </NavLink>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    );
-  };
+  const renderItem = (item: NavItem) => (
+    <SidebarMenuItem key={item.title}>
+      <SidebarMenuButton asChild isActive={isActive(item.url)}>
+        <NavLink
+          to={item.url}
+          end
+          className="flex items-center gap-2"
+          activeClassName="bg-sidebar-accent text-primary font-medium"
+        >
+          <item.icon className="h-4 w-4 shrink-0" />
+          {!collapsed && <span>{item.title}</span>}
+        </NavLink>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
 
   return (
     <Sidebar collapsible="icon">
