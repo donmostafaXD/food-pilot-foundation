@@ -290,7 +290,7 @@ const Logs = () => {
     };
 
     load();
-  }, [authLoading, activityLoading, profile, activityBusinessType]);
+  }, [authLoading, activityLoading, profile, activityBusinessType, activityName]);
 
   // Show sync notification when plan was just updated
   useEffect(() => {
