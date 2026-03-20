@@ -140,7 +140,11 @@ export default function AdminUsers() {
   };
 
   const handleAddUser = async () => {
-    if (!addEmail.trim()) { toast.error("Email is required"); return; }
+    const trimmedEmail = addEmail.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error("Please enter a valid email address (e.g. user@example.com)");
+      return;
+    }
     setAdding(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
