@@ -1,13 +1,27 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { Navigate } from "react-router-dom";
+import {
+  type AppModule,
+  canAccessModule,
+  getAccessDeniedMessage,
+  getModuleLabel,
+  ROUTE_MODULE_MAP,
+} from "@/lib/permissions";
+import { ShieldX } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Props {
   children: React.ReactNode;
+  /** Optional: explicitly declare which module this route protects */
+  module?: AppModule;
+  /** Legacy: still supported but prefer `module` */
   requiredRoles?: Array<"Owner" | "Manager" | "QA" | "Staff" | "Auditor" | "super_admin">;
 }
 
-const ProtectedRoute = ({ children, requiredRoles }: Props) => {
-  const { user, loading, roles } = useAuth();
+const ProtectedRoute = ({ children, module, requiredRoles }: Props) => {
+  const { user, loading } = useAuth();
+  const { effectiveRole, isRealSuperAdmin, isPreviewMode } = useRoleAccess();
 
   if (loading) {
     return (
@@ -19,24 +33,61 @@ const ProtectedRoute = ({ children, requiredRoles }: Props) => {
 
   if (!user) return <Navigate to="/login" replace />;
 
-  // Super admin bypasses all role checks
-  const isSuperAdmin = roles.includes("super_admin" as any);
+  // Real super_admin bypasses all checks (unless in preview mode)
+  if (isRealSuperAdmin && !isPreviewMode) {
+    return <>{children}</>;
+  }
 
-  if (requiredRoles && requiredRoles.length > 0 && !isSuperAdmin) {
-    const hasAccess = requiredRoles.some((r) => roles.includes(r));
+  // Module-based access check (primary method)
+  if (module) {
+    const allowed = canAccessModule(effectiveRole, module);
+    if (!allowed) {
+      return <AccessDenied module={module} />;
+    }
+    return <>{children}</>;
+  }
+
+  // Legacy requiredRoles check
+  if (requiredRoles && requiredRoles.length > 0) {
+    const hasAccess = requiredRoles.some((r) => r === effectiveRole);
     if (!hasAccess) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-background">
-          <div className="text-center space-y-2">
-            <h2 className="text-lg font-semibold text-foreground">Access Denied</h2>
-            <p className="text-sm text-muted-foreground">You don't have permission to view this page.</p>
-          </div>
-        </div>
-      );
+      return <AccessDenied />;
     }
   }
 
   return <>{children}</>;
 };
+
+// ── Access Denied Component ──────────────────────────────────────────
+function AccessDenied({ module }: { module?: AppModule }) {
+  const { effectiveRole } = useRoleAccess();
+  const message = module
+    ? getAccessDeniedMessage(module, effectiveRole)
+    : "You do not have permission to access this page.";
+
+  const label = module ? getModuleLabel(module) : "this section";
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="text-center space-y-4 max-w-md px-6">
+        <div className="mx-auto w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center">
+          <ShieldX className="w-6 h-6 text-destructive" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-lg font-semibold text-foreground">Access Denied</h2>
+          <p className="text-sm text-muted-foreground">{message}</p>
+        </div>
+        {effectiveRole && (
+          <p className="text-xs text-muted-foreground">
+            Your current role: <span className="font-medium text-foreground">{effectiveRole}</span>
+          </p>
+        )}
+        <Button variant="outline" size="sm" asChild>
+          <a href="/dashboard">Back to Dashboard</a>
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default ProtectedRoute;
