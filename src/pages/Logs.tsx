@@ -347,7 +347,7 @@ const Logs = () => {
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan, isHACCPPlan]);
+  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan, isHACCPPlan, BASIC_EXCLUDED_PARAMS]);
 
   const logNames = useMemo(() => {
     if (businessType === "Manufacturing") {
