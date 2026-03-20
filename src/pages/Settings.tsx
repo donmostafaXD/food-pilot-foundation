@@ -540,8 +540,9 @@ const planTiers: { tier: PlanTier; features: string[] }[] = [
       "Full risk analysis (S × L)",
       "Dynamic CCP / OPRP logic",
       "Complete hazard library",
-      "SOP & log management",
-      "Up to 3 branches",
+      "SOP & PRP management",
+      "Equipment registry",
+      "Up to 3 branches & activities",
     ],
   },
   {
@@ -551,8 +552,9 @@ const planTiers: { tier: PlanTier; features: string[] }[] = [
       "Internal audit tools",
       "Compliance tracking",
       "Full FSMS documentation",
-      "PRP & SOP management",
-      "Unlimited branches",
+      "Advanced analytics",
+      "Unlimited branches & activities",
+      "Unlimited users",
     ],
   },
 ];
