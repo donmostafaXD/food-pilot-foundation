@@ -918,9 +918,12 @@ const Logs = () => {
                     <Loader2 className="w-6 h-6 animate-spin text-primary" />
                   </div>
                 ) : entries.length === 0 ? (
-                  <div className="flex flex-col items-center py-12 gap-2">
-                    <ClipboardList className="w-8 h-8 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">No entries found</p>
+                  <div className="flex flex-col items-center py-12 gap-3">
+                    <div className="p-3 rounded-full bg-muted">
+                      <ClipboardList className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">No entries found</p>
+                    <p className="text-xs text-muted-foreground">Try adjusting your filters or record a new log entry.</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">

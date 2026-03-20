@@ -505,12 +505,17 @@ const PRP = () => {
             </div>
 
             {filteredPrograms.length === 0 ? (
-              <Card>
+              <Card className="shadow-sm">
                 <CardContent className="flex flex-col items-center py-16 gap-3">
-                  <Shield className="w-8 h-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">
-                    No PRP programs found. Complete the Setup Wizard first.
-                  </p>
+                  <div className="p-4 rounded-full bg-muted">
+                    <Shield className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <div className="text-center space-y-1">
+                    <p className="text-sm font-medium text-foreground">No PRP programs found</p>
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      Complete the Setup Wizard to load PRP programs for your activity, or add a custom program.
+                    </p>
+                  </div>
                 </CardContent>
               </Card>
             ) : (
