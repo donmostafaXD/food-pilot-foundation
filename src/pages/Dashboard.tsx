@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { usePlan } from "@/hooks/usePlan";
-import { isModuleLimited } from "@/lib/plan-features";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,8 +30,9 @@ const Dashboard = () => {
   const [ready, setReady] = useState(false);
 
   const isStaff = effectiveRole === "Staff";
+  const isOwnerLevel = effectiveRole === "Owner" || effectiveRole === "super_admin";
+  const isManagerLevel = isOwnerLevel || effectiveRole === "Manager";
 
-  // Re-fetch branches when role changes (canViewAllBranches depends on role)
   useEffect(() => {
     if (authLoading || !user || !profile?.organization_id) return;
 
@@ -99,8 +99,8 @@ const Dashboard = () => {
           branches={branches}
         />
 
-        {/* Plan context badge for Basic */}
-        {plan === "basic" && (
+        {/* Plan context for Basic */}
+        {plan === "basic" && !isStaff && (
           <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
             <Badge variant="secondary" className="text-[10px]">Basic Plan</Badge>
             <p className="text-xs text-muted-foreground">
@@ -110,15 +110,20 @@ const Dashboard = () => {
           </div>
         )}
 
+        {/* KPIs - all roles, adapted internally */}
         <KPICards branchId={selectedBranchId} />
-        <AlertsSection branchId={selectedBranchId} />
+
+        {/* Alerts - Manager/Owner only */}
+        {isManagerLevel && <AlertsSection branchId={selectedBranchId} />}
+
+        {/* Quick Actions - role-specific */}
         <QuickActions />
 
-        {/* Staff: no charts; Basic: no compliance chart */}
-        {!isStaff && plan !== "basic" && (
+        {/* Charts - Manager/Owner, non-basic */}
+        {isManagerLevel && plan !== "basic" && (
           <ComplianceChart branchId={selectedBranchId} branches={branches} />
         )}
-        {!isStaff && plan === "basic" && (
+        {isManagerLevel && plan === "basic" && (
           <UpgradePrompt
             featureName="Compliance Charts"
             requiredPlan="professional"
@@ -127,6 +132,7 @@ const Dashboard = () => {
           />
         )}
 
+        {/* Recent Activity - all roles, adapted internally */}
         <RecentActivity branchId={selectedBranchId} />
       </div>
     </DashboardLayout>
