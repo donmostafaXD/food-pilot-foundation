@@ -47,6 +47,8 @@ interface SOPItem {
   category: "Food Service" | "Custom";
   isCustom?: boolean;
   customId?: string;
+  /** PRP programs related to this SOP's process step (via prp_mapping) */
+  _relatedPRPs?: string[];
 }
 
 interface FoodSafetySetupItem {
