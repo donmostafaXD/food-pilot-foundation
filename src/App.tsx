@@ -62,8 +62,8 @@ const AppRoutes = () => {
       <Route path="/contact" element={<Contact />} />
 
       {/* Auth */}
-      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
-      <Route path="/register" element={user ? <Navigate to="/dashboard" replace /> : <Register />} />
+      <Route path="/login" element={user ? <Navigate to="/haccp" replace /> : <Login />} />
+      <Route path="/register" element={user ? <Navigate to="/haccp" replace /> : <Register />} />
 
       {/* Protected app routes — core modules only (stabilization phase) */}
       <Route path="/dashboard" element={<ProtectedRoute module="haccp_plan"><Navigate to="/haccp" replace /></ProtectedRoute>} />
