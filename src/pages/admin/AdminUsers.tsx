@@ -75,7 +75,7 @@ export default function AdminUsers() {
   const [addEmail, setAddEmail] = useState("");
   const [addName, setAddName] = useState("");
   const [addRole, setAddRole] = useState("Staff");
-  const [addOrgId, setAddOrgId] = useState("");
+  const [addPlan, setAddPlan] = useState("basic");
   const [adding, setAdding] = useState(false);
   const [tempPassword, setTempPassword] = useState<string | null>(null);
 
@@ -151,10 +151,10 @@ export default function AdminUsers() {
       const res = await supabase.functions.invoke("manage-users", {
         body: {
           action: "invite",
-          email: addEmail.trim(),
+          email: trimmedEmail,
           full_name: addName.trim() || null,
           role: addRole,
-          organization_id: addOrgId || null,
+          subscription_plan: addPlan,
         },
       });
 
@@ -197,7 +197,7 @@ export default function AdminUsers() {
     setAddEmail("");
     setAddName("");
     setAddRole("Staff");
-    setAddOrgId("");
+    setAddPlan("basic");
     setTempPassword(null);
   };
 
@@ -293,14 +293,13 @@ export default function AdminUsers() {
                         </Select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs">Organization</Label>
-                        <Select value={addOrgId} onValueChange={setAddOrgId}>
-                          <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select org..." /></SelectTrigger>
+                        <Label className="text-xs">Plan</Label>
+                        <Select value={addPlan} onValueChange={setAddPlan}>
+                          <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none" className="text-sm text-muted-foreground">No organization</SelectItem>
-                            {orgs.map((o) => (
-                              <SelectItem key={o.id} value={o.id} className="text-sm">{o.name}</SelectItem>
-                            ))}
+                            <SelectItem value="basic" className="text-sm">Basic</SelectItem>
+                            <SelectItem value="professional" className="text-sm">Professional</SelectItem>
+                            <SelectItem value="premium" className="text-sm">Premium</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

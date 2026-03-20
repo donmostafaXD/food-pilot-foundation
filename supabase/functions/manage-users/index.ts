@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { action, email, full_name, role, branch_id, organization_id } = body;
+    const { action, email, full_name, role, branch_id, organization_id, subscription_plan } = body;
 
     // ── 3. Org verification (super_admin bypasses) ──────
     if (!isSuperAdmin) {
@@ -131,6 +131,7 @@ Deno.serve(async (req) => {
         email,
         password: tempPassword,
         email_confirm: true,
+        user_metadata: { subscription_plan: subscription_plan || "basic" },
       });
       if (createError) throw createError;
 
