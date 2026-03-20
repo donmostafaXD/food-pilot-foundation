@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActivity } from "@/contexts/ActivityContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import Step1BusinessInfo from "@/components/setup/Step1BusinessInfo";
