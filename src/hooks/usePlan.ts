@@ -161,10 +161,11 @@ export function usePlan(): PlanFeatures {
 
   // Single source of truth for current plan: admin override first, then organization plan.
   const resolvedPlan = overridePlan ?? dbPlan;
+  const isDemo = resolvedPlan === "demo";
 
   // When override is active, DON'T let super_admin bypass — simulate a real user plan.
   const effectiveAdmin = overridePlan ? false : isSuperAdmin;
-  const isProPlus = effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium";
+  const isProPlus = effectiveAdmin || isDemo || resolvedPlan === "professional" || resolvedPlan === "premium";
   const resolvedLoading = overridePlan ? false : (loading || adminLoading);
 
   // Use admin-defined limits when available, otherwise fall back to defaults
