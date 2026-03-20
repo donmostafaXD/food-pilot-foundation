@@ -23,30 +23,33 @@ const features = [
 
 export default function FeaturesSection() {
   return (
-    <section className="py-24 sm:py-32">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <ScrollReveal className="max-w-2xl mx-auto text-center space-y-4 mb-16">
-          <p className="text-sm font-semibold text-primary uppercase tracking-wider">Platform Features</p>
+    <section className="py-24 sm:py-32 bg-foreground relative overflow-hidden">
+      {/* Ambient glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/[0.06] blur-[120px] pointer-events-none" />
+
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+        <ScrollReveal className="max-w-2xl mx-auto text-center space-y-5 mb-16">
+          <p className="text-xs font-bold text-primary uppercase tracking-[0.2em]">Platform Features</p>
           <h2
-            className="text-3xl sm:text-4xl font-extrabold text-foreground tracking-tight"
-            style={{ lineHeight: 1.12 }}
+            className="text-3xl sm:text-4xl font-extrabold text-background tracking-tight"
+            style={{ lineHeight: 1.1 }}
           >
             Built for Real Food Safety Work
           </h2>
-          <p className="text-muted-foreground max-w-lg mx-auto leading-relaxed" style={{ textWrap: "pretty" }}>
+          <p className="text-background/50 max-w-lg mx-auto leading-relaxed">
             Every tool your food business needs to stay compliant, organized, and always ready for inspection.
           </p>
         </ScrollReveal>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {features.map((f, i) => (
-            <ScrollReveal key={f.title} delay={i * 70}>
-              <div className="group h-full text-center p-5 sm:p-6 rounded-xl border border-border bg-card hover:border-primary/25 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 space-y-3">
-                <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-primary/10 group-hover:bg-primary/15 transition-colors">
+            <ScrollReveal key={f.title} delay={i * 60}>
+              <div className="group h-full text-center p-6 rounded-2xl border border-background/[0.06] bg-background/[0.03] hover:bg-background/[0.07] hover:border-primary/20 hover:-translate-y-1 transition-all duration-500 space-y-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary/15 group-hover:bg-primary/25 group-hover:scale-110 transition-all duration-300">
                   <f.icon className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="text-sm font-semibold text-foreground">{f.title}</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">{f.desc}</p>
+                <h3 className="text-sm font-bold text-background">{f.title}</h3>
+                <p className="text-xs text-background/45 leading-relaxed">{f.desc}</p>
               </div>
             </ScrollReveal>
           ))}
