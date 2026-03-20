@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
+import { useAdminPlanConfig, type AdminPlanDefinition } from "@/hooks/useAdminPlanConfig";
 
 export type PlanTier = "basic" | "professional" | "premium";
 
@@ -95,6 +96,7 @@ const isPlanTier = (value: string | null | undefined): value is PlanTier => {
 
 export function usePlan(): PlanFeatures {
   const { profile, roles } = useAuth();
+  const { plans: adminPlans, loading: adminLoading } = useAdminPlanConfig();
   const [dbPlan, setDbPlan] = useState<PlanTier>("basic");
   const [loading, setLoading] = useState(true);
   const { overridePlan } = useAdminPlanOverride();
@@ -162,27 +164,27 @@ export function usePlan(): PlanFeatures {
   // When override is active, DON'T let super_admin bypass — simulate a real user plan.
   const effectiveAdmin = overridePlan ? false : isSuperAdmin;
   const isProPlus = effectiveAdmin || resolvedPlan === "professional" || resolvedPlan === "premium";
-  const resolvedLoading = overridePlan ? false : loading;
+  const resolvedLoading = overridePlan ? false : (loading || adminLoading);
 
-  // Branch & activity limits per plan
+  // Use admin-defined limits when available, otherwise fall back to defaults
+  const adminDef = adminPlans.find((p) => p.plan_tier === resolvedPlan);
+  const INFINITY_THRESHOLD = 900; // DB stores 999 for unlimited
+
   const maxBranches = effectiveAdmin
     ? Infinity
-    : resolvedPlan === "premium"
-      ? Infinity
-      : resolvedPlan === "professional"
-        ? 3
-        : 1;
+    : adminDef
+      ? (adminDef.max_branches >= INFINITY_THRESHOLD ? Infinity : adminDef.max_branches)
+      : resolvedPlan === "premium" ? Infinity : resolvedPlan === "professional" ? 3 : 1;
+
   const maxActivities = effectiveAdmin
     ? Infinity
-    : resolvedPlan === "premium"
-      ? Infinity
-      : resolvedPlan === "professional"
-        ? 3
-        : 1;
+    : adminDef
+      ? (adminDef.max_activities >= INFINITY_THRESHOLD ? Infinity : adminDef.max_activities)
+      : resolvedPlan === "premium" ? Infinity : resolvedPlan === "professional" ? 3 : 1;
 
   return {
     plan: resolvedPlan,
-    planDisplayName: PLAN_DISPLAY_NAMES[resolvedPlan],
+    planDisplayName: adminDef?.display_name || PLAN_DISPLAY_NAMES[resolvedPlan],
     loading: resolvedLoading,
     // Feature gates
     canAccessManufacturing: isProPlus,

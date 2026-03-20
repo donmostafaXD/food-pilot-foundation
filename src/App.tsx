@@ -29,6 +29,7 @@ import PRP from "./pages/PRP";
 import SOP from "./pages/SOP";
 import EquipmentPage from "./pages/Equipment";
 import AuditReady from "./pages/AuditReady";
+import AdminPanel from "./pages/AdminPanel";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,7 @@ const AppRoutes = () => {
       <Route path="/sop" element={<ProtectedRoute module="sop"><SOP /></ProtectedRoute>} />
       <Route path="/equipment" element={<ProtectedRoute module="equipment"><EquipmentPage /></ProtectedRoute>} />
       <Route path="/audit" element={<ProtectedRoute module="audit"><AuditReady /></ProtectedRoute>} />
+      <Route path="/admin" element={<ProtectedRoute module="settings"><AdminPanel /></ProtectedRoute>} />
 
       {/* Redirects for removed routes */}
       <Route path="/app/pricing" element={<ProtectedRoute><Navigate to="/settings" replace /></ProtectedRoute>} />
