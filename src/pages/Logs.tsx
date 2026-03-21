@@ -98,7 +98,17 @@ interface BranchEquipment {
   id: string;
   equipment_name: string;
   status: string;
+  activity: string | null;
 }
+
+/** Log names that support optional equipment selection (MVP).
+ *  Future: replace with a `requires_equipment` flag per log in logs_unified. */
+const EQUIPMENT_ENABLED_LOGS = new Set([
+  "cold storage log",
+  "cooking log",
+  "freezing log",
+  "hot holding log",
+]);
 
 type ViewMode = "list" | "form" | "entries";
 
