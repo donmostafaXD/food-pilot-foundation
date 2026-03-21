@@ -606,8 +606,8 @@ const Logs = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Monitoring Logs</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Record and view daily food safety logs
-              {activityName && (
+              {isNoOverrideMode ? "Showing all system logs (unfiltered)" : "Record and view daily food safety logs"}
+              {!isNoOverrideMode && activityName && (
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
