@@ -481,10 +481,12 @@ const DEFAULT_SECTIONS: Record<SectionKey, (doc: EnrichedDocument) => string> = 
 
 // ── Main component ──────────────────────────────────
 const Documents = () => {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { plan } = usePlan();
   const { activityName, planId: activePlanId, loading: activityLoading } = useActivityFilter();
   const guard = usePermissionGuard("documents");
+  const { effectiveRole } = useRoleAccess();
+  const isOwner = effectiveRole === "Owner" || effectiveRole === "super_admin";
   const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<EnrichedDocument[]>([]);
   const [uploadedDocs, setUploadedDocs] = useState<EnrichedDocument[]>([]);
@@ -497,6 +499,15 @@ const Documents = () => {
   const [addModalOpen, setAddModalOpen] = useState(false);
   const printRef = useRef<HTMLDivElement>(null);
   const printHeader = usePrintHeader("FSMS Documents");
+
+  // ── Lock state ──
+  const [docLocked, setDocLocked] = useState(false);
+  const [lockLoading, setLockLoading] = useState(false);
+
+  // ── Version state ──
+  const [versions, setVersions] = useState<any[]>([]);
+  const [versionsOpen, setVersionsOpen] = useState(false);
+  const [versionsLoading, setVersionsLoading] = useState(false);
 
   // Load system documents
   const loadDocuments = useCallback(async () => {
