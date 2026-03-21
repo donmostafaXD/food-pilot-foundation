@@ -497,31 +497,37 @@ export type Database = {
       }
       equipment: {
         Row: {
+          activity: string | null
           branch_id: string
           created_at: string
           equipment_name: string
           id: string
           location: string | null
+          notes: string | null
           organization_id: string
           status: string
           type: string | null
         }
         Insert: {
+          activity?: string | null
           branch_id: string
           created_at?: string
           equipment_name: string
           id?: string
           location?: string | null
+          notes?: string | null
           organization_id: string
           status?: string
           type?: string | null
         }
         Update: {
+          activity?: string | null
           branch_id?: string
           created_at?: string
           equipment_name?: string
           id?: string
           location?: string | null
+          notes?: string | null
           organization_id?: string
           status?: string
           type?: string | null

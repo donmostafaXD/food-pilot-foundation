@@ -1,0 +1,2 @@
+ALTER TABLE public.equipment ADD COLUMN IF NOT EXISTS activity text DEFAULT NULL;
+ALTER TABLE public.equipment ADD COLUMN IF NOT EXISTS notes text DEFAULT NULL;

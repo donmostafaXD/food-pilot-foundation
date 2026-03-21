@@ -4,12 +4,13 @@ import { usePermissionGuard } from "@/hooks/usePermissionGuard";
 import { useActivity } from "@/contexts/ActivityContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -51,62 +52,85 @@ interface LibraryItem {
   related_process: string | null;
 }
 
-interface Equipment {
+interface EquipmentItem {
   id: string;
   equipment_name: string;
   type: string | null;
   location: string | null;
   status: string;
+  activity: string | null;
+  notes: string | null;
   created_at: string;
 }
+
+const EQUIPMENT_TYPES = [
+  "Fridge",
+  "Freezer",
+  "Oven",
+  "Mixer",
+  "Storage Tank",
+  "Processing Unit",
+  "Other",
+];
 
 const Equipment = () => {
   const { profile, loading: authLoading } = useAuth();
   const guard = usePermissionGuard("equipment");
   const { activeActivity } = useActivity();
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
+  const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  // Add dialog
+  const activityName = activeActivity?.activity_name ?? null;
+
+  // Add dialog state
   const [showAdd, setShowAdd] = useState(false);
   const [addMode, setAddMode] = useState<"library" | "custom">("library");
   const [selectedLibrary, setSelectedLibrary] = useState("");
   const [customName, setCustomName] = useState("");
   const [addType, setAddType] = useState("");
   const [addLocation, setAddLocation] = useState("");
+  const [addNotes, setAddNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Edit dialog
-  const [editItem, setEditItem] = useState<Equipment | null>(null);
+  // Edit dialog state
+  const [editItem, setEditItem] = useState<EquipmentItem | null>(null);
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState("");
   const [editLocation, setEditLocation] = useState("");
   const [editStatus, setEditStatus] = useState("Active");
+  const [editNotes, setEditNotes] = useState("");
 
   const loadData = async () => {
-    if (!profile?.organization_id) return;
+    if (!profile?.organization_id || !profile?.branch_id) return;
     setLoading(true);
 
+    let eqQuery = supabase
+      .from("equipment")
+      .select("*")
+      .eq("organization_id", profile.organization_id)
+      .eq("branch_id", profile.branch_id)
+      .order("created_at", { ascending: false });
+
+    // Filter by activity
+    if (activityName) {
+      eqQuery = eqQuery.or(`activity.eq.${activityName},activity.is.null`);
+    }
+
     const [eqRes, libRes] = await Promise.all([
-      supabase
-        .from("equipment" as any)
-        .select("*")
-        .eq("organization_id", profile.organization_id)
-        .eq("branch_id", profile.branch_id!)
-        .order("created_at", { ascending: false }),
+      eqQuery,
       supabase.from("equipment_library").select("*"),
     ]);
 
-    setEquipment((eqRes.data || []) as unknown as Equipment[]);
+    setEquipment((eqRes.data || []) as unknown as EquipmentItem[]);
     setLibrary(libRes.data || []);
     setLoading(false);
   };
 
   useEffect(() => {
     if (!authLoading && profile?.organization_id) loadData();
-  }, [authLoading, profile]);
+  }, [authLoading, profile, activityName]);
 
   const filtered = useMemo(() => {
     if (!search) return equipment;
@@ -119,11 +143,18 @@ const Equipment = () => {
     );
   }, [equipment, search]);
 
-  // Exclude already-added library items
   const availableLibrary = useMemo(() => {
     const existingNames = new Set(equipment.map((e) => e.equipment_name.toLowerCase()));
-    return library.filter((l) => !existingNames.has(l.equipment_name.toLowerCase()));
-  }, [library, equipment]);
+    let items = library.filter((l) => !existingNames.has(l.equipment_name.toLowerCase()));
+    // Filter library by activity type if available
+    if (activityName) {
+      const activityFiltered = items.filter(
+        (l) => !l.activity_type || l.activity_type.toLowerCase() === activityName.toLowerCase()
+      );
+      if (activityFiltered.length > 0) items = activityFiltered;
+    }
+    return items;
+  }, [library, equipment, activityName]);
 
   const handleAdd = async () => {
     if (!profile?.organization_id || !profile?.branch_id) return;
@@ -136,12 +167,14 @@ const Equipment = () => {
     setSaving(true);
     const libItem = library.find((l) => l.equipment_name === name);
 
-    const { error } = await supabase.from("equipment" as any).insert({
+    const { error } = await supabase.from("equipment").insert({
       organization_id: profile.organization_id,
       branch_id: profile.branch_id,
       equipment_name: name,
       type: addType || libItem?.activity_type || null,
       location: addLocation || null,
+      activity: activityName,
+      notes: addNotes || null,
       status: "Active",
     } as any);
 
@@ -162,6 +195,7 @@ const Equipment = () => {
     setCustomName("");
     setAddType("");
     setAddLocation("");
+    setAddNotes("");
     setAddMode("library");
   };
 
@@ -170,12 +204,13 @@ const Equipment = () => {
     setSaving(true);
 
     const { error } = await supabase
-      .from("equipment" as any)
+      .from("equipment")
       .update({
         equipment_name: editName,
         type: editType || null,
         location: editLocation || null,
         status: editStatus,
+        notes: editNotes || null,
       } as any)
       .eq("id", editItem.id);
 
@@ -189,10 +224,10 @@ const Equipment = () => {
     }
   };
 
-  const toggleStatus = async (item: Equipment) => {
+  const toggleStatus = async (item: EquipmentItem) => {
     const newStatus = item.status === "Active" ? "Out of Service" : "Active";
     const { error } = await supabase
-      .from("equipment" as any)
+      .from("equipment")
       .update({ status: newStatus } as any)
       .eq("id", item.id);
 
@@ -204,9 +239,9 @@ const Equipment = () => {
     }
   };
 
-  const handleDelete = async (item: Equipment) => {
+  const handleDelete = async (item: EquipmentItem) => {
     const { error } = await supabase
-      .from("equipment" as any)
+      .from("equipment")
       .delete()
       .eq("id", item.id);
 
@@ -218,12 +253,13 @@ const Equipment = () => {
     }
   };
 
-  const openEdit = (item: Equipment) => {
+  const openEdit = (item: EquipmentItem) => {
     setEditItem(item);
     setEditName(item.equipment_name);
     setEditType(item.type || "");
     setEditLocation(item.location || "");
     setEditStatus(item.status);
+    setEditNotes(item.notes || "");
   };
 
   if (authLoading || loading) {
@@ -246,8 +282,10 @@ const Equipment = () => {
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Equipment</h1>
             <p className="text-sm text-muted-foreground mt-1">
               Manage your branch equipment inventory
-              {activeActivity && (
-                <Badge variant="secondary" className="ml-2 text-[10px]">{activeActivity.activity_name}</Badge>
+              {activityName && (
+                <Badge variant="secondary" className="ml-2 text-[10px]">
+                  {activityName}
+                </Badge>
               )}
             </p>
           </div>
@@ -311,6 +349,11 @@ const Equipment = () => {
                       <TableRow key={item.id}>
                         <TableCell className="font-medium text-sm">
                           {item.equipment_name}
+                          {item.notes && (
+                            <p className="text-[11px] text-muted-foreground truncate max-w-[200px]">
+                              {item.notes}
+                            </p>
+                          )}
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {item.type || "—"}
@@ -320,12 +363,16 @@ const Equipment = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${
-                              item.status === "Active" ? "bg-accent" : "bg-destructive"
-                            }`} />
-                            <span className={`text-xs font-medium ${
-                              item.status === "Active" ? "text-accent" : "text-destructive"
-                            }`}>
+                            <span
+                              className={`w-2 h-2 rounded-full shrink-0 ${
+                                item.status === "Active" ? "bg-accent" : "bg-destructive"
+                              }`}
+                            />
+                            <span
+                              className={`text-xs font-medium ${
+                                item.status === "Active" ? "text-accent" : "text-destructive"
+                              }`}
+                            >
                               {item.status}
                             </span>
                           </div>
@@ -333,12 +380,7 @@ const Equipment = () => {
                         {guard.canEdit && (
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => openEdit(item)}
-                              >
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(item)}>
                                 <Edit2 className="w-3.5 h-3.5" />
                               </Button>
                               <Button
@@ -350,9 +392,7 @@ const Equipment = () => {
                               >
                                 <Power
                                   className={`w-3.5 h-3.5 ${
-                                    item.status === "Active"
-                                      ? "text-muted-foreground"
-                                      : "text-primary"
+                                    item.status === "Active" ? "text-muted-foreground" : "text-primary"
                                   }`}
                                 />
                               </Button>
@@ -380,8 +420,14 @@ const Equipment = () => {
                     {filtered.length !== equipment.length && ` (filtered from ${equipment.length})`}
                   </span>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-accent" /> {equipment.filter(e => e.status === "Active").length} Active</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-destructive" /> {equipment.filter(e => e.status !== "Active").length} Inactive</span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-accent" />{" "}
+                      {equipment.filter((e) => e.status === "Active").length} Active
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-destructive" />{" "}
+                      {equipment.filter((e) => e.status !== "Active").length} Inactive
+                    </span>
                   </div>
                 </div>
               </div>
@@ -454,11 +500,16 @@ const Equipment = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Type</Label>
-                  <Input
-                    value={addType}
-                    onChange={(e) => setAddType(e.target.value)}
-                    placeholder="e.g. Refrigeration"
-                  />
+                  <Select value={addType} onValueChange={setAddType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EQUIPMENT_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Location</Label>
@@ -469,6 +520,22 @@ const Equipment = () => {
                   />
                 </div>
               </div>
+
+              <div className="space-y-1.5">
+                <Label>Notes (optional)</Label>
+                <Textarea
+                  value={addNotes}
+                  onChange={(e) => setAddNotes(e.target.value)}
+                  placeholder="Any additional notes..."
+                  rows={2}
+                />
+              </div>
+
+              {activityName && (
+                <p className="text-xs text-muted-foreground">
+                  This equipment will be linked to: <span className="font-medium text-foreground">{activityName}</span>
+                </p>
+              )}
             </div>
 
             <DialogFooter>
@@ -501,7 +568,16 @@ const Equipment = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>Type</Label>
-                  <Input value={editType} onChange={(e) => setEditType(e.target.value)} />
+                  <Select value={editType} onValueChange={setEditType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {EQUIPMENT_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-1.5">
                   <Label>Location</Label>
@@ -519,6 +595,15 @@ const Equipment = () => {
                     <SelectItem value="Out of Service">Out of Service</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Notes (optional)</Label>
+                <Textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Any additional notes..."
+                  rows={2}
+                />
               </div>
             </div>
 
