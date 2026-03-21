@@ -232,6 +232,9 @@ const PRP = () => {
 
   // Dynamic plan-tier filtering using category from prp_master (database-driven)
   const filteredPrograms = useMemo(() => {
+    // No Override Mode: show ALL data unfiltered
+    if (isNoOverrideMode) return programs;
+
     let base = programs;
 
     // Basic plan: only "Core" and "System" category PRPs
@@ -267,7 +270,7 @@ const PRP = () => {
       return p.activity.toLowerCase() === activityName.toLowerCase() ||
         p.activity.toLowerCase() === "all";
     });
-  }, [programs, showAllLibrary, activityName, plan]);
+  }, [programs, showAllLibrary, activityName, plan, isNoOverrideMode]);
 
   const programNames = useMemo(
     () => [...new Set(programs.map((p) => p.program_name))].sort(),
