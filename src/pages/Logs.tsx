@@ -405,6 +405,12 @@ const Logs = () => {
     return logStructures.find((l) => l.log_name === selectedLog)?.related_process_step || null;
   }, [selectedLog, businessType, logStructures, mfgLogs]);
 
+  /** Whether the currently selected log supports optional equipment selection */
+  const showEquipmentField = useMemo(() => {
+    if (!selectedLog || branchEquipment.length === 0) return false;
+    return EQUIPMENT_ENABLED_LOGS.has(selectedLog.toLowerCase());
+  }, [selectedLog, branchEquipment]);
+
   const isCCPLog = useMemo(
     () =>
       ccpLogNames.some((n) => selectedLog.toLowerCase().includes(n.toLowerCase())) ||
