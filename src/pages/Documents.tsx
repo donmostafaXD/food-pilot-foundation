@@ -503,12 +503,18 @@ const Documents = () => {
   // ── Lock state ──
   const [docLocked, setDocLocked] = useState(false);
   const [lockLoading, setLockLoading] = useState(false);
+  const [lockReason, setLockReason] = useState("");
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [lockReasonInput, setLockReasonInput] = useState("");
 
   // ── Version state ──
   const [versions, setVersions] = useState<any[]>([]);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [lockedDocIds, setLockedDocIds] = useState<Set<number>>(new Set());
+  const [versionLabel, setVersionLabel] = useState("");
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [currentVersionNum, setCurrentVersionNum] = useState(0);
 
   // Load system documents
   const loadDocuments = useCallback(async () => {
