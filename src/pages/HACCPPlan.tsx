@@ -107,6 +107,29 @@ const HACCPPlanPage = () => {
     void load();
   }, [profile]);
 
+  // No Override Mode — show disabled message
+  if (isNoOverrideMode) {
+    return (
+      <DashboardLayout>
+        <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+          <Card>
+            <CardContent className="flex flex-col items-center py-16 gap-4">
+              <div className="p-4 rounded-full bg-primary/10">
+                <ShieldCheck className="w-10 h-10 text-primary" />
+              </div>
+              <div className="text-center space-y-2">
+                <h2 className="text-lg font-semibold text-foreground">HACCP Plan — Preview Disabled</h2>
+                <p className="text-sm text-muted-foreground max-w-md">
+                  This view is disabled in preview mode. Select a role and activity to access HACCP plans.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (loading || planLoading) {
     return (
       <DashboardLayout>
