@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useActivity } from "@/contexts/ActivityContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, AlertCircle, Info } from "lucide-react";
@@ -18,7 +19,10 @@ interface Props {
 
 const AlertsSection = ({ branchId }: Props) => {
   const { profile } = useAuth();
+  const { activeActivity } = useActivity();
   const [alerts, setAlerts] = useState<Alert[]>([]);
+
+  const activityName = activeActivity?.activity_name ?? null;
 
   useEffect(() => {
     if (!profile?.organization_id || !branchId) return;
@@ -28,13 +32,26 @@ const AlertsSection = ({ branchId }: Props) => {
       const today = new Date().toISOString().split("T")[0];
       const generated: Alert[] = [];
 
-      // Check for deviations (CCP failures)
-      const { count: deviationCount } = await supabase
+      // Get process steps for scoped queries
+      let processSteps: string[] = [];
+      if (activityName) {
+        const { data: mapping } = await supabase
+          .from("activity_process_map")
+          .select("process")
+          .eq("activity", activityName);
+        processSteps = (mapping || []).map((m) => m.process);
+      }
+
+      // CCP deviations (scoped to activity)
+      let devQuery = supabase
         .from("log_entries")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", orgId)
         .eq("branch_id", branchId)
         .eq("status", "Deviation");
+      if (processSteps.length > 0) devQuery = devQuery.in("process_step", processSteps);
+
+      const { count: deviationCount } = await devQuery;
 
       if (deviationCount && deviationCount > 0) {
         generated.push({
@@ -45,13 +62,16 @@ const AlertsSection = ({ branchId }: Props) => {
         });
       }
 
-      // Check for low log activity today
-      const { count: todayLogs } = await supabase
+      // Missing logs today (scoped to activity)
+      let todayQuery = supabase
         .from("log_entries")
         .select("id", { count: "exact", head: true })
         .eq("organization_id", orgId)
         .eq("branch_id", branchId)
         .gte("created_at", `${today}T00:00:00`);
+      if (processSteps.length > 0) todayQuery = todayQuery.in("process_step", processSteps);
+
+      const { count: todayLogs } = await todayQuery;
 
       if ((todayLogs ?? 0) === 0) {
         generated.push({
@@ -62,20 +82,46 @@ const AlertsSection = ({ branchId }: Props) => {
         });
       }
 
-      // Check for HACCP plan existence
-      const { data: plans } = await supabase
+      // HACCP plan existence check
+      let planQuery = supabase
         .from("haccp_plans")
         .select("id")
         .eq("organization_id", orgId)
         .eq("branch_id", branchId)
         .limit(1);
+      if (activityName) planQuery = planQuery.eq("activity_name", activityName);
+
+      const { data: plans } = await planQuery;
 
       if (!plans || plans.length === 0) {
         generated.push({
           id: "no-plan",
-          message: "No HACCP plan created for this branch",
+          message: "No HACCP plan created for this activity",
           severity: "warning",
           type: "Setup Required",
+        });
+      }
+
+      // Overdue corrective actions (deviations older than 7 days without resolution)
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      let overdueQuery = supabase
+        .from("log_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", orgId)
+        .eq("branch_id", branchId)
+        .eq("status", "Deviation")
+        .lt("created_at", sevenDaysAgo.toISOString());
+      if (processSteps.length > 0) overdueQuery = overdueQuery.in("process_step", processSteps);
+
+      const { count: overdueCount } = await overdueQuery;
+
+      if (overdueCount && overdueCount > 0) {
+        generated.push({
+          id: "overdue-ca",
+          message: `${overdueCount} overdue corrective action${overdueCount > 1 ? "s" : ""} (>7 days)`,
+          severity: "critical",
+          type: "Overdue CA",
         });
       }
 
@@ -83,7 +129,7 @@ const AlertsSection = ({ branchId }: Props) => {
     };
 
     load();
-  }, [profile?.organization_id, branchId]);
+  }, [profile?.organization_id, branchId, activityName]);
 
   if (alerts.length === 0) return null;
 

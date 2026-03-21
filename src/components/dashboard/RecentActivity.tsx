@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useActivity } from "@/contexts/ActivityContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,10 +24,12 @@ interface Props {
 const RecentActivity = ({ branchId }: Props) => {
   const { profile } = useAuth();
   const { effectiveRole } = useRoleAccess();
+  const { activeActivity } = useActivity();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isStaff = effectiveRole === "Staff";
+  const activityName = activeActivity?.activity_name ?? null;
 
   useEffect(() => {
     if (!profile?.organization_id || !branchId) {
@@ -36,20 +39,36 @@ const RecentActivity = ({ branchId }: Props) => {
 
     const load = async () => {
       setLoading(true);
-      const { data } = await supabase
+
+      // Get process steps for activity scope
+      let processSteps: string[] = [];
+      if (activityName) {
+        const { data: mapping } = await supabase
+          .from("activity_process_map")
+          .select("process")
+          .eq("activity", activityName);
+        processSteps = (mapping || []).map((m) => m.process);
+      }
+
+      let query = supabase
         .from("log_entries")
         .select("id, log_name, process_step, status, created_at")
         .eq("organization_id", profile.organization_id!)
         .eq("branch_id", branchId)
         .order("created_at", { ascending: false })
-        .limit(isStaff ? 5 : 8);
+        .limit(isStaff ? 5 : 10);
 
+      if (processSteps.length > 0) {
+        query = query.in("process_step", processSteps);
+      }
+
+      const { data } = await query;
       setLogs((data as LogEntry[]) ?? []);
       setLoading(false);
     };
 
     load();
-  }, [profile?.organization_id, branchId, isStaff]);
+  }, [profile?.organization_id, branchId, isStaff, activityName]);
 
   return (
     <Card className="shadow-sm">

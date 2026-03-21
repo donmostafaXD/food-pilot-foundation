@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
+import { useActivity } from "@/contexts/ActivityContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,15 +23,16 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
   const { profile } = useAuth();
   const { plan } = usePlan();
   const { effectiveRole } = useRoleAccess();
+  const { activeActivity } = useActivity();
   const [trendData, setTrendData] = useState<TrendPoint[]>([]);
   const [branchData, setBranchData] = useState<{ name: string; logs: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   const isStaff = effectiveRole === "Staff";
   const isOwnerLevel = effectiveRole === "Owner" || effectiveRole === "super_admin";
+  const activityName = activeActivity?.activity_name ?? null;
 
   useEffect(() => {
-    // Staff should never see charts
     if (isStaff || !profile?.organization_id || !branchId) {
       setLoading(false);
       return;
@@ -40,52 +42,72 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
       setLoading(true);
       const orgId = profile.organization_id!;
 
-      const days: TrendPoint[] = [];
+      // Get process steps for activity-scoped queries
+      let processSteps: string[] = [];
+      if (activityName) {
+        const { data: mapping } = await supabase
+          .from("activity_process_map")
+          .select("process")
+          .eq("activity", activityName);
+        processSteps = (mapping || []).map((m) => m.process);
+      }
+
+      // 7-day trend - batch into a single query for efficiency
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      let trendQuery = supabase
+        .from("log_entries")
+        .select("created_at, status")
+        .eq("organization_id", orgId)
+        .eq("branch_id", branchId)
+        .gte("created_at", sevenDaysAgo.toISOString())
+        .order("created_at");
+      if (processSteps.length > 0) trendQuery = trendQuery.in("process_step", processSteps);
+
+      const { data: trendLogs } = await trendQuery;
+
+      // Group by day
+      const dayMap = new Map<string, { logs: number; devs: number }>();
       for (let i = 6; i >= 0; i--) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().split("T")[0];
-        const nextDay = new Date(d);
-        nextDay.setDate(nextDay.getDate() + 1);
+        const key = d.toISOString().split("T")[0];
+        dayMap.set(key, { logs: 0, devs: 0 });
+      }
 
-        const { count: logCount } = await supabase
-          .from("log_entries")
-          .select("id", { count: "exact", head: true })
-          .eq("organization_id", orgId)
-          .eq("branch_id", branchId)
-          .gte("created_at", `${dateStr}T00:00:00`)
-          .lt("created_at", `${nextDay.toISOString().split("T")[0]}T00:00:00`);
+      (trendLogs || []).forEach((log: any) => {
+        const key = log.created_at.split("T")[0];
+        const entry = dayMap.get(key);
+        if (entry) {
+          entry.logs++;
+          if (log.status === "Deviation") entry.devs++;
+        }
+      });
 
-        const { count: devCount } = await supabase
-          .from("log_entries")
-          .select("id", { count: "exact", head: true })
-          .eq("organization_id", orgId)
-          .eq("branch_id", branchId)
-          .eq("status", "Deviation")
-          .gte("created_at", `${dateStr}T00:00:00`)
-          .lt("created_at", `${nextDay.toISOString().split("T")[0]}T00:00:00`);
-
-        const logs = logCount ?? 0;
-        const devs = devCount ?? 0;
-        const compliance = logs > 0 ? Math.round(((logs - devs) / logs) * 100) : 100;
-
+      const days: TrendPoint[] = [];
+      dayMap.forEach((val, key) => {
+        const d = new Date(key);
+        const compliance = val.logs > 0 ? Math.round(((val.logs - val.devs) / val.logs) * 100) : 100;
         days.push({
           date: d.toLocaleDateString("en", { weekday: "short" }),
-          logs,
+          logs: val.logs,
           compliance,
         });
-      }
+      });
       setTrendData(days);
 
-      // Branch comparison only for Owner-level on premium
+      // Branch comparison for premium Owner
       if (plan === "premium" && isOwnerLevel && branches.length > 1) {
         const bData = await Promise.all(
           branches.map(async (b) => {
-            const { count } = await supabase
+            let q = supabase
               .from("log_entries")
               .select("id", { count: "exact", head: true })
               .eq("organization_id", orgId)
               .eq("branch_id", b.id);
+            if (processSteps.length > 0) q = q.in("process_step", processSteps);
+            const { count } = await q;
             return { name: b.name, logs: count ?? 0 };
           })
         );
@@ -98,9 +120,8 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
     };
 
     load();
-  }, [profile?.organization_id, branchId, plan, branches, isStaff, isOwnerLevel]);
+  }, [profile?.organization_id, branchId, plan, branches, isStaff, isOwnerLevel, activityName]);
 
-  // Staff or basic plan: no charts
   if (isStaff || plan === "basic") return null;
 
   if (loading) {
@@ -112,13 +133,14 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
     );
   }
 
+  const leftTitle = plan === "premium" ? "Audit Readiness Trend" : "Compliance Trend";
+  const rightTitle = plan === "premium" && branchData.length > 0 ? "Branch Comparison" : "Logs Activity (7 Days)";
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <Card className="shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">
-            {plan === "premium" ? "Audit Readiness Trend" : "Compliance Trend"}
-          </CardTitle>
+          <CardTitle className="text-sm font-semibold">{leftTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
@@ -142,9 +164,7 @@ const ComplianceChart = ({ branchId, branches }: Props) => {
 
       <Card className="shadow-sm">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">
-            {plan === "premium" && branchData.length > 0 ? "Branch Comparison" : "Logs Activity (7 Days)"}
-          </CardTitle>
+          <CardTitle className="text-sm font-semibold">{rightTitle}</CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={200}>
