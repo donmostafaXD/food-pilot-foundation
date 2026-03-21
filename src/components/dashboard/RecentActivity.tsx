@@ -13,6 +13,7 @@ interface LogEntry {
   id: string;
   log_name: string;
   process_step: string | null;
+  data: Record<string, string> | null;
   status: string | null;
   created_at: string;
 }
