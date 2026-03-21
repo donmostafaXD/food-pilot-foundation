@@ -551,6 +551,14 @@ const Documents = () => {
           uploadCategory: d.category,
         }))
       );
+
+      // Load lock statuses
+      const { data: locks } = await supabase
+        .from("document_lock_status")
+        .select("document_id, is_locked")
+        .eq("organization_id", profile.organization_id)
+        .eq("is_locked", true);
+      setLockedDocIds(new Set((locks as any[] || []).map((l: any) => l.document_id)));
     }
 
     setLoading(false);
