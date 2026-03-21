@@ -486,20 +486,22 @@ const SOPPage = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">SOP Procedures</h1>
-            {activityName && (
+            {isNoOverrideMode ? (
+              <p className="text-sm text-muted-foreground mt-1">Showing all SOP procedures (unfiltered)</p>
+            ) : activityName ? (
               <p className="text-sm text-muted-foreground mt-1">
                 Showing procedures for
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
               </p>
-            )}
+            ) : null}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
               <Printer className="w-4 h-4 mr-1" /> Print
             </Button>
-            {plan !== "basic" && (
+            {!isNoOverrideMode && plan !== "basic" && (
               <Button size="sm" onClick={openAddDialog} className="gap-1.5">
                 <Plus className="w-4 h-4" />
                 Add Item
