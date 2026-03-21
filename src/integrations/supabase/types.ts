@@ -495,6 +495,66 @@ export type Database = {
         }
         Relationships: []
       }
+      document_lock_status: {
+        Row: {
+          document_id: number
+          id: string
+          is_locked: boolean
+          locked_at: string | null
+          locked_by: string | null
+          organization_id: string
+        }
+        Insert: {
+          document_id: number
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          organization_id: string
+        }
+        Update: {
+          document_id?: number
+          id?: string
+          is_locked?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
+          organization_id?: string
+        }
+        Relationships: []
+      }
+      document_versions: {
+        Row: {
+          content: Json
+          created_at: string
+          created_by: string | null
+          document_id: number
+          id: string
+          note: string | null
+          organization_id: string
+          version_number: number
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          document_id: number
+          id?: string
+          note?: string | null
+          organization_id: string
+          version_number?: number
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          document_id?: number
+          id?: string
+          note?: string | null
+          organization_id?: string
+          version_number?: number
+        }
+        Relationships: []
+      }
       equipment: {
         Row: {
           activity: string | null
