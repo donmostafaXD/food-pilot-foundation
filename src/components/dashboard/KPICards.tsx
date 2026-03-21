@@ -142,28 +142,73 @@ const KPICards = ({ branchId, branches }: Props) => {
         };
       };
 
-      // --- PRP Score calculation ---
+      // --- PRP Score calculation (frequency-based) ---
       const calcPrpScore = async (): Promise<number> => {
         if (!activityName) return 0;
-        // Total required PRP programs for this activity
-        const { count: totalPrp } = await supabase
+
+        // Get program names mapped to this activity
+        const { data: mappings } = await supabase
           .from("prp_mapping")
-          .select("id", { count: "exact", head: true })
+          .select("program_name")
           .eq("activity", activityName);
-        if (!totalPrp || totalPrp === 0) return 100; // no programs required = fully compliant
+        if (!mappings || mappings.length === 0) return 100;
 
-        // Completed PRP records for this branch (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const { count: completedPrp } = await supabase
-          .from("prp_records")
-          .select("id", { count: "exact", head: true })
-          .eq("organization_id", orgId)
-          .eq("branch_id", branchId)
-          .eq("status", "Completed")
-          .gte("date", thirtyDaysAgo.toISOString().split("T")[0]);
+        const programNames = mappings.map((m) => m.program_name);
 
-        return Math.min(100, Math.round(((completedPrp ?? 0) / totalPrp) * 100));
+        // Get frequency for each program from prp_programs
+        const { data: programs } = await supabase
+          .from("prp_programs")
+          .select("program_name, frequency")
+          .eq("activity", activityName)
+          .in("program_name", programNames);
+
+        // Also check prp_master for frequency fallback
+        const { data: masterPrograms } = await supabase
+          .from("prp_master")
+          .select("program_name, frequency")
+          .in("program_name", programNames);
+
+        // Build frequency lookup: program_name -> frequency
+        const freqMap = new Map<string, string>();
+        (masterPrograms || []).forEach((p) => freqMap.set(p.program_name, p.frequency ?? "Monthly"));
+        (programs || []).forEach((p) => freqMap.set(p.program_name, p.frequency ?? "Monthly"));
+
+        const now = new Date();
+        let totalExpected = 0;
+        let totalCompleted = 0;
+
+        // Evaluate each program based on its frequency
+        await Promise.all(
+          programNames.map(async (name) => {
+            const freq = (freqMap.get(name) ?? "Monthly").toLowerCase();
+            const cutoff = new Date(now);
+
+            if (freq.includes("daily")) {
+              cutoff.setDate(cutoff.getDate() - 1);
+            } else if (freq.includes("weekly")) {
+              cutoff.setDate(cutoff.getDate() - 7);
+            } else {
+              // Monthly or any other
+              cutoff.setDate(cutoff.getDate() - 30);
+            }
+
+            totalExpected += 1;
+
+            const { count } = await supabase
+              .from("prp_records")
+              .select("id", { count: "exact", head: true })
+              .eq("organization_id", orgId)
+              .eq("branch_id", branchId)
+              .eq("program_name", name)
+              .eq("status", "Completed")
+              .gte("date", cutoff.toISOString().split("T")[0]);
+
+            if ((count ?? 0) > 0) totalCompleted += 1;
+          })
+        );
+
+        if (totalExpected === 0) return 100;
+        return Math.min(100, Math.round((totalCompleted / totalExpected) * 100));
       };
 
       const [
