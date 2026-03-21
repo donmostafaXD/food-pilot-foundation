@@ -1313,6 +1313,11 @@ const Documents = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
+                          {lockedDocIds.has(doc.id) && (
+                            <Badge variant="destructive" className="text-[10px]">
+                              <Lock className="w-3 h-3 mr-1" /> Locked
+                            </Badge>
+                          )}
                           {hasDynamicData(doc.document_name) && (
                             <Badge variant="default" className="text-[10px]">Live Data</Badge>
                           )}
