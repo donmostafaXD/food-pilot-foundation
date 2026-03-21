@@ -64,7 +64,7 @@ export interface RoleAccess {
 
 export function useRoleAccess(): RoleAccess {
   const { roles } = useAuth();
-  const { overrideRole } = useAdminPlanOverride();
+  const { overrideRole, overridePlan } = useAdminPlanOverride();
   const { plan } = usePlan();
 
   return useMemo(() => {
