@@ -447,8 +447,8 @@ const PRP = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">PRP Programs</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage prerequisite programs and record daily compliance
-              {activityName && (
+              {isNoOverrideMode ? "Showing all PRP programs (unfiltered)" : "Manage prerequisite programs and record daily compliance"}
+              {!isNoOverrideMode && activityName && (
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
