@@ -746,16 +746,26 @@ const Documents = () => {
   const [savingDoc, setSavingDoc] = useState(false);
   const [loadingContent, setLoadingContent] = useState(false);
 
+  // Load saved content AND lock status when document selected
   useEffect(() => {
     if (!selectedDoc || !profile?.organization_id || selectedDoc.isUploaded) return;
     setEditing(false);
     setLoadingContent(true);
+    setDocLocked(false);
     (async () => {
-      const { data } = await supabase
-        .from("document_custom_content")
-        .select("section_key, content")
-        .eq("organization_id", profile.organization_id!)
-        .eq("document_id", selectedDoc.id);
+      const [{ data }, { data: lockData }] = await Promise.all([
+        supabase
+          .from("document_custom_content")
+          .select("section_key, content")
+          .eq("organization_id", profile.organization_id!)
+          .eq("document_id", selectedDoc.id),
+        supabase
+          .from("document_lock_status")
+          .select("is_locked")
+          .eq("organization_id", profile.organization_id!)
+          .eq("document_id", selectedDoc.id)
+          .maybeSingle(),
+      ]);
 
       const contentMap: Record<string, string> = {};
       (data as any[] || []).forEach((row: any) => {
@@ -763,6 +773,7 @@ const Documents = () => {
       });
       setSavedContent(contentMap);
       setEditContent({});
+      if (lockData) setDocLocked(!!(lockData as any).is_locked);
       setLoadingContent(false);
     })();
   }, [selectedDoc?.id, profile?.organization_id]);
