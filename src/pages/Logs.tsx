@@ -287,13 +287,19 @@ const Logs = () => {
         setLogStructures((prev) => [...prev, ...customStructures]);
       }
 
-      // Load branch equipment for dropdowns
-      const { data: eqData } = await supabase
+      // Load branch equipment for dropdowns – filtered by current activity
+      let eqQuery = supabase
         .from("equipment" as any)
-        .select("id, equipment_name, status")
+        .select("id, equipment_name, status, activity")
         .eq("organization_id", profile.organization_id!)
         .eq("branch_id", profile.branch_id!)
         .eq("status", "Active");
+
+      if (activityName) {
+        eqQuery = eqQuery.or(`activity.eq.${activityName},activity.is.null`);
+      }
+
+      const { data: eqData } = await eqQuery;
       setBranchEquipment((eqData || []) as unknown as BranchEquipment[]);
 
       setLoading(false);
