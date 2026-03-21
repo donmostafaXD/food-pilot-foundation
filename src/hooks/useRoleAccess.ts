@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import { usePlan, type PlanTier } from "@/hooks/usePlan";
+import type { PreviewRole } from "@/contexts/AdminPlanOverrideContext";
 import {
   type AppRole,
   type AppModule,
