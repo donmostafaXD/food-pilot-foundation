@@ -1,4 +1,3 @@
-import { useAuth } from "@/contexts/AuthContext";
 import { usePlan } from "@/hooks/usePlan";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useActivity } from "@/contexts/ActivityContext";
@@ -20,9 +19,8 @@ interface Props {
 }
 
 const DashboardHeader = ({ selectedBranchId, onBranchChange, branches }: Props) => {
-  const { canAccessMultiBranch } = usePlan();
+  const { canAccessMultiBranch, planDisplayName } = usePlan();
   const { canViewAllBranches, effectiveRole } = useRoleAccess();
-  const { plan, planDisplayName } = usePlan();
   const { activeActivity } = useActivity();
 
   const selectedBranch = branches.find((b) => b.id === selectedBranchId);
@@ -47,12 +45,6 @@ const DashboardHeader = ({ selectedBranchId, onBranchChange, branches }: Props) 
             <span className="flex items-center gap-1">
               <Utensils className="h-3.5 w-3.5" />
               {activeActivity.activity_name}
-            </span>
-          )}
-          {selectedBranch && !activeActivity?.activity_name && selectedBranch.activity_type && (
-            <span className="flex items-center gap-1">
-              <Utensils className="h-3.5 w-3.5" />
-              {selectedBranch.activity_type}
             </span>
           )}
           <span className="flex items-center gap-1">

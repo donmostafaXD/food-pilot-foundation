@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { usePlan } from "@/hooks/usePlan";
+import { useActivity } from "@/contexts/ActivityContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ const Dashboard = () => {
   const { profile, loading: authLoading, user, onboardingError, signOut } = useAuth();
   const { canViewAllBranches, effectiveRole } = useRoleAccess();
   const { plan } = usePlan();
+  const { activeActivity } = useActivity();
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -111,7 +113,7 @@ const Dashboard = () => {
         )}
 
         {/* KPIs - all roles, adapted internally */}
-        <KPICards branchId={selectedBranchId} />
+        <KPICards branchId={selectedBranchId} branches={branches} />
 
         {/* Alerts - Manager/Owner only */}
         {isManagerLevel && <AlertsSection branchId={selectedBranchId} />}
