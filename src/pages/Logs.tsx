@@ -438,6 +438,13 @@ const Logs = () => {
 
   const handleSave = async () => {
     if (!profile?.organization_id || !profile?.branch_id) return;
+
+    // CCP logs require equipment when the field is shown
+    if (showEquipmentField && isCCPLog && !formData["Equipment"]) {
+      toast.error("Equipment is required for CCP-related logs");
+      return;
+    }
+
     setSaving(true);
 
     const { error } = await supabase.from("log_entries" as any).insert({
