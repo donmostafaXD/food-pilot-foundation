@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { usePlan } from "@/hooks/usePlan";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
