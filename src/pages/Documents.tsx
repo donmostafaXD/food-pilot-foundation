@@ -508,6 +508,7 @@ const Documents = () => {
   const [versions, setVersions] = useState<any[]>([]);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [versionsLoading, setVersionsLoading] = useState(false);
+  const [lockedDocIds, setLockedDocIds] = useState<Set<number>>(new Set());
 
   // Load system documents
   const loadDocuments = useCallback(async () => {
