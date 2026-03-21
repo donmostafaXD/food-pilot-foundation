@@ -1319,20 +1319,22 @@ const Documents = () => {
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">FSMS Documents</h1>
-            {activityName && (
+            {isNoOverrideMode ? (
+              <p className="text-sm text-muted-foreground mt-1">Showing all documents (unfiltered)</p>
+            ) : activityName ? (
               <p className="text-sm text-muted-foreground mt-1">
                 Filtered for
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
               </p>
-            )}
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">
               {filtered.length} document{filtered.length !== 1 ? "s" : ""}
             </Badge>
-            {guard.canCreate && (
+            {!isNoOverrideMode && guard.canCreate && (
               <Button size="sm" onClick={() => setAddModalOpen(true)} className="gap-1.5">
                 <Plus className="w-4 h-4" />
                 Add Document
