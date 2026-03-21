@@ -994,7 +994,7 @@ const Documents = () => {
                 <Button
                   variant={docLocked ? "destructive" : "outline"}
                   size="sm"
-                  onClick={handleToggleLock}
+                  onClick={() => docLocked ? handleToggleLock() : setLockDialogOpen(true)}
                   disabled={lockLoading}
                 >
                   {lockLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : docLocked ? <Unlock className="w-4 h-4 mr-1" /> : <Lock className="w-4 h-4 mr-1" />}
