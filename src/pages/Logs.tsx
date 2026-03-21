@@ -98,7 +98,17 @@ interface BranchEquipment {
   id: string;
   equipment_name: string;
   status: string;
+  activity: string | null;
 }
+
+/** Log names that support optional equipment selection (MVP).
+ *  Future: replace with a `requires_equipment` flag per log in logs_unified. */
+const EQUIPMENT_ENABLED_LOGS = new Set([
+  "cold storage log",
+  "cooking log",
+  "freezing log",
+  "hot holding log",
+]);
 
 type ViewMode = "list" | "form" | "entries";
 
@@ -277,13 +287,19 @@ const Logs = () => {
         setLogStructures((prev) => [...prev, ...customStructures]);
       }
 
-      // Load branch equipment for dropdowns
-      const { data: eqData } = await supabase
+      // Load branch equipment for dropdowns – filtered by current activity
+      let eqQuery = supabase
         .from("equipment" as any)
-        .select("id, equipment_name, status")
+        .select("id, equipment_name, status, activity")
         .eq("organization_id", profile.organization_id!)
         .eq("branch_id", profile.branch_id!)
         .eq("status", "Active");
+
+      if (activityName) {
+        eqQuery = eqQuery.or(`activity.eq.${activityName},activity.is.null`);
+      }
+
+      const { data: eqData } = await eqQuery;
       setBranchEquipment((eqData || []) as unknown as BranchEquipment[]);
 
       setLoading(false);
@@ -388,6 +404,12 @@ const Logs = () => {
     }
     return logStructures.find((l) => l.log_name === selectedLog)?.related_process_step || null;
   }, [selectedLog, businessType, logStructures, mfgLogs]);
+
+  /** Whether the currently selected log supports optional equipment selection */
+  const showEquipmentField = useMemo(() => {
+    if (!selectedLog || branchEquipment.length === 0) return false;
+    return EQUIPMENT_ENABLED_LOGS.has(selectedLog.toLowerCase());
+  }, [selectedLog, branchEquipment]);
 
   const isCCPLog = useMemo(
     () =>
@@ -829,6 +851,30 @@ const Logs = () => {
                     )}
                   </div>
                 ))}
+
+                {/* Optional equipment selection for applicable logs */}
+                {showEquipmentField && (
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Equipment <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                    <Select
+                      value={formData["Equipment"] || ""}
+                      onValueChange={(val) =>
+                        setFormData((prev) => ({ ...prev, Equipment: val }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select equipment..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {branchEquipment.map((eq) => (
+                          <SelectItem key={eq.id} value={eq.equipment_name}>
+                            {eq.equipment_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Status field */}
                 <div className="space-y-1.5">
