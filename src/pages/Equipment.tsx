@@ -283,15 +283,15 @@ const Equipment = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Equipment</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage your branch equipment inventory
-              {activityName && (
+              {isNoOverrideMode ? "Showing all equipment (unfiltered)" : "Manage your branch equipment inventory"}
+              {!isNoOverrideMode && activityName && (
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
               )}
             </p>
           </div>
-          {guard.canCreate && (
+          {!isNoOverrideMode && guard.canCreate && (
             <Button size="sm" onClick={() => setShowAdd(true)}>
               <Plus className="w-4 h-4 mr-1" />
               Add Equipment
