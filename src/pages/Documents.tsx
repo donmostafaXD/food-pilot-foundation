@@ -832,7 +832,6 @@ const Documents = () => {
     try {
       for (const key of SECTION_KEYS) {
         const content = editContent[key] ?? getSectionContent(key);
-        // Skip saving empty notes to keep clean data
         if (key === "notes" && !content.trim()) continue;
         await supabase.from("document_custom_content").upsert(
           {
@@ -846,30 +845,26 @@ const Documents = () => {
         );
       }
 
-      // Save version snapshot
+      // Save version snapshot with label
       const versionContent: Record<string, string> = {};
       SECTION_KEYS.forEach((k) => {
         versionContent[k] = editContent[k] ?? getSectionContent(k);
       });
-      const { data: latestV } = await supabase
-        .from("document_versions")
-        .select("version_number")
-        .eq("organization_id", profile.organization_id)
-        .eq("document_id", selectedDoc.id)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const nextVersion = ((latestV as any)?.version_number || 0) + 1;
+      const nextVersion = currentVersionNum + 1;
       await supabase.from("document_versions").insert({
         organization_id: profile.organization_id,
         document_id: selectedDoc.id,
         version_number: nextVersion,
         content: versionContent,
         created_by: user?.id || null,
+        note: versionLabel.trim() || null,
       } as any);
 
+      setCurrentVersionNum(nextVersion);
       setSavedContent({ ...editContent });
       setEditing(false);
+      setSaveDialogOpen(false);
+      setVersionLabel("");
       toast.success(`Document saved (v${nextVersion})`);
     } catch (err: any) {
       toast.error("Failed to save", { description: err.message });
@@ -878,7 +873,7 @@ const Documents = () => {
   };
 
   // ── Lock/Unlock ──
-  const handleToggleLock = async () => {
+  const handleToggleLock = async (reason?: string) => {
     if (!selectedDoc || !profile?.organization_id || !isOwner) return;
     setLockLoading(true);
     const newLocked = !docLocked;
@@ -889,11 +884,20 @@ const Documents = () => {
         is_locked: newLocked,
         locked_by: newLocked ? user?.id : null,
         locked_at: newLocked ? new Date().toISOString() : null,
+        lock_reason: newLocked ? (reason || null) : null,
       } as any,
       { onConflict: "organization_id,document_id" }
     );
     setDocLocked(newLocked);
+    setLockReason(newLocked ? (reason || "") : "");
     setLockLoading(false);
+    setLockDialogOpen(false);
+    setLockReasonInput("");
+    if (newLocked) {
+      setLockedDocIds((prev) => new Set([...prev, selectedDoc.id]));
+    } else {
+      setLockedDocIds((prev) => { const s = new Set(prev); s.delete(selectedDoc.id); return s; });
+    }
     toast.success(newLocked ? "Document locked" : "Document unlocked");
   };
 
