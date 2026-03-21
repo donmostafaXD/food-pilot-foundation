@@ -109,7 +109,12 @@ const RecentActivity = ({ branchId }: Props) => {
                 <div className="flex items-center gap-2.5 min-w-0">
                   <ClipboardList className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{log.log_name}</p>
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {log.log_name}
+                      {(log.data as Record<string, string>)?.Equipment && (
+                        <span className="text-muted-foreground font-normal"> — {(log.data as Record<string, string>).Equipment}</span>
+                      )}
+                    </p>
                     {log.process_step && (
                       <p className="text-xs text-muted-foreground truncate">{log.process_step}</p>
                     )}
