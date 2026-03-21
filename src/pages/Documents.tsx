@@ -503,12 +503,18 @@ const Documents = () => {
   // ── Lock state ──
   const [docLocked, setDocLocked] = useState(false);
   const [lockLoading, setLockLoading] = useState(false);
+  const [lockReason, setLockReason] = useState("");
+  const [lockDialogOpen, setLockDialogOpen] = useState(false);
+  const [lockReasonInput, setLockReasonInput] = useState("");
 
   // ── Version state ──
   const [versions, setVersions] = useState<any[]>([]);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [versionsLoading, setVersionsLoading] = useState(false);
   const [lockedDocIds, setLockedDocIds] = useState<Set<number>>(new Set());
+  const [versionLabel, setVersionLabel] = useState("");
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [currentVersionNum, setCurrentVersionNum] = useState(0);
 
   // Load system documents
   const loadDocuments = useCallback(async () => {
@@ -761,8 +767,10 @@ const Documents = () => {
     setEditing(false);
     setLoadingContent(true);
     setDocLocked(false);
+    setLockReason("");
+    setCurrentVersionNum(0);
     (async () => {
-      const [{ data }, { data: lockData }] = await Promise.all([
+      const [{ data }, { data: lockData }, { data: latestV }] = await Promise.all([
         supabase
           .from("document_custom_content")
           .select("section_key, content")
@@ -770,9 +778,17 @@ const Documents = () => {
           .eq("document_id", selectedDoc.id),
         supabase
           .from("document_lock_status")
-          .select("is_locked")
+          .select("is_locked, lock_reason")
           .eq("organization_id", profile.organization_id!)
           .eq("document_id", selectedDoc.id)
+          .maybeSingle(),
+        supabase
+          .from("document_versions")
+          .select("version_number")
+          .eq("organization_id", profile.organization_id!)
+          .eq("document_id", selectedDoc.id)
+          .order("version_number", { ascending: false })
+          .limit(1)
           .maybeSingle(),
       ]);
 
@@ -782,7 +798,11 @@ const Documents = () => {
       });
       setSavedContent(contentMap);
       setEditContent({});
-      if (lockData) setDocLocked(!!(lockData as any).is_locked);
+      if (lockData) {
+        setDocLocked(!!(lockData as any).is_locked);
+        setLockReason((lockData as any).lock_reason || "");
+      }
+      setCurrentVersionNum((latestV as any)?.version_number || 0);
       setLoadingContent(false);
     })();
   }, [selectedDoc?.id, profile?.organization_id]);
@@ -812,7 +832,6 @@ const Documents = () => {
     try {
       for (const key of SECTION_KEYS) {
         const content = editContent[key] ?? getSectionContent(key);
-        // Skip saving empty notes to keep clean data
         if (key === "notes" && !content.trim()) continue;
         await supabase.from("document_custom_content").upsert(
           {
@@ -826,30 +845,26 @@ const Documents = () => {
         );
       }
 
-      // Save version snapshot
+      // Save version snapshot with label
       const versionContent: Record<string, string> = {};
       SECTION_KEYS.forEach((k) => {
         versionContent[k] = editContent[k] ?? getSectionContent(k);
       });
-      const { data: latestV } = await supabase
-        .from("document_versions")
-        .select("version_number")
-        .eq("organization_id", profile.organization_id)
-        .eq("document_id", selectedDoc.id)
-        .order("version_number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      const nextVersion = ((latestV as any)?.version_number || 0) + 1;
+      const nextVersion = currentVersionNum + 1;
       await supabase.from("document_versions").insert({
         organization_id: profile.organization_id,
         document_id: selectedDoc.id,
         version_number: nextVersion,
         content: versionContent,
         created_by: user?.id || null,
+        note: versionLabel.trim() || null,
       } as any);
 
+      setCurrentVersionNum(nextVersion);
       setSavedContent({ ...editContent });
       setEditing(false);
+      setSaveDialogOpen(false);
+      setVersionLabel("");
       toast.success(`Document saved (v${nextVersion})`);
     } catch (err: any) {
       toast.error("Failed to save", { description: err.message });
@@ -858,7 +873,7 @@ const Documents = () => {
   };
 
   // ── Lock/Unlock ──
-  const handleToggleLock = async () => {
+  const handleToggleLock = async (reason?: string) => {
     if (!selectedDoc || !profile?.organization_id || !isOwner) return;
     setLockLoading(true);
     const newLocked = !docLocked;
@@ -869,11 +884,20 @@ const Documents = () => {
         is_locked: newLocked,
         locked_by: newLocked ? user?.id : null,
         locked_at: newLocked ? new Date().toISOString() : null,
+        lock_reason: newLocked ? (reason || null) : null,
       } as any,
       { onConflict: "organization_id,document_id" }
     );
     setDocLocked(newLocked);
+    setLockReason(newLocked ? (reason || "") : "");
     setLockLoading(false);
+    setLockDialogOpen(false);
+    setLockReasonInput("");
+    if (newLocked) {
+      setLockedDocIds((prev) => new Set([...prev, selectedDoc.id]));
+    } else {
+      setLockedDocIds((prev) => { const s = new Set(prev); s.delete(selectedDoc.id); return s; });
+    }
     toast.success(newLocked ? "Document locked" : "Document unlocked");
   };
 
@@ -926,6 +950,9 @@ const Documents = () => {
     const content = printRef.current.innerHTML;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+    const orgName = printHeader.organizationName || "Organization";
+    const versionStr = currentVersionNum > 0 ? `Version ${currentVersionNum}` : "Draft";
+    const exportDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
     printWindow.document.write(`
       <!DOCTYPE html><html><head><title>${selectedDoc.document_name} — PDF Export</title>
       <style>
@@ -936,13 +963,25 @@ const Documents = () => {
         th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
         th { background: #f5f5f5; font-weight: 600; }
         .badge { display: inline-block; padding: 1px 6px; border-radius: 9999px; font-size: 10px; font-weight: 600; }
+        .doc-header-bar { border-bottom: 2px solid #1a1a1a; padding-bottom: 14px; margin-bottom: 24px; }
+        .doc-header-bar .org-name { font-size: 16px; font-weight: 700; margin: 0; }
+        .doc-header-bar .doc-title { font-size: 14px; color: #374151; margin: 2px 0 0; }
+        .doc-header-bar .meta-row { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: #6b7280; }
         .doc-footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #999; display: flex; justify-content: space-between; }
         @media print { body { padding: 0; } }
       </style></head><body>
+        <div class="doc-header-bar">
+          <p class="org-name">${escapeHtml(orgName)}</p>
+          <p class="doc-title">${escapeHtml(selectedDoc.document_name)}</p>
+          <div class="meta-row">
+            <span>${escapeHtml(versionStr)}${docLocked ? " • LOCKED" : ""}</span>
+            <span>Export Date: ${escapeHtml(exportDate)}</span>
+          </div>
+        </div>
         ${content}
         <div class="doc-footer">
-          <span>Exported: ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</span>
-          <span>Save as PDF via your browser's print dialog</span>
+          <span>${escapeHtml(orgName)} — ${escapeHtml(selectedDoc.document_name)}</span>
+          <span>${escapeHtml(versionStr)} • ${escapeHtml(exportDate)}</span>
         </div>
       </body></html>
     `);
@@ -970,7 +1009,7 @@ const Documents = () => {
                 <Button
                   variant={docLocked ? "destructive" : "outline"}
                   size="sm"
-                  onClick={handleToggleLock}
+                  onClick={() => docLocked ? handleToggleLock() : setLockDialogOpen(true)}
                   disabled={lockLoading}
                 >
                   {lockLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : docLocked ? <Unlock className="w-4 h-4 mr-1" /> : <Lock className="w-4 h-4 mr-1" />}
@@ -994,7 +1033,7 @@ const Documents = () => {
                   <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
                     <X className="w-4 h-4 mr-1" /> Cancel
                   </Button>
-                  <Button size="sm" onClick={handleSaveContent} disabled={savingDoc}>
+                  <Button size="sm" onClick={() => setSaveDialogOpen(true)} disabled={savingDoc}>
                     {savingDoc ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
                     Save
                   </Button>
@@ -1048,12 +1087,25 @@ const Documents = () => {
                       <Lock className="w-3 h-3 mr-1" /> Locked
                     </Badge>
                   )}
+                  {currentVersionNum > 0 && (
+                    <Badge variant="outline" className="text-[10px]">
+                      v{currentVersionNum}
+                    </Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{selectedDoc.document_name}</CardTitle>
                 {selectedDoc.responsible && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Responsible: <span className="font-medium">{selectedDoc.responsible}</span>
                   </p>
+                )}
+                {docLocked && lockReason && (
+                  <div className="mt-2 flex items-start gap-2 bg-destructive/10 rounded-md px-3 py-2">
+                    <Lock className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                    <p className="text-xs text-destructive">
+                      <span className="font-medium">Lock reason:</span> {lockReason}
+                    </p>
+                  </div>
                 )}
               </CardHeader>
               <CardContent className="space-y-6">
@@ -1176,7 +1228,12 @@ const Documents = () => {
                 {versions.map((v: any) => (
                   <div key={v.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                     <div>
-                      <p className="text-sm font-medium">Version {v.version_number}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">Version {v.version_number}</p>
+                        {v.note && (
+                          <Badge variant="secondary" className="text-[10px]">{v.note}</Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {new Date(v.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
@@ -1190,6 +1247,64 @@ const Documents = () => {
                 ))}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Save Version Dialog */}
+        <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-base">Save Document Version</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div>
+                <Label htmlFor="version-label" className="text-sm">Version Label (optional)</Label>
+                <Input
+                  id="version-label"
+                  placeholder='e.g. "Audit Ready", "Updated SOP"'
+                  value={versionLabel}
+                  onChange={(e) => setVersionLabel(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleSaveContent} disabled={savingDoc}>
+                  {savingDoc ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                  Save as v{currentVersionNum + 1}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Lock Reason Dialog */}
+        <Dialog open={lockDialogOpen} onOpenChange={setLockDialogOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-base flex items-center gap-2">
+                <Lock className="w-4 h-4" /> Lock Document
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div>
+                <Label htmlFor="lock-reason" className="text-sm">Reason for locking (optional)</Label>
+                <Input
+                  id="lock-reason"
+                  placeholder='e.g. "Approved for audit", "Under review"'
+                  value={lockReasonInput}
+                  onChange={(e) => setLockReasonInput(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setLockDialogOpen(false)}>Cancel</Button>
+                <Button variant="destructive" size="sm" onClick={() => handleToggleLock(lockReasonInput)} disabled={lockLoading}>
+                  {lockLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Lock className="w-4 h-4 mr-1" />}
+                  Lock Document
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </DashboardLayout>

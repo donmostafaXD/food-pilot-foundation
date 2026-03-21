@@ -500,6 +500,7 @@ export type Database = {
           document_id: number
           id: string
           is_locked: boolean
+          lock_reason: string | null
           locked_at: string | null
           locked_by: string | null
           organization_id: string
@@ -508,6 +509,7 @@ export type Database = {
           document_id: number
           id?: string
           is_locked?: boolean
+          lock_reason?: string | null
           locked_at?: string | null
           locked_by?: string | null
           organization_id: string
@@ -516,6 +518,7 @@ export type Database = {
           document_id?: number
           id?: string
           is_locked?: boolean
+          lock_reason?: string | null
           locked_at?: string | null
           locked_by?: string | null
           organization_id?: string
