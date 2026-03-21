@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useActivity } from "@/contexts/ActivityContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
