@@ -1018,7 +1018,7 @@ const Documents = () => {
                   <Button variant="outline" size="sm" onClick={() => setEditing(false)}>
                     <X className="w-4 h-4 mr-1" /> Cancel
                   </Button>
-                  <Button size="sm" onClick={handleSaveContent} disabled={savingDoc}>
+                  <Button size="sm" onClick={() => setSaveDialogOpen(true)} disabled={savingDoc}>
                     {savingDoc ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
                     Save
                   </Button>
