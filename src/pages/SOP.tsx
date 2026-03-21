@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -60,6 +61,7 @@ interface FoodSafetySetupItem {
 const SOPPage = () => {
   const { profile, roles } = useAuth();
   const { plan } = usePlan();
+  const { isNoOverrideMode } = useRoleAccess();
   const isSuperAdmin = roles.includes("super_admin" as any);
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
@@ -197,6 +199,9 @@ const SOPPage = () => {
 
   // Dynamic filtering: driven by plan, activity, HACCP process steps + PRP relevance
   const activityFiltered = useMemo(() => {
+    // No Override Mode: show ALL data unfiltered
+    if (isNoOverrideMode) return sops;
+
     let base = sops;
 
     // Basic plan: hide Manufacturing-specific SOPs
@@ -222,7 +227,7 @@ const SOPPage = () => {
       // If process_step doesn't match, exclude — even if PRP matches
       return matchesProcess;
     });
-  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, BASIC_HIDDEN_SOPS]);
+  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, BASIC_HIDDEN_SOPS, isNoOverrideMode]);
 
   const processSteps = [...new Set(activityFiltered.map((s) => s.process_step))].sort();
 
@@ -481,20 +486,22 @@ const SOPPage = () => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">SOP Procedures</h1>
-            {activityName && (
+            {isNoOverrideMode ? (
+              <p className="text-sm text-muted-foreground mt-1">Showing all SOP procedures (unfiltered)</p>
+            ) : activityName ? (
               <p className="text-sm text-muted-foreground mt-1">
                 Showing procedures for
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
               </p>
-            )}
+            ) : null}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
               <Printer className="w-4 h-4 mr-1" /> Print
             </Button>
-            {plan !== "basic" && (
+            {!isNoOverrideMode && plan !== "basic" && (
               <Button size="sm" onClick={openAddDialog} className="gap-1.5">
                 <Plus className="w-4 h-4" />
                 Add Item
@@ -506,7 +513,7 @@ const SOPPage = () => {
 
         {/* Activity toggle + Filters */}
         <div className="flex flex-col gap-4 mb-6">
-          {activityName && plan !== "basic" && (
+          {!isNoOverrideMode && activityName && plan !== "basic" && (
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-muted-foreground" />
               <Label htmlFor="show-all-sop" className="text-sm text-muted-foreground cursor-pointer">

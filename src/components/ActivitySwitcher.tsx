@@ -14,11 +14,15 @@ import { Utensils } from "lucide-react";
 /**
  * Activity switcher shown in the top header bar.
  * Only visible when the user has more than one activity.
+ * Hidden in No Override mode (neutral admin view).
  */
 export function ActivitySwitcher() {
   const { activities, activeActivityId, switchActivity, loading } = useActivity();
-  const { canChangeActivity } = useRoleAccess();
+  const { canChangeActivity, isNoOverrideMode } = useRoleAccess();
   const { maxActivities } = usePlan();
+
+  // Hide in no-override mode
+  if (isNoOverrideMode) return null;
 
   if (loading || activities.length === 0) return null;
 

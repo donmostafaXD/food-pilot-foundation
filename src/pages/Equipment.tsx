@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissionGuard } from "@/hooks/usePermissionGuard";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { useActivity } from "@/contexts/ActivityContext";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -76,13 +77,14 @@ const EQUIPMENT_TYPES = [
 const Equipment = () => {
   const { profile, loading: authLoading } = useAuth();
   const guard = usePermissionGuard("equipment");
+  const { isNoOverrideMode } = useRoleAccess();
   const { activeActivity } = useActivity();
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [library, setLibrary] = useState<LibraryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const activityName = activeActivity?.activity_name ?? null;
+  const activityName = isNoOverrideMode ? null : (activeActivity?.activity_name ?? null);
 
   // Add dialog state
   const [showAdd, setShowAdd] = useState(false);
@@ -281,15 +283,15 @@ const Equipment = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Equipment</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage your branch equipment inventory
-              {activityName && (
+              {isNoOverrideMode ? "Showing all equipment (unfiltered)" : "Manage your branch equipment inventory"}
+              {!isNoOverrideMode && activityName && (
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
               )}
             </p>
           </div>
-          {guard.canCreate && (
+          {!isNoOverrideMode && guard.canCreate && (
             <Button size="sm" onClick={() => setShowAdd(true)}>
               <Plus className="w-4 h-4 mr-1" />
               Add Equipment

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
 import { usePlan, type PlanTier } from "@/hooks/usePlan";
+import type { PreviewRole } from "@/contexts/AdminPlanOverrideContext";
 import {
   type AppRole,
   type AppModule,
@@ -30,6 +31,8 @@ export interface RoleAccess {
   isPreviewMode: boolean;
   /** True if user is a real super_admin (not preview) */
   isRealSuperAdmin: boolean;
+  /** True when super_admin has NO override active — neutral system-wide view */
+  isNoOverrideMode: boolean;
 
   // ── Permission check functions ─────────────────
   /** Check if user has a specific permission on a module */
@@ -61,7 +64,7 @@ export interface RoleAccess {
 
 export function useRoleAccess(): RoleAccess {
   const { roles } = useAuth();
-  const { overrideRole } = useAdminPlanOverride();
+  const { overrideRole, overridePlan } = useAdminPlanOverride();
   const { plan } = usePlan();
 
   return useMemo(() => {
@@ -75,6 +78,9 @@ export function useRoleAccess(): RoleAccess {
     const effectiveRole = isPreviewMode
       ? (overrideRole as AppRole)
       : realRole;
+
+    // No Override Mode: super_admin with no plan/role override active
+    const isNoOverrideMode = isSuperAdmin && !isPreviewMode && overridePlan === null;
 
     // Permission check using the centralized matrix
     const can = (module: AppModule, action: PermissionAction): boolean =>
@@ -105,6 +111,7 @@ export function useRoleAccess(): RoleAccess {
       realRole,
       isPreviewMode,
       isRealSuperAdmin: isSuperAdmin,
+      isNoOverrideMode,
 
       can,
       canView,
@@ -123,11 +130,13 @@ export function useRoleAccess(): RoleAccess {
       canViewAllBranches: isOwnerLevel,
       canFillLogs: can("logs", "create"),
 
-      // Pass plan to getSidebarVisibility for plan+role gating
-      sidebar: getSidebarVisibility(effectiveRole, plan),
+      // In no-override mode, show all sidebar items
+      sidebar: isNoOverrideMode
+        ? { dashboard: true, haccp: true, logs: true, prp: true, sop: true, equipment: true, audit: true, documents: true, settings: true }
+        : getSidebarVisibility(effectiveRole, plan),
 
       maxUsers: isSuperAdmin && !isPreviewMode ? Infinity : PLAN_USER_LIMITS[plan],
       allowedInviteRoles,
     };
-  }, [roles, overrideRole, plan]);
+  }, [roles, overrideRole, overridePlan, plan]);
 }

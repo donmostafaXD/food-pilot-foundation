@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -110,6 +111,7 @@ const programLogMap: Record<string, string> = {
 const PRP = () => {
   const { profile, loading: authLoading } = useAuth();
   const { plan } = usePlan();
+  const { isNoOverrideMode } = useRoleAccess();
   const { activityName, planProcessNames, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const navigate = useNavigate();
   const printHeader = usePrintHeader("PRP Programs");
@@ -230,6 +232,9 @@ const PRP = () => {
 
   // Dynamic plan-tier filtering using category from prp_master (database-driven)
   const filteredPrograms = useMemo(() => {
+    // No Override Mode: show ALL data unfiltered
+    if (isNoOverrideMode) return programs;
+
     let base = programs;
 
     // Basic plan: only "Core" and "System" category PRPs
@@ -265,7 +270,7 @@ const PRP = () => {
       return p.activity.toLowerCase() === activityName.toLowerCase() ||
         p.activity.toLowerCase() === "all";
     });
-  }, [programs, showAllLibrary, activityName, plan]);
+  }, [programs, showAllLibrary, activityName, plan, isNoOverrideMode]);
 
   const programNames = useMemo(
     () => [...new Set(programs.map((p) => p.program_name))].sort(),
@@ -442,8 +447,8 @@ const PRP = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">PRP Programs</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage prerequisite programs and record daily compliance
-              {activityName && (
+              {isNoOverrideMode ? "Showing all PRP programs (unfiltered)" : "Manage prerequisite programs and record daily compliance"}
+              {!isNoOverrideMode && activityName && (
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
@@ -499,7 +504,7 @@ const PRP = () => {
             {/* Activity filter toggle + Add button */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                {activityName && plan !== "basic" && (
+                {!isNoOverrideMode && activityName && plan !== "basic" && (
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4 text-muted-foreground" />
                     <Label htmlFor="show-all-prp" className="text-sm text-muted-foreground cursor-pointer">
@@ -513,7 +518,7 @@ const PRP = () => {
                   </div>
                 )}
               </div>
-              {plan !== "basic" && (
+              {!isNoOverrideMode && plan !== "basic" && (
                 <Button size="sm" onClick={openAddDialog} className="gap-1.5">
                   <Plus className="w-4 h-4" />
                   Add Item

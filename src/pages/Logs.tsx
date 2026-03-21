@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useActivityFilter } from "@/hooks/useActivityFilter";
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { usePlan } from "@/hooks/usePlan";
 import { supabase } from "@/integrations/supabase/client";
 import DashboardLayout from "@/components/DashboardLayout";
@@ -141,11 +142,12 @@ const Logs = () => {
   const navigate = useNavigate();
   const { profile, loading: authLoading } = useAuth();
   const { overrideRole } = useAdminPlanOverride();
+  const { isNoOverrideMode } = useRoleAccess();
   const isStaffPreview = overrideRole === "Staff";
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const { plan, loading: planLoading } = usePlan();
-  const isBasicPlan = plan === "basic";
-  const isHACCPPlan = plan === "professional";
+  const isBasicPlan = isNoOverrideMode ? false : plan === "basic";
+  const isHACCPPlan = isNoOverrideMode ? false : plan === "professional";
   const printHeader = usePrintHeader("Monitoring Logs");
   const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -324,6 +326,9 @@ const Logs = () => {
   ]), []);
 
   const filteredLogStructures = useMemo(() => {
+    // No Override Mode: show ALL data unfiltered
+    if (isNoOverrideMode) return logStructures;
+
     let base = logStructures;
 
     // Filter by plan tier using log_category (database-driven)
@@ -363,7 +368,7 @@ const Logs = () => {
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan, isHACCPPlan, BASIC_EXCLUDED_PARAMS]);
+  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan, isHACCPPlan, BASIC_EXCLUDED_PARAMS, isNoOverrideMode]);
 
   const logNames = useMemo(() => {
     if (businessType === "Manufacturing") {
@@ -601,8 +606,8 @@ const Logs = () => {
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">Monitoring Logs</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Record and view daily food safety logs
-              {activityName && (
+              {isNoOverrideMode ? "Showing all system logs (unfiltered)" : "Record and view daily food safety logs"}
+              {!isNoOverrideMode && activityName && (
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
@@ -689,7 +694,7 @@ const Logs = () => {
           <>
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                {activityName && (
+                {!isNoOverrideMode && activityName && (
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4 text-muted-foreground" />
                     <Label htmlFor="show-all-logs" className="text-sm text-muted-foreground cursor-pointer">
@@ -703,7 +708,7 @@ const Logs = () => {
                   </div>
                 )}
               </div>
-              {!isStaffPreview && (
+              {!isNoOverrideMode && !isStaffPreview && (
                 <Button size="sm" onClick={openAddDialog} className="gap-1.5">
                   <Plus className="w-4 h-4" />
                   Add Item

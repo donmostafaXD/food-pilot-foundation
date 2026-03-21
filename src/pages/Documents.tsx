@@ -485,7 +485,7 @@ const Documents = () => {
   const { plan } = usePlan();
   const { activityName, planId: activePlanId, loading: activityLoading } = useActivityFilter();
   const guard = usePermissionGuard("documents");
-  const { effectiveRole } = useRoleAccess();
+  const { effectiveRole, isNoOverrideMode } = useRoleAccess();
   const isOwner = effectiveRole === "Owner" || effectiveRole === "super_admin";
   const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<EnrichedDocument[]>([]);
@@ -591,7 +591,8 @@ const Documents = () => {
   const allDocs = useMemo(() => {
     let systemDocs = documents;
 
-    if (!showAllLibrary && activityName) {
+    // No Override Mode: show all unfiltered
+    if (!isNoOverrideMode && !showAllLibrary && activityName) {
       systemDocs = systemDocs.filter((d) => {
         if (d.category === "haccp" || d.category === "prp") return true;
         return true;
@@ -599,7 +600,7 @@ const Documents = () => {
     }
 
     let filteredUploaded = uploadedDocs;
-    if (!showAllLibrary && activityName) {
+    if (!isNoOverrideMode && !showAllLibrary && activityName) {
       filteredUploaded = uploadedDocs.filter((d) => {
         const docActivity = (d as any).activity;
         if (!docActivity) return true;
@@ -608,7 +609,7 @@ const Documents = () => {
     }
 
     return [...systemDocs, ...filteredUploaded];
-  }, [documents, uploadedDocs, showAllLibrary, activityName]);
+  }, [documents, uploadedDocs, showAllLibrary, activityName, isNoOverrideMode]);
 
   const filtered = allDocs.filter((d) => {
     const matchesSearch =
@@ -1318,20 +1319,22 @@ const Documents = () => {
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">FSMS Documents</h1>
-            {activityName && (
+            {isNoOverrideMode ? (
+              <p className="text-sm text-muted-foreground mt-1">Showing all documents (unfiltered)</p>
+            ) : activityName ? (
               <p className="text-sm text-muted-foreground mt-1">
                 Filtered for
                 <Badge variant="secondary" className="ml-2 text-[10px]">
                   {activityName}
                 </Badge>
               </p>
-            )}
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="secondary" className="text-xs">
               {filtered.length} document{filtered.length !== 1 ? "s" : ""}
             </Badge>
-            {guard.canCreate && (
+            {!isNoOverrideMode && guard.canCreate && (
               <Button size="sm" onClick={() => setAddModalOpen(true)} className="gap-1.5">
                 <Plus className="w-4 h-4" />
                 Add Document
@@ -1362,7 +1365,7 @@ const Documents = () => {
               <SelectItem value="general">General FSMS</SelectItem>
             </SelectContent>
           </Select>
-          {activityName && (
+          {!isNoOverrideMode && activityName && (
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-muted-foreground" />
               <Label htmlFor="show-all-docs" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">

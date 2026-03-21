@@ -20,7 +20,7 @@ interface Props {
 
 const DashboardHeader = ({ selectedBranchId, onBranchChange, branches }: Props) => {
   const { canAccessMultiBranch, planDisplayName } = usePlan();
-  const { canViewAllBranches, effectiveRole } = useRoleAccess();
+  const { canViewAllBranches, effectiveRole, isNoOverrideMode } = useRoleAccess();
   const { activeActivity } = useActivity();
 
   const selectedBranch = branches.find((b) => b.id === selectedBranchId);
@@ -31,17 +31,19 @@ const DashboardHeader = ({ selectedBranchId, onBranchChange, branches }: Props) 
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
-          <Badge variant="outline" className="text-xs font-medium">
-            {planDisplayName}
-          </Badge>
-          {effectiveRole && (
+          {!isNoOverrideMode && (
+            <Badge variant="outline" className="text-xs font-medium">
+              {planDisplayName}
+            </Badge>
+          )}
+          {!isNoOverrideMode && effectiveRole && (
             <Badge variant="secondary" className="text-[10px]">
               {effectiveRole}
             </Badge>
           )}
         </div>
         <div className="flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
-          {activeActivity && (
+          {!isNoOverrideMode && activeActivity && (
             <span className="flex items-center gap-1">
               <Utensils className="h-3.5 w-3.5" />
               {activeActivity.activity_name}

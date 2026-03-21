@@ -1,12 +1,34 @@
 import { useAdminPlanOverride } from "@/contexts/AdminPlanOverrideContext";
+import { useRoleAccess } from "@/hooks/useRoleAccess";
 import { PLAN_DISPLAY_NAMES } from "@/hooks/usePlan";
-import { Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Eye, EyeOff, AlertTriangle, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 
 export function PreviewBanner() {
   const { overridePlan, overrideRole, isOverrideActive, resetOverride } = useAdminPlanOverride();
+  const { isNoOverrideMode } = useRoleAccess();
+
+  // No Override Mode banner — neutral system-wide view
+  if (isNoOverrideMode) {
+    return (
+      <div className="bg-primary/10 border-b border-primary/30 px-4 py-2 flex items-center justify-between gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Monitor className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold text-primary uppercase tracking-wide">
+              Preview Mode
+            </span>
+          </div>
+          <span className="text-xs text-muted-foreground hidden sm:inline">—</span>
+          <span className="text-xs text-muted-foreground hidden sm:inline">
+            Showing full system data · Select a role and plan to simulate user experience
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   if (!isOverrideActive) return null;
 
