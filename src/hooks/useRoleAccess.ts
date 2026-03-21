@@ -31,6 +31,8 @@ export interface RoleAccess {
   isPreviewMode: boolean;
   /** True if user is a real super_admin (not preview) */
   isRealSuperAdmin: boolean;
+  /** True when super_admin has NO override active — neutral system-wide view */
+  isNoOverrideMode: boolean;
 
   // ── Permission check functions ─────────────────
   /** Check if user has a specific permission on a module */
