@@ -591,7 +591,8 @@ const Documents = () => {
   const allDocs = useMemo(() => {
     let systemDocs = documents;
 
-    if (!showAllLibrary && activityName) {
+    // No Override Mode: show all unfiltered
+    if (!isNoOverrideMode && !showAllLibrary && activityName) {
       systemDocs = systemDocs.filter((d) => {
         if (d.category === "haccp" || d.category === "prp") return true;
         return true;
@@ -599,7 +600,7 @@ const Documents = () => {
     }
 
     let filteredUploaded = uploadedDocs;
-    if (!showAllLibrary && activityName) {
+    if (!isNoOverrideMode && !showAllLibrary && activityName) {
       filteredUploaded = uploadedDocs.filter((d) => {
         const docActivity = (d as any).activity;
         if (!docActivity) return true;
@@ -608,7 +609,7 @@ const Documents = () => {
     }
 
     return [...systemDocs, ...filteredUploaded];
-  }, [documents, uploadedDocs, showAllLibrary, activityName]);
+  }, [documents, uploadedDocs, showAllLibrary, activityName, isNoOverrideMode]);
 
   const filtered = allDocs.filter((d) => {
     const matchesSearch =
