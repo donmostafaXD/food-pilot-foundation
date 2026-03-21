@@ -128,17 +128,22 @@ export function AppSidebar() {
                   {profile.full_name}
                 </p>
               )}
-              {isRealSuperAdmin && !isPreviewMode && (
+              {isNoOverrideMode && (
+                <Badge variant="outline" className="mt-1 text-[10px] gap-1 px-1.5 py-0 border-primary/40 text-primary bg-primary/10">
+                  System View
+                </Badge>
+              )}
+              {!isNoOverrideMode && isRealSuperAdmin && !isPreviewMode && (
                 <Badge variant="destructive" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
                   <Crown className="h-3 w-3" /> Super Admin
                 </Badge>
               )}
-              {isPreviewMode && (
+              {!isNoOverrideMode && isPreviewMode && (
                 <Badge variant="secondary" className="mt-1 text-[10px] gap-1 px-1.5 py-0 border-warning/40 text-warning bg-warning/10">
                   Preview: {overrideRole}
                 </Badge>
               )}
-              {!isRealSuperAdmin && !isPreviewMode && effectiveRole && (
+              {!isNoOverrideMode && !isRealSuperAdmin && !isPreviewMode && effectiveRole && (
                 <Badge variant="outline" className="mt-1 text-[10px] gap-1 px-1.5 py-0">
                   {effectiveRole}
                 </Badge>
