@@ -142,11 +142,12 @@ const Logs = () => {
   const navigate = useNavigate();
   const { profile, loading: authLoading } = useAuth();
   const { overrideRole } = useAdminPlanOverride();
+  const { isNoOverrideMode } = useRoleAccess();
   const isStaffPreview = overrideRole === "Staff";
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const { plan, loading: planLoading } = usePlan();
-  const isBasicPlan = plan === "basic";
-  const isHACCPPlan = plan === "professional";
+  const isBasicPlan = isNoOverrideMode ? false : plan === "basic";
+  const isHACCPPlan = isNoOverrideMode ? false : plan === "professional";
   const printHeader = usePrintHeader("Monitoring Logs");
   const [printOpen, setPrintOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
