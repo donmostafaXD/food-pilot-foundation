@@ -1034,6 +1034,11 @@ const Documents = () => {
                       {activityName}
                     </Badge>
                   )}
+                  {docLocked && (
+                    <Badge variant="destructive" className="text-[10px]">
+                      <Lock className="w-3 h-3 mr-1" /> Locked
+                    </Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{selectedDoc.document_name}</CardTitle>
                 {selectedDoc.responsible && (
