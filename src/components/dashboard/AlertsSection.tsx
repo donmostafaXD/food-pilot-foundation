@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useActivity } from "@/contexts/ActivityContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { AlertTriangle, AlertCircle, Info, CheckCircle2 } from "lucide-react";
 
 interface Alert {
   id: string;
   message: string;
   severity: "critical" | "warning" | "info";
   type: string;
+  priority: number; // lower = higher priority
 }
 
 interface Props {
@@ -21,13 +22,18 @@ const AlertsSection = ({ branchId }: Props) => {
   const { profile } = useAuth();
   const { activeActivity } = useActivity();
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const activityName = activeActivity?.activity_name ?? null;
 
   useEffect(() => {
-    if (!profile?.organization_id || !branchId) return;
+    if (!profile?.organization_id || !branchId) {
+      setLoading(false);
+      return;
+    }
 
     const load = async () => {
+      setLoading(true);
       const orgId = profile.organization_id!;
       const today = new Date().toISOString().split("T")[0];
       const generated: Alert[] = [];
@@ -42,7 +48,7 @@ const AlertsSection = ({ branchId }: Props) => {
         processSteps = (mapping || []).map((m) => m.process);
       }
 
-      // CCP deviations (scoped to activity)
+      // 1. CCP failures (highest priority)
       let devQuery = supabase
         .from("log_entries")
         .select("id", { count: "exact", head: true })
@@ -59,50 +65,11 @@ const AlertsSection = ({ branchId }: Props) => {
           message: `${deviationCount} CCP deviation${deviationCount > 1 ? "s" : ""} recorded`,
           severity: "critical",
           type: "CCP Failure",
+          priority: 1,
         });
       }
 
-      // Missing logs today (scoped to activity)
-      let todayQuery = supabase
-        .from("log_entries")
-        .select("id", { count: "exact", head: true })
-        .eq("organization_id", orgId)
-        .eq("branch_id", branchId)
-        .gte("created_at", `${today}T00:00:00`);
-      if (processSteps.length > 0) todayQuery = todayQuery.in("process_step", processSteps);
-
-      const { count: todayLogs } = await todayQuery;
-
-      if ((todayLogs ?? 0) === 0) {
-        generated.push({
-          id: "no-logs",
-          message: "No logs recorded today – monitoring may be incomplete",
-          severity: "warning",
-          type: "Missing Logs",
-        });
-      }
-
-      // HACCP plan existence check
-      let planQuery = supabase
-        .from("haccp_plans")
-        .select("id")
-        .eq("organization_id", orgId)
-        .eq("branch_id", branchId)
-        .limit(1);
-      if (activityName) planQuery = planQuery.eq("activity_name", activityName);
-
-      const { data: plans } = await planQuery;
-
-      if (!plans || plans.length === 0) {
-        generated.push({
-          id: "no-plan",
-          message: "No HACCP plan created for this activity",
-          severity: "warning",
-          type: "Setup Required",
-        });
-      }
-
-      // Overdue corrective actions (deviations older than 7 days without resolution)
+      // 2. Overdue corrective actions (second priority)
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       let overdueQuery = supabase
@@ -122,16 +89,76 @@ const AlertsSection = ({ branchId }: Props) => {
           message: `${overdueCount} overdue corrective action${overdueCount > 1 ? "s" : ""} (>7 days)`,
           severity: "critical",
           type: "Overdue CA",
+          priority: 2,
         });
       }
 
+      // 3. Missing logs today (third priority)
+      let todayQuery = supabase
+        .from("log_entries")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", orgId)
+        .eq("branch_id", branchId)
+        .gte("created_at", `${today}T00:00:00`);
+      if (processSteps.length > 0) todayQuery = todayQuery.in("process_step", processSteps);
+
+      const { count: todayLogs } = await todayQuery;
+
+      if ((todayLogs ?? 0) === 0) {
+        generated.push({
+          id: "no-logs",
+          message: "No logs recorded today – monitoring may be incomplete",
+          severity: "warning",
+          type: "Missing Logs",
+          priority: 3,
+        });
+      }
+
+      // 4. HACCP plan existence check (info)
+      let planQuery = supabase
+        .from("haccp_plans")
+        .select("id")
+        .eq("organization_id", orgId)
+        .eq("branch_id", branchId)
+        .limit(1);
+      if (activityName) planQuery = planQuery.eq("activity_name", activityName);
+
+      const { data: plans } = await planQuery;
+
+      if (!plans || plans.length === 0) {
+        generated.push({
+          id: "no-plan",
+          message: "No HACCP plan created for this activity",
+          severity: "warning",
+          type: "Setup Required",
+          priority: 4,
+        });
+      }
+
+      // Sort by priority (CCP failures first, then overdue CA, then missing logs)
+      generated.sort((a, b) => a.priority - b.priority);
       setAlerts(generated);
+      setLoading(false);
     };
 
     load();
   }, [profile?.organization_id, branchId, activityName]);
 
-  if (alerts.length === 0) return null;
+  // Empty state: show a positive "all clear" message
+  if (!loading && alerts.length === 0) {
+    return (
+      <Card className="shadow-sm border-l-4 border-l-accent/50">
+        <CardContent className="flex items-center gap-3 py-4">
+          <div className="p-2 rounded-full bg-accent/10">
+            <CheckCircle2 className="h-4 w-4 text-accent" />
+          </div>
+          <p className="text-sm text-muted-foreground">No alerts at this time</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (loading) return null;
 
   const severityConfig = {
     critical: { icon: AlertCircle, bg: "bg-destructive/10", text: "text-destructive", badge: "destructive" as const },

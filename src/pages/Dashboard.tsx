@@ -115,17 +115,17 @@ const Dashboard = () => {
         {/* KPIs - all roles, adapted internally */}
         <KPICards branchId={selectedBranchId} branches={branches} />
 
-        {/* Alerts - Manager/Owner only */}
-        {isManagerLevel && <AlertsSection branchId={selectedBranchId} />}
+        {/* Alerts - Manager/Owner see full alerts, Staff sees alerts too */}
+        <AlertsSection branchId={selectedBranchId} />
 
         {/* Quick Actions - role-specific */}
         <QuickActions />
 
-        {/* Charts - Manager/Owner, non-basic */}
-        {isManagerLevel && plan !== "basic" && (
+        {/* Charts - Manager/Owner, non-basic; hidden for Staff */}
+        {!isStaff && isManagerLevel && plan !== "basic" && (
           <ComplianceChart branchId={selectedBranchId} branches={branches} />
         )}
-        {isManagerLevel && plan === "basic" && (
+        {!isStaff && isManagerLevel && plan === "basic" && (
           <UpgradePrompt
             featureName="Compliance Charts"
             requiredPlan="professional"
