@@ -1087,12 +1087,25 @@ const Documents = () => {
                       <Lock className="w-3 h-3 mr-1" /> Locked
                     </Badge>
                   )}
+                  {currentVersionNum > 0 && (
+                    <Badge variant="outline" className="text-[10px]">
+                      v{currentVersionNum}
+                    </Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{selectedDoc.document_name}</CardTitle>
                 {selectedDoc.responsible && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Responsible: <span className="font-medium">{selectedDoc.responsible}</span>
                   </p>
+                )}
+                {docLocked && lockReason && (
+                  <div className="mt-2 flex items-start gap-2 bg-destructive/10 rounded-md px-3 py-2">
+                    <Lock className="w-3.5 h-3.5 text-destructive shrink-0 mt-0.5" />
+                    <p className="text-xs text-destructive">
+                      <span className="font-medium">Lock reason:</span> {lockReason}
+                    </p>
+                  </div>
                 )}
               </CardHeader>
               <CardContent className="space-y-6">
