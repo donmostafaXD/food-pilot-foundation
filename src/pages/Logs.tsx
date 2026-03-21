@@ -859,10 +859,17 @@ const Logs = () => {
                   </div>
                 ))}
 
-                {/* Optional equipment selection for applicable logs */}
+                {/* Optional equipment selection for applicable logs (required for CCP) */}
                 {showEquipmentField && (
                   <div className="space-y-1.5">
-                    <Label className="text-sm">Equipment <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                    <Label className="text-sm">
+                      Equipment
+                      {isCCPLog ? (
+                        <span className="text-destructive ml-1">*</span>
+                      ) : (
+                        <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                      )}
+                    </Label>
                     <Select
                       value={formData["Equipment"] || ""}
                       onValueChange={(val) =>
