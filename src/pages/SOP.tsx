@@ -199,6 +199,9 @@ const SOPPage = () => {
 
   // Dynamic filtering: driven by plan, activity, HACCP process steps + PRP relevance
   const activityFiltered = useMemo(() => {
+    // No Override Mode: show ALL data unfiltered
+    if (isNoOverrideMode) return sops;
+
     let base = sops;
 
     // Basic plan: hide Manufacturing-specific SOPs
@@ -224,7 +227,7 @@ const SOPPage = () => {
       // If process_step doesn't match, exclude — even if PRP matches
       return matchesProcess;
     });
-  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, BASIC_HIDDEN_SOPS]);
+  }, [sops, showAllLibrary, activityName, activityProcesses, planProcessNames, plan, BASIC_HIDDEN_SOPS, isNoOverrideMode]);
 
   const processSteps = [...new Set(activityFiltered.map((s) => s.process_step))].sort();
 
