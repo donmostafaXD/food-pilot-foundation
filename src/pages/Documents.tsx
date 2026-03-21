@@ -1228,7 +1228,12 @@ const Documents = () => {
                 {versions.map((v: any) => (
                   <div key={v.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
                     <div>
-                      <p className="text-sm font-medium">Version {v.version_number}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">Version {v.version_number}</p>
+                        {v.note && (
+                          <Badge variant="secondary" className="text-[10px]">{v.note}</Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         {new Date(v.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                       </p>
@@ -1242,6 +1247,64 @@ const Documents = () => {
                 ))}
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Save Version Dialog */}
+        <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-base">Save Document Version</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div>
+                <Label htmlFor="version-label" className="text-sm">Version Label (optional)</Label>
+                <Input
+                  id="version-label"
+                  placeholder='e.g. "Audit Ready", "Updated SOP"'
+                  value={versionLabel}
+                  onChange={(e) => setVersionLabel(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSaveDialogOpen(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleSaveContent} disabled={savingDoc}>
+                  {savingDoc ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
+                  Save as v{currentVersionNum + 1}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Lock Reason Dialog */}
+        <Dialog open={lockDialogOpen} onOpenChange={setLockDialogOpen}>
+          <DialogContent className="sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-base flex items-center gap-2">
+                <Lock className="w-4 h-4" /> Lock Document
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 pt-2">
+              <div>
+                <Label htmlFor="lock-reason" className="text-sm">Reason for locking (optional)</Label>
+                <Input
+                  id="lock-reason"
+                  placeholder='e.g. "Approved for audit", "Under review"'
+                  value={lockReasonInput}
+                  onChange={(e) => setLockReasonInput(e.target.value)}
+                  className="mt-1"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" size="sm" onClick={() => setLockDialogOpen(false)}>Cancel</Button>
+                <Button variant="destructive" size="sm" onClick={() => handleToggleLock(lockReasonInput)} disabled={lockLoading}>
+                  {lockLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Lock className="w-4 h-4 mr-1" />}
+                  Lock Document
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </DashboardLayout>
