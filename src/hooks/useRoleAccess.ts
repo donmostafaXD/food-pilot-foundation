@@ -79,6 +79,9 @@ export function useRoleAccess(): RoleAccess {
       ? (overrideRole as AppRole)
       : realRole;
 
+    // No Override Mode: super_admin with no plan/role override active
+    const isNoOverrideMode = isSuperAdmin && !isPreviewMode && overridePlan === null;
+
     // Permission check using the centralized matrix
     const can = (module: AppModule, action: PermissionAction): boolean =>
       hasPermission(effectiveRole, module, action);
