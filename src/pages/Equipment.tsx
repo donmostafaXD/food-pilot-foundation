@@ -84,7 +84,7 @@ const Equipment = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const activityName = activeActivity?.activity_name ?? null;
+  const activityName = isNoOverrideMode ? null : (activeActivity?.activity_name ?? null);
 
   // Add dialog state
   const [showAdd, setShowAdd] = useState(false);
