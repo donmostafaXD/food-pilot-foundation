@@ -1147,6 +1147,42 @@ const Documents = () => {
             </Card>
           </div>
         </div>
+
+        {/* Version History Dialog */}
+        <Dialog open={versionsOpen} onOpenChange={setVersionsOpen}>
+          <DialogContent className="sm:max-w-md max-h-[70vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-base flex items-center gap-2">
+                <History className="w-4 h-4" /> Version History
+              </DialogTitle>
+            </DialogHeader>
+            {versionsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : versions.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">No versions saved yet. Edit and save the document to create a version.</p>
+            ) : (
+              <div className="space-y-2">
+                {versions.map((v: any) => (
+                  <div key={v.id} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">Version {v.version_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(v.created_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                    {!docLocked && guard.canEdit && (
+                      <Button variant="outline" size="sm" onClick={() => restoreVersion(v)} disabled={savingDoc}>
+                        <RotateCcw className="w-3.5 h-3.5 mr-1" /> Restore
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </DashboardLayout>
     );
   }
