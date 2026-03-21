@@ -61,6 +61,7 @@ interface FoodSafetySetupItem {
 const SOPPage = () => {
   const { profile, roles } = useAuth();
   const { plan } = usePlan();
+  const { isNoOverrideMode } = useRoleAccess();
   const isSuperAdmin = roles.includes("super_admin" as any);
   const { activityName, activityProcesses, planProcessNames, businessType: activityBusinessType, planJustUpdated, loading: activityLoading } = useActivityFilter();
   const [loading, setLoading] = useState(true);
