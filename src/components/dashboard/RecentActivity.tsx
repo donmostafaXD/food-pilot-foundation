@@ -13,6 +13,7 @@ interface LogEntry {
   id: string;
   log_name: string;
   process_step: string | null;
+  data: Record<string, string> | null;
   status: string | null;
   created_at: string;
 }
@@ -51,7 +52,7 @@ const RecentActivity = ({ branchId }: Props) => {
 
       let query = supabase
         .from("log_entries")
-        .select("id, log_name, process_step, status, created_at")
+        .select("id, log_name, process_step, data, status, created_at")
         .eq("organization_id", profile.organization_id!)
         .eq("branch_id", branchId)
         .order("created_at", { ascending: false })
@@ -108,7 +109,12 @@ const RecentActivity = ({ branchId }: Props) => {
                 <div className="flex items-center gap-2.5 min-w-0">
                   <ClipboardList className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{log.log_name}</p>
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {log.log_name}
+                      {(log.data as Record<string, string>)?.Equipment && (
+                        <span className="text-muted-foreground font-normal"> — {(log.data as Record<string, string>).Equipment}</span>
+                      )}
+                    </p>
                     {log.process_step && (
                       <p className="text-xs text-muted-foreground truncate">{log.process_step}</p>
                     )}

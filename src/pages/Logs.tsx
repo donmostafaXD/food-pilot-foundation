@@ -438,6 +438,13 @@ const Logs = () => {
 
   const handleSave = async () => {
     if (!profile?.organization_id || !profile?.branch_id) return;
+
+    // CCP logs require equipment when the field is shown
+    if (showEquipmentField && isCCPLog && !formData["Equipment"]) {
+      toast.error("Equipment is required for CCP-related logs");
+      return;
+    }
+
     setSaving(true);
 
     const { error } = await supabase.from("log_entries" as any).insert({
@@ -852,10 +859,17 @@ const Logs = () => {
                   </div>
                 ))}
 
-                {/* Optional equipment selection for applicable logs */}
+                {/* Optional equipment selection for applicable logs (required for CCP) */}
                 {showEquipmentField && (
                   <div className="space-y-1.5">
-                    <Label className="text-sm">Equipment <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                    <Label className="text-sm">
+                      Equipment
+                      {isCCPLog ? (
+                        <span className="text-destructive ml-1">*</span>
+                      ) : (
+                        <span className="text-muted-foreground font-normal ml-1">(optional)</span>
+                      )}
+                    </Label>
                     <Select
                       value={formData["Equipment"] || ""}
                       onValueChange={(val) =>
@@ -985,6 +999,7 @@ const Logs = () => {
                         <TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Log</TableHead>
+                          <TableHead>Equipment</TableHead>
                           <TableHead>Process</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Details</TableHead>
@@ -997,6 +1012,10 @@ const Logs = () => {
                               entry.log_name.toLowerCase().includes(n.toLowerCase())
                             ) || entry.log_name.toLowerCase().includes("ccp");
                           const isDeviation = entry.status === "Not OK";
+                          const equipmentVal = (entry.data as Record<string, string>)?.Equipment || null;
+                          const equipmentExists = equipmentVal
+                            ? branchEquipment.some((eq) => eq.equipment_name === equipmentVal)
+                            : true;
                           return (
                             <TableRow
                               key={entry.id}
@@ -1015,6 +1034,19 @@ const Logs = () => {
                                   )}
                                 </div>
                               </TableCell>
+                              <TableCell className="text-sm">
+                                {equipmentVal ? (
+                                  equipmentExists ? (
+                                    <span>{equipmentVal}</span>
+                                  ) : (
+                                    <span className="text-destructive italic" title="This equipment has been deleted">
+                                      Deleted Equipment
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
                                 {entry.process_step || "—"}
                               </TableCell>
@@ -1028,7 +1060,7 @@ const Logs = () => {
                               </TableCell>
                               <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
                                 {Object.entries(entry.data || {})
-                                  .filter(([k]) => k !== "Date" && k !== "Time")
+                                  .filter(([k]) => k !== "Date" && k !== "Time" && k !== "Equipment")
                                   .map(([k, v]) => `${k}: ${v}`)
                                   .join(", ") || "—"}
                               </TableCell>
