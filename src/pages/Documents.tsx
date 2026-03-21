@@ -950,6 +950,9 @@ const Documents = () => {
     const content = printRef.current.innerHTML;
     const printWindow = window.open("", "_blank");
     if (!printWindow) return;
+    const orgName = printHeader.organizationName || "Organization";
+    const versionStr = currentVersionNum > 0 ? `Version ${currentVersionNum}` : "Draft";
+    const exportDate = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
     printWindow.document.write(`
       <!DOCTYPE html><html><head><title>${selectedDoc.document_name} — PDF Export</title>
       <style>
@@ -960,13 +963,25 @@ const Documents = () => {
         th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
         th { background: #f5f5f5; font-weight: 600; }
         .badge { display: inline-block; padding: 1px 6px; border-radius: 9999px; font-size: 10px; font-weight: 600; }
+        .doc-header-bar { border-bottom: 2px solid #1a1a1a; padding-bottom: 14px; margin-bottom: 24px; }
+        .doc-header-bar .org-name { font-size: 16px; font-weight: 700; margin: 0; }
+        .doc-header-bar .doc-title { font-size: 14px; color: #374151; margin: 2px 0 0; }
+        .doc-header-bar .meta-row { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: #6b7280; }
         .doc-footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #999; display: flex; justify-content: space-between; }
         @media print { body { padding: 0; } }
       </style></head><body>
+        <div class="doc-header-bar">
+          <p class="org-name">${escapeHtml(orgName)}</p>
+          <p class="doc-title">${escapeHtml(selectedDoc.document_name)}</p>
+          <div class="meta-row">
+            <span>${escapeHtml(versionStr)}${docLocked ? " • LOCKED" : ""}</span>
+            <span>Export Date: ${escapeHtml(exportDate)}</span>
+          </div>
+        </div>
         ${content}
         <div class="doc-footer">
-          <span>Exported: ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</span>
-          <span>Save as PDF via your browser's print dialog</span>
+          <span>${escapeHtml(orgName)} — ${escapeHtml(selectedDoc.document_name)}</span>
+          <span>${escapeHtml(versionStr)} • ${escapeHtml(exportDate)}</span>
         </div>
       </body></html>
     `);
