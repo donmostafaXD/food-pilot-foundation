@@ -816,14 +816,132 @@ const Documents = () => {
           { onConflict: "organization_id,document_id,section_key" }
         );
       }
+
+      // Save version snapshot
+      const versionContent: Record<string, string> = {};
+      SECTION_KEYS.forEach((k) => {
+        versionContent[k] = editContent[k] ?? getSectionContent(k);
+      });
+      const { data: latestV } = await supabase
+        .from("document_versions")
+        .select("version_number")
+        .eq("organization_id", profile.organization_id)
+        .eq("document_id", selectedDoc.id)
+        .order("version_number", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const nextVersion = ((latestV as any)?.version_number || 0) + 1;
+      await supabase.from("document_versions").insert({
+        organization_id: profile.organization_id,
+        document_id: selectedDoc.id,
+        version_number: nextVersion,
+        content: versionContent,
+        created_by: user?.id || null,
+      } as any);
+
       setSavedContent({ ...editContent });
       setEditing(false);
-      toast.success("Document saved");
+      toast.success(`Document saved (v${nextVersion})`);
     } catch (err: any) {
       toast.error("Failed to save", { description: err.message });
     }
     setSavingDoc(false);
   };
+
+  // ── Lock/Unlock ──
+  const handleToggleLock = async () => {
+    if (!selectedDoc || !profile?.organization_id || !isOwner) return;
+    setLockLoading(true);
+    const newLocked = !docLocked;
+    await supabase.from("document_lock_status").upsert(
+      {
+        organization_id: profile.organization_id,
+        document_id: selectedDoc.id,
+        is_locked: newLocked,
+        locked_by: newLocked ? user?.id : null,
+        locked_at: newLocked ? new Date().toISOString() : null,
+      } as any,
+      { onConflict: "organization_id,document_id" }
+    );
+    setDocLocked(newLocked);
+    setLockLoading(false);
+    toast.success(newLocked ? "Document locked" : "Document unlocked");
+  };
+
+  // ── Version history ──
+  const loadVersions = async () => {
+    if (!selectedDoc || !profile?.organization_id) return;
+    setVersionsLoading(true);
+    const { data } = await supabase
+      .from("document_versions")
+      .select("*")
+      .eq("organization_id", profile.organization_id)
+      .eq("document_id", selectedDoc.id)
+      .order("version_number", { ascending: false });
+    setVersions((data as any[]) || []);
+    setVersionsLoading(false);
+    setVersionsOpen(true);
+  };
+
+  const restoreVersion = async (version: any) => {
+    if (!selectedDoc || !profile?.organization_id) return;
+    const content = version.content as Record<string, string>;
+    setSavingDoc(true);
+    try {
+      for (const key of SECTION_KEYS) {
+        if (content[key] === undefined) continue;
+        await supabase.from("document_custom_content").upsert(
+          {
+            organization_id: profile.organization_id,
+            document_id: selectedDoc.id,
+            section_key: key,
+            content: content[key],
+            updated_at: new Date().toISOString(),
+          } as any,
+          { onConflict: "organization_id,document_id,section_key" }
+        );
+      }
+      setSavedContent(content);
+      setEditing(false);
+      setVersionsOpen(false);
+      toast.success(`Restored to v${version.version_number}`);
+    } catch {
+      toast.error("Failed to restore version");
+    }
+    setSavingDoc(false);
+  };
+
+  // ── PDF Export ──
+  const handlePdfExport = () => {
+    if (!selectedDoc || !printRef.current) return;
+    const content = printRef.current.innerHTML;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html><html><head><title>${selectedDoc.document_name} — PDF Export</title>
+      <style>
+        @page { size: A4; margin: 20mm; }
+        body { font-family: system-ui, -apple-system, sans-serif; color: #1a1a1a; line-height: 1.6; max-width: 210mm; margin: 0 auto; padding: 20px; }
+        h1 { font-size: 20px; margin-bottom: 4px; } h2 { font-size: 16px; margin-top: 20px; } h3 { font-size: 14px; margin-top: 16px; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+        th, td { border: 1px solid #ddd; padding: 6px 8px; text-align: left; }
+        th { background: #f5f5f5; font-weight: 600; }
+        .badge { display: inline-block; padding: 1px 6px; border-radius: 9999px; font-size: 10px; font-weight: 600; }
+        .doc-footer { margin-top: 40px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 10px; color: #999; display: flex; justify-content: space-between; }
+        @media print { body { padding: 0; } }
+      </style></head><body>
+        ${content}
+        <div class="doc-footer">
+          <span>Exported: ${new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" })}</span>
+          <span>Save as PDF via your browser's print dialog</span>
+        </div>
+      </body></html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 400);
+  };
+
+  const canEdit = guard.canEdit && !docLocked && !selectedDoc?.isUploaded;
 
   // ── Detail view ────────────────────────────────────
   if (selectedDoc) {
