@@ -767,8 +767,10 @@ const Documents = () => {
     setEditing(false);
     setLoadingContent(true);
     setDocLocked(false);
+    setLockReason("");
+    setCurrentVersionNum(0);
     (async () => {
-      const [{ data }, { data: lockData }] = await Promise.all([
+      const [{ data }, { data: lockData }, { data: latestV }] = await Promise.all([
         supabase
           .from("document_custom_content")
           .select("section_key, content")
@@ -776,9 +778,17 @@ const Documents = () => {
           .eq("document_id", selectedDoc.id),
         supabase
           .from("document_lock_status")
-          .select("is_locked")
+          .select("is_locked, lock_reason")
           .eq("organization_id", profile.organization_id!)
           .eq("document_id", selectedDoc.id)
+          .maybeSingle(),
+        supabase
+          .from("document_versions")
+          .select("version_number")
+          .eq("organization_id", profile.organization_id!)
+          .eq("document_id", selectedDoc.id)
+          .order("version_number", { ascending: false })
+          .limit(1)
           .maybeSingle(),
       ]);
 
@@ -788,7 +798,11 @@ const Documents = () => {
       });
       setSavedContent(contentMap);
       setEditContent({});
-      if (lockData) setDocLocked(!!(lockData as any).is_locked);
+      if (lockData) {
+        setDocLocked(!!(lockData as any).is_locked);
+        setLockReason((lockData as any).lock_reason || "");
+      }
+      setCurrentVersionNum((latestV as any)?.version_number || 0);
       setLoadingContent(false);
     })();
   }, [selectedDoc?.id, profile?.organization_id]);
