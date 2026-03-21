@@ -115,8 +115,8 @@ const Dashboard = () => {
         {/* KPIs - all roles, adapted internally */}
         <KPICards branchId={selectedBranchId} branches={branches} />
 
-        {/* Alerts - Manager/Owner only */}
-        {isManagerLevel && <AlertsSection branchId={selectedBranchId} />}
+        {/* Alerts - Manager/Owner see full alerts, Staff sees alerts too */}
+        <AlertsSection branchId={selectedBranchId} />
 
         {/* Quick Actions - role-specific */}
         <QuickActions />
