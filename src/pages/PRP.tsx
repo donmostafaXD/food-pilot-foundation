@@ -504,19 +504,6 @@ const PRP = () => {
             {/* Activity filter toggle + Add button */}
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
-                {!isNoOverrideMode && activityName && plan !== "basic" && (
-                  <div className="flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-muted-foreground" />
-                    <Label htmlFor="show-all-prp" className="text-sm text-muted-foreground cursor-pointer">
-                      Show All Library
-                    </Label>
-                    <Switch
-                      id="show-all-prp"
-                      checked={showAllLibrary}
-                      onCheckedChange={setShowAllLibrary}
-                    />
-                  </div>
-                )}
               </div>
               {!isNoOverrideMode && plan !== "basic" && (
                 <Button size="sm" onClick={openAddDialog} className="gap-1.5">

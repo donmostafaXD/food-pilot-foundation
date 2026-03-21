@@ -1365,19 +1365,6 @@ const Documents = () => {
               <SelectItem value="general">General FSMS</SelectItem>
             </SelectContent>
           </Select>
-          {!isNoOverrideMode && activityName && (
-            <div className="flex items-center gap-2">
-              <Eye className="w-4 h-4 text-muted-foreground" />
-              <Label htmlFor="show-all-docs" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
-                Show All
-              </Label>
-              <Switch
-                id="show-all-docs"
-                checked={showAllLibrary}
-                onCheckedChange={setShowAllLibrary}
-              />
-            </div>
-          )}
         </div>
 
         {/* Loading */}
