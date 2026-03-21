@@ -55,7 +55,7 @@ export function AppSidebar() {
   const { signOut, profile } = useAuth();
   const { overrideRole } = useAdminPlanOverride();
   const { plan } = usePlan();
-  const { effectiveRole, isRealSuperAdmin, isPreviewMode, sidebar } = useRoleAccess();
+  const { effectiveRole, isRealSuperAdmin, isPreviewMode, sidebar, isNoOverrideMode } = useRoleAccess();
 
   const isActive = (path: string) => location.pathname === path;
 
