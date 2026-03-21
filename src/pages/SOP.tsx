@@ -653,7 +653,7 @@ const SOPPage = () => {
                     ))}
                     {libraryHidden.length > 20 && (
                       <p className="text-xs text-muted-foreground text-center">
-                        +{libraryHidden.length - 20} more — use "Show All Library" toggle
+                        +{libraryHidden.length - 20} more available
                       </p>
                     )}
                   </>
