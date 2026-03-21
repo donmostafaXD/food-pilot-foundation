@@ -111,6 +111,7 @@ export function useRoleAccess(): RoleAccess {
       realRole,
       isPreviewMode,
       isRealSuperAdmin: isSuperAdmin,
+      isNoOverrideMode,
 
       can,
       canView,
@@ -129,11 +130,13 @@ export function useRoleAccess(): RoleAccess {
       canViewAllBranches: isOwnerLevel,
       canFillLogs: can("logs", "create"),
 
-      // Pass plan to getSidebarVisibility for plan+role gating
-      sidebar: getSidebarVisibility(effectiveRole, plan),
+      // In no-override mode, show all sidebar items
+      sidebar: isNoOverrideMode
+        ? { dashboard: true, haccp: true, logs: true, prp: true, sop: true, equipment: true, audit: true, documents: true, settings: true }
+        : getSidebarVisibility(effectiveRole, plan),
 
       maxUsers: isSuperAdmin && !isPreviewMode ? Infinity : PLAN_USER_LIMITS[plan],
       allowedInviteRoles,
     };
-  }, [roles, overrideRole, plan]);
+  }, [roles, overrideRole, overridePlan, plan]);
 }
