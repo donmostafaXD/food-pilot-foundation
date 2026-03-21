@@ -852,6 +852,30 @@ const Logs = () => {
                   </div>
                 ))}
 
+                {/* Optional equipment selection for applicable logs */}
+                {showEquipmentField && (
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Equipment <span className="text-muted-foreground font-normal">(optional)</span></Label>
+                    <Select
+                      value={formData["Equipment"] || ""}
+                      onValueChange={(val) =>
+                        setFormData((prev) => ({ ...prev, Equipment: val }))
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select equipment..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {branchEquipment.map((eq) => (
+                          <SelectItem key={eq.id} value={eq.equipment_name}>
+                            {eq.equipment_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
                 {/* Status field */}
                 <div className="space-y-1.5">
                   <Label className="text-sm">Status</Label>
