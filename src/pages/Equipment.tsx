@@ -77,6 +77,7 @@ const EQUIPMENT_TYPES = [
 const Equipment = () => {
   const { profile, loading: authLoading } = useAuth();
   const guard = usePermissionGuard("equipment");
+  const { isNoOverrideMode } = useRoleAccess();
   const { activeActivity } = useActivity();
   const [equipment, setEquipment] = useState<EquipmentItem[]>([]);
   const [library, setLibrary] = useState<LibraryItem[]>([]);
