@@ -39,6 +39,8 @@ import {
   Eye,
   Upload,
   Trash2,
+  BookOpen,
+  ClipboardList,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -71,6 +73,7 @@ interface EnrichedDocument extends DocLibraryItem {
 const HACCP_KEYWORDS = [
   "haccp", "hazard", "critical control", "ccp", "flow diagram",
   "product description", "verification", "corrective action",
+  "food safety manual",
 ];
 const PRP_KEYWORDS = ["prerequisite", "prp", "cleaning", "sanitation", "pest", "hygiene", "maintenance"];
 
@@ -246,6 +249,224 @@ function HazardAnalysisData({ orgId, planId }: { orgId: string; planId: string |
   );
 }
 
+/** Dynamic PRP Programs data rendered from prp_mapping + prp_master */
+function PRPProgramsData({ activityName }: { activityName: string | null }) {
+  const [programs, setPrograms] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      if (!activityName) { setLoading(false); return; }
+
+      // Get mapped program names for activity
+      const { data: mapping } = await supabase
+        .from("prp_mapping")
+        .select("program_name")
+        .eq("activity", activityName);
+
+      const names = (mapping || []).map((m) => m.program_name);
+
+      if (names.length === 0) {
+        setPrograms([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get program details from prp_master
+      const { data: masterData } = await supabase
+        .from("prp_master")
+        .select("*")
+        .in("program_name", names)
+        .order("id");
+
+      setPrograms(masterData || []);
+      setLoading(false);
+    })();
+  }, [activityName]);
+
+  if (loading) return <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading PRP data...</div>;
+  if (!programs.length) return <p className="text-sm text-muted-foreground italic py-2">No PRP programs mapped for this activity.</p>;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+        <Shield className="w-4 h-4 text-primary" />
+        Prerequisite Programs
+      </h3>
+      <div className="border border-border rounded-md overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/50">
+              <th className="text-left p-2 font-medium text-muted-foreground">Program</th>
+              <th className="text-left p-2 font-medium text-muted-foreground">Category</th>
+              <th className="text-left p-2 font-medium text-muted-foreground">Frequency</th>
+              <th className="text-left p-2 font-medium text-muted-foreground">Responsible</th>
+            </tr>
+          </thead>
+          <tbody>
+            {programs.map((p: any) => (
+              <tr key={p.id} className="border-t border-border">
+                <td className="p-2 font-medium">{p.program_name}</td>
+                <td className="p-2">
+                  <Badge variant="outline" className="text-[10px]">{p.category || "Core"}</Badge>
+                </td>
+                <td className="p-2 text-xs text-muted-foreground">{p.frequency || "—"}</td>
+                <td className="p-2 text-xs text-muted-foreground">{p.responsible || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-muted-foreground">{programs.length} program{programs.length !== 1 ? "s" : ""} applicable to current activity</p>
+    </div>
+  );
+}
+
+/** Dynamic SOP Procedures data rendered from sop_library filtered by plan process steps */
+function SOPProceduresData({ planId }: { planId: string | null }) {
+  const [sops, setSOPs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      if (!planId) { setLoading(false); return; }
+
+      // Get plan process steps
+      const { data: stepsData } = await supabase
+        .from("haccp_plan_steps")
+        .select("process_name")
+        .eq("haccp_plan_id", planId);
+
+      const processNames = (stepsData || []).map((s) => s.process_name);
+      if (processNames.length === 0) {
+        setSOPs([]);
+        setLoading(false);
+        return;
+      }
+
+      // Get SOPs matching process steps
+      const { data: sopData } = await supabase
+        .from("sop_library")
+        .select("*")
+        .in("process_step", processNames)
+        .order("id");
+
+      setSOPs(sopData || []);
+      setLoading(false);
+    })();
+  }, [planId]);
+
+  if (loading) return <div className="flex items-center gap-2 text-muted-foreground py-4"><Loader2 className="w-4 h-4 animate-spin" /> Loading SOP data...</div>;
+  if (!sops.length) return <p className="text-sm text-muted-foreground italic py-2">No SOP procedures mapped for this activity.</p>;
+
+  return (
+    <div className="space-y-3">
+      <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+        <BookOpen className="w-4 h-4 text-primary" />
+        Standard Operating Procedures
+      </h3>
+      <div className="border border-border rounded-md overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-muted/50">
+              <th className="text-left p-2 font-medium text-muted-foreground">SOP Title</th>
+              <th className="text-left p-2 font-medium text-muted-foreground">Process Step</th>
+              <th className="text-left p-2 font-medium text-muted-foreground">Responsible</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sops.map((s: any) => (
+              <tr key={s.id} className="border-t border-border">
+                <td className="p-2 font-medium">{s.sop_title}</td>
+                <td className="p-2 text-xs text-muted-foreground">{s.process_step}</td>
+                <td className="p-2 text-xs text-muted-foreground">{s.responsible || "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-muted-foreground">{sops.length} procedure{sops.length !== 1 ? "s" : ""} linked to current plan</p>
+    </div>
+  );
+}
+
+/** Food Safety Manual — aggregates HACCP, PRP, and SOP data */
+function FoodSafetyManualData({
+  orgId, planId, activityName,
+}: { orgId: string; planId: string | null; activityName: string | null }) {
+  return (
+    <div className="space-y-6">
+      <div className="bg-primary/5 rounded-lg p-4 border border-primary/10">
+        <h3 className="text-sm font-semibold text-foreground mb-1">Food Safety Management System Manual</h3>
+        <p className="text-xs text-muted-foreground">
+          This document aggregates all components of your Food Safety Management System including HACCP Plan, 
+          Prerequisite Programs, and Standard Operating Procedures for the current activity.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Section 1: Process Flow</h4>
+        <FlowDiagramData orgId={orgId} planId={planId} />
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Section 2: Hazard Analysis & Critical Control Points</h4>
+        <HACCPPlanData orgId={orgId} planId={planId} />
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Section 3: Prerequisite Programs</h4>
+        <PRPProgramsData activityName={activityName} />
+      </div>
+
+      <Separator />
+
+      <div className="space-y-2">
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Section 4: Standard Operating Procedures</h4>
+        <SOPProceduresData planId={planId} />
+      </div>
+    </div>
+  );
+}
+
+// ── Editable section keys ──────────────────────────
+const SECTION_KEYS = ["purpose", "scope", "responsibilities", "procedures", "notes"] as const;
+type SectionKey = typeof SECTION_KEYS[number];
+
+const SECTION_LABELS: Record<SectionKey, string> = {
+  purpose: "Purpose",
+  scope: "Scope",
+  responsibilities: "Responsibilities",
+  procedures: "Procedures & Requirements",
+  notes: "Additional Notes",
+};
+
+const DEFAULT_SECTIONS: Record<SectionKey, (doc: EnrichedDocument) => string> = {
+  purpose: (doc) =>
+    `This document defines the requirements and procedures for ${doc.document_name.toLowerCase()} within the food safety management system.`,
+  scope: () =>
+    `Applicable to all food handling operations and personnel involved in food safety activities.`,
+  responsibilities: (doc) =>
+    `• ${doc.responsible || "Food Safety Team Leader"} — Oversight and review\n• QA Team — Implementation and monitoring\n• All Staff — Compliance with procedures`,
+  procedures: (doc) => {
+    const lower = doc.document_name.toLowerCase();
+    if (lower.includes("haccp"))
+      return `1. Conduct hazard analysis for all process steps\n2. Determine Critical Control Points (CCPs)\n3. Establish critical limits for each CCP\n4. Establish monitoring procedures\n5. Establish corrective actions\n6. Establish verification procedures\n7. Establish record keeping`;
+    if (lower.includes("prp") || lower.includes("prerequisite"))
+      return `1. Implement all prerequisite programs as defined\n2. Conduct regular inspections per program frequency\n3. Document all findings and corrective actions\n4. Review program effectiveness periodically`;
+    if (lower.includes("sop"))
+      return `1. Follow standard operating procedures for each process step\n2. Train all staff on relevant SOPs\n3. Review and update SOPs when processes change\n4. Document deviations and corrective actions`;
+    if (lower.includes("manual"))
+      return `This manual encompasses all elements of the Food Safety Management System including HACCP principles, prerequisite programs, standard operating procedures, and monitoring protocols.`;
+    return `Refer to the relevant system data sections below for detailed procedures.`;
+  },
+  notes: () => "",
+};
+
 // ── Main component ──────────────────────────────────
 const Documents = () => {
   const { profile } = useAuth();
@@ -332,20 +553,13 @@ const Documents = () => {
   const allDocs = useMemo(() => {
     let systemDocs = documents;
 
-    // Activity-based filtering for system docs
     if (!showAllLibrary && activityName) {
-      const actLower = activityName.toLowerCase();
-      // Filter docs relevant to activity by keyword matching
       systemDocs = systemDocs.filter((d) => {
-        const lower = d.document_name.toLowerCase();
-        // Always include core HACCP/PRP docs
         if (d.category === "haccp" || d.category === "prp") return true;
-        // For general docs, include if name relates to activity or is universal
-        return true; // System docs are always relevant
+        return true;
       });
     }
 
-    // Uploaded docs: filter by activity
     let filteredUploaded = uploadedDocs;
     if (!showAllLibrary && activityName) {
       filteredUploaded = uploadedDocs.filter((d) => {
@@ -380,7 +594,6 @@ const Documents = () => {
     return matchesSearch && matchesCategory;
   });
 
-  // Separate system vs uploaded for display
   const systemFiltered = filtered.filter((d) => !d.isUploaded);
   const uploadFiltered = filtered.filter((d) => d.isUploaded);
 
@@ -397,7 +610,6 @@ const Documents = () => {
 
   const handleDeleteUploaded = async (doc: EnrichedDocument) => {
     if (!doc.uploadedId) return;
-    // Delete file from storage if exists
     if (doc.filePath) {
       await supabase.storage.from("documents").remove([doc.filePath]);
     }
@@ -452,31 +664,59 @@ const Documents = () => {
     return <FolderOpen className="w-4 h-4 text-primary" />;
   };
 
+  /** Check if a document has dynamic live data to render */
   const hasDynamicData = (name: string) => {
     const lower = name.toLowerCase();
-    return lower.includes("haccp plan") || lower.includes("flow diagram") || lower.includes("hazard analysis");
+    return (
+      lower.includes("haccp plan") ||
+      lower.includes("flow diagram") ||
+      lower.includes("hazard analysis") ||
+      lower.includes("prp program") ||
+      lower.includes("prerequisite program") ||
+      lower.includes("sop procedure") ||
+      lower.includes("food safety manual")
+    );
   };
 
+  /** Render the appropriate dynamic data component(s) for a document */
   const renderDynamicContent = (doc: EnrichedDocument) => {
     if (!profile?.organization_id) return null;
     const lower = doc.document_name.toLowerCase();
-    if (lower.includes("haccp plan")) return <HACCPPlanData orgId={profile.organization_id} planId={activePlanId} />;
-    if (lower.includes("flow diagram")) return <FlowDiagramData orgId={profile.organization_id} planId={activePlanId} />;
-    if (lower.includes("hazard analysis")) return <HazardAnalysisData orgId={profile.organization_id} planId={activePlanId} />;
-    return null;
+
+    // Food Safety Manual → full aggregate
+    if (lower.includes("food safety manual")) {
+      return (
+        <FoodSafetyManualData
+          orgId={profile.organization_id}
+          planId={activePlanId}
+          activityName={activityName}
+        />
+      );
+    }
+
+    // Individual document types
+    const sections: React.ReactNode[] = [];
+
+    if (lower.includes("haccp plan")) {
+      sections.push(<HACCPPlanData key="haccp" orgId={profile.organization_id} planId={activePlanId} />);
+    }
+    if (lower.includes("flow diagram")) {
+      sections.push(<FlowDiagramData key="flow" orgId={profile.organization_id} planId={activePlanId} />);
+    }
+    if (lower.includes("hazard analysis")) {
+      sections.push(<HazardAnalysisData key="hazard" orgId={profile.organization_id} planId={activePlanId} />);
+    }
+    if (lower.includes("prp program") || lower.includes("prerequisite program")) {
+      sections.push(<PRPProgramsData key="prp" activityName={activityName} />);
+    }
+    if (lower.includes("sop procedure")) {
+      sections.push(<SOPProceduresData key="sop" planId={activePlanId} />);
+    }
+
+    return sections.length > 0 ? <div className="space-y-6">{sections}</div> : null;
   };
 
   // ── Editable document sections ──────────────────────
-  const SECTION_KEYS = ["purpose", "scope", "responsibilities"] as const;
-  const DEFAULT_SECTIONS: Record<string, (doc: EnrichedDocument) => string> = {
-    purpose: (doc) =>
-      `This document defines the requirements and procedures for ${doc.document_name.toLowerCase()} within the food safety management system.`,
-    scope: () =>
-      `Applicable to all food handling operations and personnel involved in food safety activities.`,
-    responsibilities: (doc) =>
-      `• ${doc.responsible || "Food Safety Team Leader"} — Oversight and review\n• QA Team — Implementation and monitoring\n• All Staff — Compliance with procedures`,
-  };
-
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState<Record<string, string>>({});
   const [savedContent, setSavedContent] = useState<Record<string, string>>({});
@@ -505,7 +745,7 @@ const Documents = () => {
   }, [selectedDoc?.id, profile?.organization_id]);
 
   const getSectionContent = useCallback(
-    (key: string) => {
+    (key: SectionKey) => {
       if (editing && editContent[key] !== undefined) return editContent[key];
       if (savedContent[key] !== undefined) return savedContent[key];
       return selectedDoc ? DEFAULT_SECTIONS[key]?.(selectedDoc) || "" : "";
@@ -529,6 +769,8 @@ const Documents = () => {
     try {
       for (const key of SECTION_KEYS) {
         const content = editContent[key] ?? getSectionContent(key);
+        // Skip saving empty notes to keep clean data
+        if (key === "notes" && !content.trim()) continue;
         await supabase.from("document_custom_content").upsert(
           {
             organization_id: profile.organization_id,
@@ -551,6 +793,9 @@ const Documents = () => {
 
   // ── Detail view ────────────────────────────────────
   if (selectedDoc) {
+    const dynamicContent = renderDynamicContent(selectedDoc);
+    const hasLiveData = hasDynamicData(selectedDoc.document_name);
+
     return (
       <DashboardLayout>
         <div className="p-4 lg:p-8 max-w-4xl mx-auto">
@@ -603,6 +848,16 @@ const Documents = () => {
                       <Upload className="w-3 h-3 mr-1" /> Uploaded
                     </Badge>
                   )}
+                  {hasLiveData && (
+                    <Badge variant="default" className="text-[10px]">
+                      <CheckCircle2 className="w-3 h-3 mr-1" /> Live Data
+                    </Badge>
+                  )}
+                  {activityName && (
+                    <Badge variant="secondary" className="text-[10px]">
+                      {activityName}
+                    </Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl">{selectedDoc.document_name}</CardTitle>
                 {selectedDoc.responsible && (
@@ -642,43 +897,48 @@ const Documents = () => {
                         <Loader2 className="w-4 h-4 animate-spin" /> Loading content...
                       </div>
                     ) : (
-                      <>
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground mb-2">Purpose</h3>
-                          {editing ? (
-                            <Textarea value={editContent.purpose ?? ""} onChange={(e) => setEditContent((prev) => ({ ...prev, purpose: e.target.value }))} rows={3} className="resize-none text-sm" />
-                          ) : (
-                            <p className="text-sm text-muted-foreground whitespace-pre-line">{getSectionContent("purpose")}</p>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground mb-2">Scope</h3>
-                          {editing ? (
-                            <Textarea value={editContent.scope ?? ""} onChange={(e) => setEditContent((prev) => ({ ...prev, scope: e.target.value }))} rows={3} className="resize-none text-sm" />
-                          ) : (
-                            <p className="text-sm text-muted-foreground whitespace-pre-line">{getSectionContent("scope")}</p>
-                          )}
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-semibold text-foreground mb-2">Responsibilities</h3>
-                          {editing ? (
-                            <Textarea value={editContent.responsibilities ?? ""} onChange={(e) => setEditContent((prev) => ({ ...prev, responsibilities: e.target.value }))} rows={4} className="resize-none text-sm" />
-                          ) : (
-                            <p className="text-sm text-muted-foreground whitespace-pre-line">{getSectionContent("responsibilities")}</p>
-                          )}
-                        </div>
-                      </>
+                      <div className="space-y-5">
+                        {SECTION_KEYS.map((key) => {
+                          const content = getSectionContent(key);
+                          // Hide empty notes section in view mode
+                          if (key === "notes" && !editing && !content.trim()) return null;
+
+                          return (
+                            <div key={key}>
+                              <h3 className="text-sm font-semibold text-foreground mb-2">
+                                {SECTION_LABELS[key]}
+                              </h3>
+                              {editing ? (
+                                <Textarea
+                                  value={editContent[key] ?? ""}
+                                  onChange={(e) => setEditContent((prev) => ({ ...prev, [key]: e.target.value }))}
+                                  rows={key === "procedures" ? 6 : key === "notes" ? 4 : 3}
+                                  className="resize-none text-sm"
+                                  placeholder={key === "notes" ? "Add any additional notes here..." : undefined}
+                                />
+                              ) : (
+                                <p className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed">
+                                  {content}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
 
-                    {hasDynamicData(selectedDoc.document_name) && (
+                    {/* Dynamic live data */}
+                    {dynamicContent && (
                       <>
                         <Separator />
                         <div className="bg-muted/30 rounded-lg p-4">
-                          <div className="flex items-center gap-2 mb-3">
+                          <div className="flex items-center gap-2 mb-4">
                             <CheckCircle2 className="w-4 h-4 text-primary" />
-                            <span className="text-xs font-medium text-primary">Live Data from Your HACCP Plan</span>
+                            <span className="text-xs font-medium text-primary">
+                              Live Data — {activityName || "Current Activity"}
+                            </span>
                           </div>
-                          {renderDynamicContent(selectedDoc)}
+                          {dynamicContent}
                         </div>
                       </>
                     )}
