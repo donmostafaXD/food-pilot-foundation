@@ -52,7 +52,7 @@ const RecentActivity = ({ branchId }: Props) => {
 
       let query = supabase
         .from("log_entries")
-        .select("id, log_name, process_step, status, created_at")
+        .select("id, log_name, process_step, data, status, created_at")
         .eq("organization_id", profile.organization_id!)
         .eq("branch_id", branchId)
         .order("created_at", { ascending: false })
