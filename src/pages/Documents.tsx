@@ -1365,7 +1365,7 @@ const Documents = () => {
               <SelectItem value="general">General FSMS</SelectItem>
             </SelectContent>
           </Select>
-          {activityName && (
+          {!isNoOverrideMode && activityName && (
             <div className="flex items-center gap-2">
               <Eye className="w-4 h-4 text-muted-foreground" />
               <Label htmlFor="show-all-docs" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
