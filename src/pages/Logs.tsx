@@ -326,6 +326,9 @@ const Logs = () => {
   ]), []);
 
   const filteredLogStructures = useMemo(() => {
+    // No Override Mode: show ALL data unfiltered
+    if (isNoOverrideMode) return logStructures;
+
     let base = logStructures;
 
     // Filter by plan tier using log_category (database-driven)
@@ -365,7 +368,7 @@ const Logs = () => {
         log.related_process_step?.toLowerCase().includes(p.toLowerCase())
       );
     });
-  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan, isHACCPPlan, BASIC_EXCLUDED_PARAMS]);
+  }, [logStructures, showAllLibrary, activityName, activityProcesses, planProcessNames, isBasicPlan, isHACCPPlan, BASIC_EXCLUDED_PARAMS, isNoOverrideMode]);
 
   const logNames = useMemo(() => {
     if (businessType === "Manufacturing") {
