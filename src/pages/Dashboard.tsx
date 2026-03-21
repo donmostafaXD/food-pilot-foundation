@@ -121,11 +121,11 @@ const Dashboard = () => {
         {/* Quick Actions - role-specific */}
         <QuickActions />
 
-        {/* Charts - Manager/Owner, non-basic */}
-        {isManagerLevel && plan !== "basic" && (
+        {/* Charts - Manager/Owner, non-basic; hidden for Staff */}
+        {!isStaff && isManagerLevel && plan !== "basic" && (
           <ComplianceChart branchId={selectedBranchId} branches={branches} />
         )}
-        {isManagerLevel && plan === "basic" && (
+        {!isStaff && isManagerLevel && plan === "basic" && (
           <UpgradePrompt
             featureName="Compliance Charts"
             requiredPlan="professional"

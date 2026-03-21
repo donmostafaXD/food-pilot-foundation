@@ -40,7 +40,6 @@ const RecentActivity = ({ branchId }: Props) => {
     const load = async () => {
       setLoading(true);
 
-      // Get process steps for activity scope
       let processSteps: string[] = [];
       if (activityName) {
         const { data: mapping } = await supabase
@@ -91,7 +90,7 @@ const RecentActivity = ({ branchId }: Props) => {
               <Inbox className="h-5 w-5 text-muted-foreground" />
             </div>
             <p className="text-sm font-medium text-foreground">
-              {isStaff ? "No logs recorded yet" : "No recent activity"}
+              No logs recorded for this activity
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {isStaff
