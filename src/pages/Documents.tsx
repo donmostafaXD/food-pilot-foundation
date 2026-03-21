@@ -485,7 +485,7 @@ const Documents = () => {
   const { plan } = usePlan();
   const { activityName, planId: activePlanId, loading: activityLoading } = useActivityFilter();
   const guard = usePermissionGuard("documents");
-  const { effectiveRole } = useRoleAccess();
+  const { effectiveRole, isNoOverrideMode } = useRoleAccess();
   const isOwner = effectiveRole === "Owner" || effectiveRole === "super_admin";
   const [searchParams] = useSearchParams();
   const [documents, setDocuments] = useState<EnrichedDocument[]>([]);
