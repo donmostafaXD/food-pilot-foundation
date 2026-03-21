@@ -311,7 +311,7 @@ const Logs = () => {
     };
 
     load();
-  }, [authLoading, activityLoading, profile, activityBusinessType, activityName]);
+  }, [authLoading, activityLoading, profile, activityBusinessType, activityName, isNoOverrideMode]);
 
   // Show sync notification when plan was just updated
   useEffect(() => {
