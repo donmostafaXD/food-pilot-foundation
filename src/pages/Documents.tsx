@@ -955,8 +955,27 @@ const Documents = () => {
             <Button variant="ghost" size="sm" onClick={() => setSelectedDoc(null)}>
               <ArrowLeft className="w-4 h-4 mr-1" /> Back to Documents
             </Button>
-            <div className="flex gap-2">
-              {!selectedDoc.isUploaded && !editing && guard.canEdit && (
+            <div className="flex gap-2 flex-wrap">
+              {/* Lock/Unlock — Owner only */}
+              {!selectedDoc.isUploaded && isOwner && !editing && (
+                <Button
+                  variant={docLocked ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={handleToggleLock}
+                  disabled={lockLoading}
+                >
+                  {lockLoading ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : docLocked ? <Unlock className="w-4 h-4 mr-1" /> : <Lock className="w-4 h-4 mr-1" />}
+                  {docLocked ? "Unlock" : "Lock"}
+                </Button>
+              )}
+              {/* Version History */}
+              {!selectedDoc.isUploaded && !editing && (
+                <Button variant="outline" size="sm" onClick={loadVersions}>
+                  <History className="w-4 h-4 mr-1" /> Versions
+                </Button>
+              )}
+              {/* Edit — only if not locked */}
+              {!editing && canEdit && (
                 <Button variant="outline" size="sm" onClick={startEditing}>
                   <Edit2 className="w-4 h-4 mr-1" /> Edit
                 </Button>
@@ -973,9 +992,14 @@ const Documents = () => {
                 </>
               )}
               {!editing && (
-                <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
-                  <Printer className="w-4 h-4 mr-1" /> Print
-                </Button>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setPrintOpen(true)}>
+                    <Printer className="w-4 h-4 mr-1" /> Print
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handlePdfExport}>
+                    <FileDown className="w-4 h-4 mr-1" /> PDF
+                  </Button>
+                </>
               )}
             </div>
           </div>
